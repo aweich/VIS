@@ -1,0 +1,6 @@
+# Long-read data
+experiment: "Vector_integration_site"
+data:
+    CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
+processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
+
