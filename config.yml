@@ -1,6 +1,9 @@
 # Long-read data
 experiment: "Vector_integration_site"
-data:
-    CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
+samples:
+    #CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
+    CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123+_test_file.fastq.gz"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
-
+source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
+vector_seq: "/home/lischecr/permanent/Projects/vector_integration/data/ref/cd123_car_ref.fa"
+#blastn_db
