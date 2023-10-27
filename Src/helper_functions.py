@@ -8,14 +8,49 @@ Created on Thu Oct 26 11:10:28 2023
 
 import sys
 from Bio import SeqIO
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 
-def parse_FASTQ(fastq_read):
-    id = fastq_read.id
-    seq = fastq_read.seq
-    #scan for matches
-    #cut out match
-    #create new ids based on the match _1, _2, ... _n
-    #create new read files
-    print(id, seq)
-    return
+def read_length_distribution(fasta):
+    """
+    Plots read lengths of a FASTA file
+    """
+    lengths = map(len, SeqIO.parse(fasta, 'fasta'))
+    plt.hist(np.log10(pd.Series(lengths)), color='black', bins=250)
+    plt.ylabel('log10(frequency)')
+    plt.xlabel("log10(bp)")
+    plt.title('Read length distribution')
+    plt.savefig('read_length_distribution.pdf')
+    
+def chunks(lst, n):
+    """
+    Returns list of n-sized lists in the nested format: [[],[]]
+    """
+    collection = []
+    for i in range(0, len(lst), n):
+        collection.append(lst[i:i + n])
+    return collection
+
+def fragmentation_fasta(fasta, equal_fragments, outfilename):
+    """
+    Splits FASTA file into equal_sized fragments and stores it as a single FASTA file with numbered fragments as ids
+    """
+    filename= outfilename #str(fasta) + "_fragmentation_" + str(equal_fragments) #the name of the output file
+    with open(filename, 'w') as output_file:
+        # opening given fasta file using the file path
+        with open(fasta, 'r') as fasta_file:
+            # extracting multiple data in single fasta file using biopython
+            for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
+                #split FASTA sequence into equally sized sub-lists with different id
+                record_id = record.id
+                allchunks = chunks(record.seq, equal_fragments)
+                for i,chunk in enumerate(allchunks):
+                    #print(">"+str(record_id)+"\n"+str(chunk) + "\n")
+                    record_id_chunk = str(record_id) + '_%i' % (i)
+                    output_file.write(">"+str(record_id_chunk)+"\n"+str(chunk) + "\n")            
+
+#read_length_distribution(sys.argv[1])
+#fragmentation_fasta(sys.argv[1], int(sys.argv[2]))
+#print(chunks("EASTBEJDNEDENDNLKEDLKEDLEDLKMDLKMDKMD", 10))
