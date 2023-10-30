@@ -1,11 +1,12 @@
 # Long-read data
-experiment: "Vector_integration_site"
+experiment: "Dummy_Vector_integration_site"
 samples:
-    full_CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
-    #CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123+_test_file.fastq.gz"
+    #full_CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
+    dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
-#vector_seq: "/home/lischecr/permanent/Projects/vector_integration/data/ref/cd123_car_ref.fa"
-blastn_db: "/home/weichan/blastNdb/cd123_car_ref.fa" 
-fragment_size: 1000 #input for custom function
+vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa" #
+#vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/cd123_car_ref.fa"
+#blastn_db: "/home/weichan/blastNdb/cd123_car_ref.fa" 
+fragment_size: 500 #input for custom function
 
