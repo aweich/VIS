@@ -21,8 +21,11 @@ rule all:
 		expand(PROCESS+"FASTA/{sample}.fa", sample=SAMPLES),
 		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
 		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
-		expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
+		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -48,7 +51,7 @@ rule vector_fragmentation:
 		vhf.fragmentation_fasta(input[0], params[0], output[0])
 
 	
-rule make_BLASTN_DB: #does this work without an output file? Usually, if another rule refers to the output of a rule, the file has to be specified
+rule make_BLASTN_DB:
 	input:
 		vector_fragmented = PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	output:
@@ -64,9 +67,6 @@ rule make_BLASTN_DB: #does this work without an output file? Usually, if another
 	run:
 		shell("makeblastdb -in {input.vector_fragmented} -dbtype nucl -blastdb_version 5")
 
-
-#prerequisites: build blastdb with vector sequence https://www.ncbi.nlm.nih.gov/books/NBK569841/
-#check output file: coordinates of matches? Can I further use them to split the reads?
 rule find_vector_BLASTn:
 	input:
 		fasta=PROCESS+"FASTA/{sample}.fa"
@@ -74,15 +74,76 @@ rule find_vector_BLASTn:
 		#vector=config["blastn_db"] #vector db
 		vector=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	output:
-		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+		temp(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:
-		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs' -num_threads 20") 
+		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'") 
 
 rule hardcode_blast_header:		
 	input: 
 		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	shell:	
-		"echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}"
+	run:	
+		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
+
+#mapping without changes to the fasta files
+rule basic_mapping:
+	input:
+		fasta=PROCESS+"FASTA/{sample}.fa",
+		genome=config["ref_genome_index"]
+	output:
+		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
+	run:
+		shell("minimap2 -x map-ont -a {input.genome} {input.fasta} | samtools sort -o {output} --write-index -")   # alignment map-ont specifies input/task
+		
+		
+		
+#add quality ctrl rule
+#samtools flagstats -@ 15 BasicMapping_full_CD123+.bam > simpleQC.test
+rule mapping_qc:
+	input:
+		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
+	output:
+		PROCESS+"MAPPING/BasicMapping_{sample}.qc"
+	run:
+		shell("samtools flagstats {input} > {output}")  
+		
+rule BAM_to_BED:
+	input:
+		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
+	output:
+		PROCESS+"MAPPING/BasicMapping_{sample}.bed"
+	run:
+		shell("bedtools bamtobed -i {input} > {output}")  
+
+rule get_read_identifiers:
+	input:
+		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"BLASTN/ID/ID_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	shell: 
+		"cut -f 1  {input} > {output}"
+				
+rule reads_with_BLASTn_matches:
+	input:
+		refbed=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
+		matchreads=PROCESS+"BLASTN/ID/ID_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
+	shell:
+		"grep -F -f {input.matchreads} {input.refbed} > {output}"
+		
+rule chromosome_read_plots:
+	input:
+		bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
+		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
+	output:
+		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
+	params:
+		buffer=50000
+	shell: 
+		r"""
+		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
+		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -buffer {params.buffer} -o {output.outpath}   
+		"""	
 

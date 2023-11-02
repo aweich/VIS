@@ -1,12 +1,15 @@
 # Long-read data
-experiment: "Dummy_Vector_integration_site"
+experiment: "Vector_integration_site"
 samples:
-    #full_CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
-    dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
+    full_CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
+    full_ads: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_ADS/gfp_pos_ads.fq.gz"
+    UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
+    #dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
-vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa" #
-#vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/cd123_car_ref.fa"
+#vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa" #
+vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/cd123_car_ref.fa"
 #blastn_db: "/home/weichan/blastNdb/cd123_car_ref.fa" 
-fragment_size: 500 #input for custom function
-
+fragment_size: 1000 #input for custom function
+ref_genome: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
+ref_genome_index: "/home/lischecr/permanent/Src/hg38/genome/hg38.ref.mmi" #minimap output
