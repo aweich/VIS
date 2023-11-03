@@ -25,7 +25,9 @@ rule all:
 		expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
 		expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
 		expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
-		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES)
+		#Visuals
+		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -132,7 +134,8 @@ rule reads_with_BLASTn_matches:
 		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
 	shell:
 		"grep -F -f {input.matchreads} {input.refbed} > {output}"
-		
+
+#Visuals		
 rule chromosome_read_plots:
 	input:
 		bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
@@ -146,4 +149,14 @@ rule chromosome_read_plots:
 		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
 		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -buffer {params.buffer} -o {output.outpath}   
 		"""	
-
+rule fragmentation_distribution_plots:
+	input:
+		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	params:
+		FRAG
+	output:
+		outpath=directory(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}")
+	run:
+		shell("mkdir {output.outpath}")
+		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
+		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0])
