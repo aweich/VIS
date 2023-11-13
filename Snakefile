@@ -27,7 +27,10 @@ rule all:
 		expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
 		#Visuals
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES)
+		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#PROCESS+"LOCALIZATION/Heatmap/",
+		#deeper
+		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -160,3 +163,30 @@ rule fragmentation_distribution_plots:
 		shell("mkdir {output.outpath}")
 		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
 		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0])
+'''
+#not interesting at the moment
+rule bed_heatmap:
+	input:
+		files=expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES)
+	output:
+		outpath=directory(PROCESS+"LOCALIZATION/Heatmap/")
+	run:
+		vhf.plot_bed_files_as_heatmap(input.files)
+'''
+#deeper: BLASTN vector against human genome to see which parts might be matching in the UTD
+rule find_vector_BLASTn_in_humanRef:
+	input:
+		fasta=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
+	params:
+		vector=config["blastn_db"] #vector db
+	output:
+		temp(PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
+	run:
+		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'")
+rule hardcode_blast_header_humanRef:		
+	input: 
+		PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	run:	
+		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}") 

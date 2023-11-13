@@ -7,12 +7,14 @@ Created on Thu Oct 26 11:10:28 2023
 """
 
 import sys
+import os
 from Bio import SeqIO
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib_venn import venn3
 import collections
+import seaborn as sns
    
 def chunks(lst, n):
     """
@@ -67,8 +69,11 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath):
     blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
     freq = collections.Counter(blasted["Fragment"].sort_values())
     plt.bar(freq.keys(), freq.values(), color='black')
-    print(blasted["Fragment"].sort_values())
-    #plt.xticks(range(0,106,10))
+    #print(blasted["Fragment"].sort_values())
+    if (10000/fragment_specifier) < 50:    
+        plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
+    else:
+        plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
     plt.ylabel('Alignment Frequency')
     plt.xlabel("Vector Fragment")
     plt.title(f'{fragment_specifier} bp fragment distribution')
@@ -94,8 +99,11 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath):
     plt.close()
 
 #fragmentation_read_match_distribution(sys.argv[1])
-#under construction    
+#under construction: Not callable from snakemake so far 
 def group_read_venn(data1, data2, data3):
+    """
+    Manual use (not pipeline optimized yet: Creates Venn diagram showing the chromosome-specific density across the samples
+    """
     set1 = set(pd.read_table(data1, header =None).iloc[:,0].tolist()) #for just the reads, header=None needs to be removed
     set2 = set(pd.read_table(data2, header=None).iloc[:,0].tolist())
     set3 = set(pd.read_table(data3, header=None).iloc[:,0].tolist())
@@ -104,3 +112,40 @@ def group_read_venn(data1, data2, data3):
     plt.savefig("Venn_100_reads_chromosome.png")
 
 #group_read_venn(sys.argv[1], sys.argv[2], sys.argv[3])
+#not callable from snakemake so far
+def plot_bed_files_as_heatmap(bed_files):
+    """
+    Manual use (not pipeline optimized yet: Creates heatmap the chromosome-specific density of matches in BED across the samples
+    """
+    data = {}
+    # Process each BED file
+    for file_id, bed_file in enumerate(bed_files):
+        # Read the BED file into a DataFrame
+        df = pd.read_csv(bed_file, sep='\t', header=None, names=['Chromosome', 'Start', 'End', 'Read_ID', 'X','XX'])
+
+        # Count chromosome occurrences
+        chromosome_counts = df['Chromosome'].value_counts()
+
+        # Store the counts in the data dictionary
+        head, tail = os.path.split(bed_file)
+        data[tail.split(".")[0]] = chromosome_counts
+
+    # Create a DataFrame from the data
+    counts_df = pd.DataFrame(data).fillna(0)
+
+    # Create a Seaborn heatmap
+    plt.figure(figsize=(16, 9))
+    sns.clustermap(counts_df, cmap="YlGnBu", annot=True, cbar_pos=(0, .2, .03, .4))
+    plt.xlabel('File ID')
+    plt.ylabel('Chromosome')
+    plt.title('Chromosome Occurrences \n  in BED Files')
+    plt.savefig("Heatmap.png", bbox_inches="tight")
+'''
+beds = ["/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/GenomicLocation_100_full_ads.bed",
+"/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/GenomicLocation_100_UTD.bed",
+"/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/GenomicLocation_100_full_CD123+.bed"] #specific selection
+import glob
+beds = glob.glob('/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/*.bed') #everything with *bed
+print(beds)
+plot_bed_files_as_heatmap(beds)
+'''

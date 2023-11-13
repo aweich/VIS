@@ -9,7 +9,7 @@ processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Resul
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa" #
 vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/cd123_car_ref.fa"
-#blastn_db: "/home/weichan/blastNdb/cd123_car_ref.fa" 
-fragment_size: 100 #input for custom function
+blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
+fragment_size: 1000 #input for custom function
 ref_genome: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
 ref_genome_index: "/home/lischecr/permanent/Src/hg38/genome/hg38.ref.mmi" #minimap output
