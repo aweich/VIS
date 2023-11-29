@@ -1,15 +1,23 @@
 # Long-read data
-experiment: "Vector_integration_site"
+experiment: "Methylation_Vector_integration_site"
 samples:
-    full_CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
-    full_ads: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_ADS/gfp_pos_ads.fq.gz"
-    UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
+    #full_CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
+    #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder
+    full_ads: "/home/weichan/permanent/Projects/VIS/dev/ads/gfp_pos_ads.fq.gz"
+    full_ads: "/home/weichan/permanent/Projects/VIS/dev/ads/ads.fastq"
+    #full_ads: "/home/weichan/permanent/Projects/VIS/dev/gfp_pos_ads.fq.gz"
+    #UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
+    #UTD: "/home/weichan/permanent/Projects/VIS/dev/utd/utd.native.fq.gz"
     #dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa" #
 vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/cd123_car_ref.fa"
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
-fragment_size: 1000 #input for custom function
+fragment_size: 100 #input for custom function
 ref_genome: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
 ref_genome_index: "/home/lischecr/permanent/Src/hg38/genome/hg38.ref.mmi" #minimap output
+#methylation call
+fast5path: "/home/weichan/permanent/Projects/VIS/dev/ads/fast5_pass/" #only ads currently
+#sequencingsummary: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_ADS/20230602_1106_MN37858_FAW82898_dd8938f8/sequencing_summary_FAW82898_dd8938f8_c07a3414.txt"
+

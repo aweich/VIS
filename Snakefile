@@ -18,19 +18,22 @@ import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 		
 rule all:
 	input: 
-		expand(PROCESS+"FASTA/{sample}.fa", sample=SAMPLES),
-		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
-		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
-		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
+		#expand(PROCESS+"FASTA/{sample}.fa", sample=SAMPLES),
+		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
+		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
+		#expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
 		expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
+		#Methylation
+		#expand(PROCESS+"METHYLATION/temp_{sample}/", sample=SAMPLES), #call methylation rule has to be dependent on the index rule. That's why the output is used as a fake input
+		expand(PROCESS+"METHYLATION/{sample}/{sample}_Methylation_pattern_regionBLABLA.tsv", sample=SAMPLES),
 		#Visuals
-		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#PROCESS+"LOCALIZATION/Heatmap/",
 		#deeper
-		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -94,17 +97,19 @@ rule hardcode_blast_header:
 #mapping without changes to the fasta files
 rule basic_mapping:
 	input:
-		fasta=PROCESS+"FASTA/{sample}.fa",
-		genome=config["ref_genome_index"]
+		fasta=get_input_names, # PROCESS+"FASTA/{sample}.fa",
+		genome=config["ref_genome"] #cut _index
 	output:
 		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
-	run:
-		shell("minimap2 -x map-ont -a {input.genome} {input.fasta} | samtools sort -o {output} --write-index -")   # alignment map-ont specifies input/task
+	shell:
+		"""
+		minimap2 -x map-ont -a {input.genome} {input.fasta} | samtools sort -o {output} 
+		samtools index {output}
+		"""   # alignment map-ont specifies input/task
 		
 		
 		
 #add quality ctrl rule
-#samtools flagstats -@ 15 BasicMapping_full_CD123+.bam > simpleQC.test
 rule mapping_qc:
 	input:
 		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
@@ -138,6 +143,30 @@ rule reads_with_BLASTn_matches:
 	shell:
 		"grep -F -f {input.matchreads} {input.refbed} > {output}"
 
+#Methylation
+
+rule index_for_methylation:
+	input:
+		fast5=config["fast5path"],
+		fastq=get_input_names,
+		#summary=config["sequencingsummary"]
+	output:
+		outpath=directory(PROCESS+"METHYLATION/temp_{sample}/")
+	run:
+		shell("mkdir {output.outpath}")
+		shell("nanopolish index -d {input.fast5} {input.fastq}")
+
+rule call_methylation:
+	input:
+		fastq=get_input_names,
+		fake=PROCESS+"METHYLATION/temp_{sample}/",
+		bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
+		ref=config["ref_genome"]
+	output:
+		PROCESS+"METHYLATION/{sample}/{sample}_Methylation_pattern_regionBLABLA.tsv"
+	shell:
+		"nanopolish call-methylation -r {input.fastq} -b {input.bam} -g {input.ref} -w 'chr6:1,000,000-10,000,000'> {output}"
+
 #Visuals		
 rule chromosome_read_plots:
 	input:
@@ -163,16 +192,7 @@ rule fragmentation_distribution_plots:
 		shell("mkdir {output.outpath}")
 		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
 		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0])
-'''
-#not interesting at the moment
-rule bed_heatmap:
-	input:
-		files=expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES)
-	output:
-		outpath=directory(PROCESS+"LOCALIZATION/Heatmap/")
-	run:
-		vhf.plot_bed_files_as_heatmap(input.files)
-'''
+
 #deeper: BLASTN vector against human genome to see which parts might be matching in the UTD
 rule find_vector_BLASTn_in_humanRef:
 	input:
@@ -182,11 +202,11 @@ rule find_vector_BLASTn_in_humanRef:
 	output:
 		temp(PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:
-		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'")
+		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs'")
 rule hardcode_blast_header_humanRef:		
 	input: 
 		PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
-		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}") 
+		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
