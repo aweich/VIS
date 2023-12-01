@@ -18,19 +18,19 @@ import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 		
 rule all:
 	input: 
-		#expand(PROCESS+"FASTA/{sample}.fa", sample=SAMPLES),
+		expand(PROCESS+"FASTA/{sample}.fa", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
-		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
-		#expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
-		expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
+		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
+		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
 		#Methylation
 		#expand(PROCESS+"METHYLATION/temp_{sample}/", sample=SAMPLES), #call methylation rule has to be dependent on the index rule. That's why the output is used as a fake input
-		expand(PROCESS+"METHYLATION/{sample}/{sample}_Methylation_pattern_regionBLABLA.tsv", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/{sample}/{sample}_Methylation_pattern_regionBLABLA.tsv", sample=SAMPLES),
 		#Visuals
-		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#PROCESS+"LOCALIZATION/Heatmap/",
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
@@ -45,7 +45,8 @@ rule make_FASTA:
 	output:
 		fasta=PROCESS+"FASTA/{sample}.fa"
 	run: 
-		shell("seqkit fq2fa {input.fq} -o {output.fasta}") #seqkit had to be installed with conda
+		#shell("seqkit fq2fa {input.fq} -o {output.fasta}") #seqkit had to be installed with conda
+		shell("samtools fasta {input} -o {output} > {output}") #takes in bam and outputs fasta, output has to be mentioned twice: 1 for the location, 2 for the option to write "both" reads to one fasta
 
 #fragments the CAR construct reference FASTA to increase detection rates via BLASTn
 rule vector_fragmentation:
@@ -77,14 +78,15 @@ rule make_BLASTN_DB:
 
 rule find_vector_BLASTn:
 	input:
-		fasta=PROCESS+"FASTA/{sample}.fa"
+		fasta=PROCESS+"FASTA/{sample}.fa",
+		dummy=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa.ndb" #provokes the building of the database first!
 	params:
 		#vector=config["blastn_db"] #vector db
 		vector=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	output:
 		temp(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:
-		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'") 
+		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'") 
 
 rule hardcode_blast_header:		
 	input: 
@@ -93,8 +95,9 @@ rule hardcode_blast_header:
 		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
 		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
-
+#the next 3 rules need to be changed: Create bed from bam file, but no mapping necessary in between (since this should be already done)
 #mapping without changes to the fasta files
+#can be removed after chris acceptance
 rule basic_mapping:
 	input:
 		fasta=get_input_names, # PROCESS+"FASTA/{sample}.fa",
@@ -112,7 +115,8 @@ rule basic_mapping:
 #add quality ctrl rule
 rule mapping_qc:
 	input:
-		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
+		get_input_names
+		#PROCESS+"MAPPING/BasicMapping_{sample}.bam"
 	output:
 		PROCESS+"MAPPING/BasicMapping_{sample}.qc"
 	run:
@@ -120,7 +124,8 @@ rule mapping_qc:
 		
 rule BAM_to_BED:
 	input:
-		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
+		get_input_names
+		#PROCESS+"MAPPING/BasicMapping_{sample}.bam"
 	output:
 		PROCESS+"MAPPING/BasicMapping_{sample}.bed"
 	run:
@@ -133,7 +138,8 @@ rule get_read_identifiers:
 		PROCESS+"BLASTN/ID/ID_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	shell: 
 		"cut -f 1  {input} > {output}"
-				
+
+#this can stay				
 rule reads_with_BLASTn_matches:
 	input:
 		refbed=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
@@ -144,7 +150,8 @@ rule reads_with_BLASTn_matches:
 		"grep -F -f {input.matchreads} {input.refbed} > {output}"
 
 #Methylation
-
+#this has to change or be removed completely: Nanopolish is deprecated for our flow cells
+"""
 rule index_for_methylation:
 	input:
 		fast5=config["fast5path"],
@@ -165,12 +172,13 @@ rule call_methylation:
 	output:
 		PROCESS+"METHYLATION/{sample}/{sample}_Methylation_pattern_regionBLABLA.tsv"
 	shell:
-		"nanopolish call-methylation -r {input.fastq} -b {input.bam} -g {input.ref} -w 'chr6:1,000,000-10,000,000'> {output}"
-
-#Visuals		
+		"nanopolish call-methylation -r {input.fastq} -b {input.bam} -g {input.ref} -w 'chr6:1,000,000-20,000,000'> {output}"
+"""
+#Visuals #they can stay		
 rule chromosome_read_plots:
 	input:
-		bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
+		bam=get_input_names,
+		#bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
 		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	output:
 		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
@@ -198,7 +206,7 @@ rule find_vector_BLASTn_in_humanRef:
 	input:
 		fasta=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	params:
-		vector=config["blastn_db"] #vector db
+		vector=config["blastn_db"] #full human reference
 	output:
 		temp(PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:

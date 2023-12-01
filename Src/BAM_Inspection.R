@@ -36,7 +36,7 @@ bampath <- xargs$input_bam #"/home/weichan/Data/VIS_data/BasicMapping_full_ads.b
 outputpath <- xargs$outputpath #"~/Projects/VIS/PLOTS/"
 buffer <- xargs$buffer #50000
 bed <- import.bed(bedpath)
-bm <- useEnsembl(host = "https://grch38.ensembl.org", #changed hg37 to hg38
+bm <- useEnsembl(host = "https://grch37.ensembl.org", #should change hg37 to hg38
                  biomart = "ENSEMBL_MART_ENSEMBL", 
                  dataset = "hsapiens_gene_ensembl")
 
