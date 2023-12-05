@@ -1,13 +1,13 @@
 # Long-read data
 experiment: "Dorado_Methylation_Vector_integration_site"
 samples:
-    #full_CD123+: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_NATIVE/20230531_1600_MN35428_FAW85058_2054f84c/gfp_pos_native.fq.gz"
+    full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123+_dorado_ref.bam"
     #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/ads/gfp_pos_ads.fq.gz"
-    full_ads: "/home/weichan/permanent/Projects/VIS/dev/ADS_dorado_ref_sorted.bam" #bam from dorado with reference an mod bases option
+    full_ads: "/home/weichan/permanent/Projects/VIS/dev/ADS_dorado_ref.bam" #bam from dorado with reference an mod bases option
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/gfp_pos_ads.fq.gz"
     #UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
-    #UTD: "/home/weichan/permanent/Projects/VIS/dev/utd/utd.native.fq.gz"
+    UTD: "/home/weichan/permanent/Projects/VIS/dev/UTD_dorado_ref.bam"
     #dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"

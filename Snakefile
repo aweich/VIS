@@ -23,17 +23,20 @@ rule all:
 		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
 		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
 		#Methylation
-		#expand(PROCESS+"METHYLATION/temp_{sample}/", sample=SAMPLES), #call methylation rule has to be dependent on the index rule. That's why the output is used as a fake input
-		#expand(PROCESS+"METHYLATION/{sample}/{sample}_Methylation_pattern_regionBLABLA.tsv", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/FAKEFAKE_{sample}.bed", sample=SAMPLES),
 		#Visuals
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#PROCESS+"LOCALIZATION/Heatmap/",
 		#deeper
-		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -95,24 +98,26 @@ rule hardcode_blast_header:
 		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
 		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
-#the next 3 rules need to be changed: Create bed from bam file, but no mapping necessary in between (since this should be already done)
-#mapping without changes to the fasta files
-#can be removed after chris acceptance
-rule basic_mapping:
+
+rule nBases_for_insertion_count:
 	input:
-		fasta=get_input_names, # PROCESS+"FASTA/{sample}.fa",
-		genome=config["ref_genome"] #cut _index
+		get_input_names
 	output:
-		PROCESS+"MAPPING/BasicMapping_{sample}.bam"
+		temp(PROCESS+"MAPPING/Number_of_Bases_{sample}.normalisation")
 	shell:
-		"""
-		minimap2 -x map-ont -a {input.genome} {input.fasta} | samtools sort -o {output} 
-		samtools index {output}
-		"""   # alignment map-ont specifies input/task
-		
-		
-		
-#add quality ctrl rule
+		"gatk CountBases -I {input} > {output}"				
+
+rule normalisation_for_insertion_count:
+	input:
+		insertions=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+		number_of_bases=PROCESS+"MAPPING/Number_of_Bases_{sample}.normalisation"
+	params:
+		scale=100000000 #IPHM
+	output:
+		PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt"
+	run:
+		vhf.insertion_normalisation(input.insertions, input.number_of_bases, params[0], output[0])
+
 rule mapping_qc:
 	input:
 		get_input_names
@@ -138,8 +143,7 @@ rule get_read_identifiers:
 		PROCESS+"BLASTN/ID/ID_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	shell: 
 		"cut -f 1  {input} > {output}"
-
-#this can stay				
+	
 rule reads_with_BLASTn_matches:
 	input:
 		refbed=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
@@ -149,32 +153,70 @@ rule reads_with_BLASTn_matches:
 	shell:
 		"grep -F -f {input.matchreads} {input.refbed} > {output}"
 
-#Methylation
-#this has to change or be removed completely: Nanopolish is deprecated for our flow cells
-"""
-rule index_for_methylation:
-	input:
-		fast5=config["fast5path"],
-		fastq=get_input_names,
-		#summary=config["sequencingsummary"]
-	output:
-		outpath=directory(PROCESS+"METHYLATION/temp_{sample}/")
-	run:
-		shell("mkdir {output.outpath}")
-		shell("nanopolish index -d {input.fast5} {input.fastq}")
 
-rule call_methylation:
+#Methylation
+rule prepare_BAM:
 	input:
-		fastq=get_input_names,
-		fake=PROCESS+"METHYLATION/temp_{sample}/",
-		bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
-		ref=config["ref_genome"]
+		get_input_names
 	output:
-		PROCESS+"METHYLATION/{sample}/{sample}_Methylation_pattern_regionBLABLA.tsv"
+		PROCESS+"MAPPING/{sample}_sorted.bam"
 	shell:
-		"nanopolish call-methylation -r {input.fastq} -b {input.bam} -g {input.ref} -w 'chr6:1,000,000-20,000,000'> {output}"
-"""
-#Visuals #they can stay		
+		"""
+		samtools sort {input} -o {output}
+		samtools index {output}
+		"""
+			
+rule methylation_bedMethyl:
+	input:
+		PROCESS+"MAPPING/{sample}_sorted.bam"
+	output:
+		PROCESS+"METHYLATION/Methyl_{sample}.bed"
+	shell:
+		"modkit pileup {input} {output}"
+
+rule insertion_proximity:
+	input:
+		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
+	params: 
+		10000
+	output:
+		PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed"
+	run:
+		vhf.insertion_proximity(input[0], params[0], output[0])
+
+
+#creates fasta only with insertions (+proximity of 10k up and downstream
+rule insertion_methylation_proximity:
+    input:
+        prox = PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+        fasta = config["ref_genome"]
+    output:
+        PROCESS+"METHYLATION/Insertion_methylation_proximity_{sample}.fa"
+    shell:
+        "bedtools getfasta -fi {input.fasta} -bed {input.prox} > {output}"
+
+#adds fasta to genomic gaps
+rule fasta_to_insertion_proximity:
+    input:
+        prox = PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+        fasta = PROCESS+"METHYLATION/Insertion_methylation_proximity_{sample}.fa"
+    output:
+        PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed"
+    run:
+        vhf.add_sequence_column(input.prox, input.fasta, output[0])
+
+rule mean_methylation:
+	input:
+		methbed=PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+		insertionfastabed=PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed"
+	params:
+		window_size=500,
+		max_distance=10000
+	output:
+		PROCESS+"METHYLATION/FAKEFAKE_{sample}.bed"
+	run: 
+		vhf.methylation_in_insertion_proximity(input.methbed, input.insertionfastabed, int(params.window_size), int(params.max_distance), output[0])      
+#Visuals	
 rule chromosome_read_plots:
 	input:
 		bam=get_input_names,
@@ -201,6 +243,15 @@ rule fragmentation_distribution_plots:
 		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
 		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0])
 
+rule insertion_heatmap:
+	input:
+		expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES)
+	output:
+		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png"
+	run:
+		print(input)
+		vhf.plot_bed_files_as_heatmap(input, output[0])
+		
 #deeper: BLASTN vector against human genome to see which parts might be matching in the UTD
 rule find_vector_BLASTn_in_humanRef:
 	input:

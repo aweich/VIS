@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib_venn import venn3
 import collections
 import seaborn as sns
+#from pybedtools import BedTool
    
 def chunks(lst, n):
     """
@@ -42,6 +43,29 @@ def fragmentation_fasta(fasta, equal_fragments, outfilename):
                     #print(">"+str(record_id)+"\n"+str(chunk) + "\n")
                     record_id_chunk = str(record_id) + '_%i' % (i)
                     output_file.write(">"+str(record_id_chunk)+"\n"+str(chunk) + "\n")            
+
+def insertion_normalisation(insertions,bases, n, outpath):
+    """
+    Uses the number of aligned bases, number of insertions, and scaling factor n for normalisation.
+    Results in insertions per n aligned bases. 
+    E.g. A Normalised count of 3 with the scaling factor 10000 means that there were on average 3 insertions detected for each 1kb aligned bases. 
+    """
+    n_insertions = sum(1 for _ in open(insertions)) #bed entries are by definition 1 per line
+    print(n_insertions)
+    with open(bases, 'r') as file:
+        # Read the second line of the file
+        next(file)
+        second_line = file.readline()
+        # Convert the content to an integer
+        n_bases = int(second_line.strip())
+        
+    normalised = (n/n_bases) * n_insertions
+    
+    with open(outpath, 'w') as output_file:
+        output_file.write("Number of aligned bases: " + str(n_bases) + "\n") 
+        output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
+        output_file.write("Normalisation factor: " + str(n) + "\n")
+        output_file.write("Insertions per " + str(n) + " bases: " + str(normalised))
 
 
 #Hardcoded visualisations
@@ -112,10 +136,10 @@ def group_read_venn(data1, data2, data3):
     plt.savefig("Venn_100_reads_chromosome.png")
 
 #group_read_venn(sys.argv[1], sys.argv[2], sys.argv[3])
-#not callable from snakemake so far
-def plot_bed_files_as_heatmap(bed_files):
+
+def plot_bed_files_as_heatmap(bed_files, outfile):
     """
-    Manual use (not pipeline optimized yet: Creates heatmap the chromosome-specific density of matches in BED across the samples
+    Creates heatmap the chromosome-specific density of matches in BED across the samples
     """
     data = {}
     # Process each BED file
@@ -139,13 +163,60 @@ def plot_bed_files_as_heatmap(bed_files):
     plt.xlabel('File ID')
     plt.ylabel('Chromosome')
     plt.title('Chromosome Occurrences \n  in BED Files')
-    plt.savefig("Heatmap.png", bbox_inches="tight")
+    plt.savefig(outfile, bbox_inches="tight")
+
+def insertion_proximity(bedfile, binsize, outfile):
+    """
+    Takes a list of insertion sites (BED file) and adds a user-defined number of bp to each site (start and end). Returns new BED file.
+    """
+    df = pd.read_csv(bedfile, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "read"])
+    df_modified = df.copy()
+    df_modified['start'] = df['start'] - binsize
+    df_modified['end'] = df['end'] + binsize
+    df_modified.to_csv(outfile, sep = '\t', header = False, index = False)
+
+def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
+    """
+    Adds the fasta sequence to the respective bed gaps. This makes the following methylation calling step easier.
+    """
+    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2], names=['Chromosome', 'Start', 'End'])
+    fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
+
+    # Add a new column to the DataFrame with the corresponding sequence from the FASTA file
+    bed_df['Sequence'] = [fasta_sequences[i].seq for i,n in enumerate(fasta_sequences)]
+    
+    bed_df.to_csv(output_bed_path, sep='\t', header=False, index=False)
+
 '''
-beds = ["/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/GenomicLocation_100_full_ads.bed",
-"/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/GenomicLocation_100_UTD.bed",
-"/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/GenomicLocation_100_full_CD123+.bed"] #specific selection
-import glob
-beds = glob.glob('/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Vector_integration_site/LOCALIZATION/*.bed') #everything with *bed
-print(beds)
-plot_bed_files_as_heatmap(beds)
+def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max_distance, outfile):
+    # Read the genomic coordinates BED file
+    insertion_bed = pd.read_csv(insertion_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "seq"])
+
+    # Read the target BED file
+    meth_bed = pd.read_csv(meth_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "mod"])
+    #max_distance = int(max_distance)
+    #window_size = int(window_size)
+    # Iterate through each genomic coordinate
+    for index, row in insertion_bed.iterrows():
+        start = int(row[1])
+        end = int(row[2])
+        print(start)
+        i=0
+        modifications={}
+        while i < max_distance +1:
+            start_interval = start + i
+            count=0
+            for index,entry in meth_bed.iterrows(): #if entry on chr Z is within interval, modification counter +1 #pack into function later that returns number of mods
+                if row['Chr'] == entry['Chr'] and \
+                   start_interval <= entry['start'] and \
+                   start + max_distance >= entry['end']:
+                    count += 1
+            modifications[start_interval] = count
+            i = i + window_size
+            #interval_entries = meth_bed[start_interval : start_interval + window_size] #all entries in certain interval
+            #
+            #end_interval = end - i 
+            # Calculate the mean of the entries' values (assuming a single-column BED file)
+            #mean_value = sum(int(entry.fields[3]) for entry in interval_entries) / len(interval_entries)
+            print(modifications)
 '''
