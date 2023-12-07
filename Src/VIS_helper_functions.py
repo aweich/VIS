@@ -177,7 +177,7 @@ def insertion_proximity(bedfile, binsize, outfile):
 
 def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
     """
-    Adds the fasta sequence to the respective bed gaps. This makes the following methylation calling step easier.
+    Adds the fasta sequence to the respective bed gaps. This makes the following methylation counting step easier.
     """
     bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2], names=['Chromosome', 'Start', 'End'])
     fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
@@ -187,36 +187,91 @@ def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
     
     bed_df.to_csv(output_bed_path, sep='\t', header=False, index=False)
 
-'''
+def bed_in_bed(chromosome, start, end, bed_data):
+    """
+    Uses start and stop coordinates and checks how many entries of bed_data are contained within start and stop. 
+    """
+    count=0
+    for index,entry in bed_data.iterrows(): #if entry on chr Z is within interval, modification counter +1 #pack into function later that returns number of mods
+        if chromosome == entry['Chr'] and start <= entry['start'] and end >= entry['end']:
+                    count += 1
+    return count
+ 
+def C_in_range(fasta, start, stop):
+    """
+    ´Uses start and stop coordinates and checks how many Cs are contained within start and stop. 10k from each end in 500 steps. Only read have more than 500 Cs
+    """
+    count=0
+    subfasta = fasta[start:stop]
+    count = subfasta.lower().count('c')
+    if count != 0:
+        return count
+    else:
+        return 1
 def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max_distance, outfile):
     # Read the genomic coordinates BED file
     insertion_bed = pd.read_csv(insertion_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "seq"])
+    print("This will take a while...")
 
     # Read the target BED file
     meth_bed = pd.read_csv(meth_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "mod"])
-    #max_distance = int(max_distance)
-    #window_size = int(window_size)
+
+    #output BED
+    final_bed = insertion_bed.copy()
     # Iterate through each genomic coordinate
     for index, row in insertion_bed.iterrows():
-        start = int(row[1])
-        end = int(row[2])
-        print(start)
+        chromosome = row.iloc[0]
+        start = int(row.iloc[1]) + max_distance #to end up with the original coordinates again
+        end = int(row.iloc[2]) - max_distance
+        intervalsize = end - start
+        orig_insertion= str(start)+"_"+str(end)
+        final_bed.loc[index, "Insertion"] = str(orig_insertion)
+        #methylation at insertion itself: Good overview of basic principle
+        modifications = bed_in_bed(chromosome, start, end, meth_bed) #counts number of entries in modification bed in range start-end
+        bases = C_in_range(row.iloc[3], max_distance, len(row.iloc[3]) - max_distance) #the proximity bed file with fasta has the structure: max_dist-start-stop-max_dist
+        final_bed.loc[index, str("Insertion_point")] = modifications/(bases) *100 #puts key (0)-value(methylation-ratio) pair into dataframe in the respective line (index)
+        #methylation in 3' direction in window-size steps up to max_distance
         i=0
-        modifications={}
-        while i < max_distance +1:
-            start_interval = start + i
-            count=0
-            for index,entry in meth_bed.iterrows(): #if entry on chr Z is within interval, modification counter +1 #pack into function later that returns number of mods
-                if row['Chr'] == entry['Chr'] and \
-                   start_interval <= entry['start'] and \
-                   start + max_distance >= entry['end']:
-                    count += 1
-            modifications[start_interval] = count
+        while i < max_distance: #3' direction
+            start_interval = end + i
+            stop_interval = start_interval + window_size
+            modifications = bed_in_bed(chromosome, start_interval, stop_interval, meth_bed) #still bad quality code, but better
+            column_name="+" + str(i+window_size)
+            bases = C_in_range(row.iloc[3], max_distance+intervalsize+i, max_distance+intervalsize+i+window_size)
+            print(i, chromosome, orig_insertion, modifications, bases)
+            final_bed.loc[index, column_name] = (modifications/bases) *100
             i = i + window_size
-            #interval_entries = meth_bed[start_interval : start_interval + window_size] #all entries in certain interval
-            #
-            #end_interval = end - i 
-            # Calculate the mean of the entries' values (assuming a single-column BED file)
-            #mean_value = sum(int(entry.fields[3]) for entry in interval_entries) / len(interval_entries)
-            print(modifications)
-'''
+        #methylation in 5' direction in window-size steps up to max_distance
+        i= 0
+        while abs(i) < max_distance: #5' direction
+            start_interval = start - i
+            stop_interval = start_interval - window_size
+            modifications = bed_in_bed(chromosome, stop_interval, start_interval, meth_bed) #still bad quality code, but better; start and stop exchanged!
+            column_name=str(i-window_size)
+            bases = C_in_range(row.iloc[3], max_distance-i-window_size, max_distance-i)
+            print(i, chromosome, orig_insertion, modifications, bases)
+            final_bed.loc[index, column_name] = (modifications/bases) *100
+            i = i - window_size 
+            
+    print(list(final_bed.columns))
+    print(np.array(final_bed.iloc[:,5:47]).sum(axis=0))
+    final_bed.to_csv(outfile, sep='\t', header=True, index=False)
+
+def plot_modification_proximity(bedfile, outfile):
+    """
+    Creates heatmap
+    """
+    # Process each BED file
+    df = pd.read_csv(bedfile, sep='\t')
+    df["Concatenated"] = df["Chr"] + "_" + df["Insertion"]
+    df = df.set_index('Concatenated')
+    df = df.drop(columns=["Chr","start","end","seq","Insertion"])
+    print(df.head())
+
+    # Create a Seaborn heatmap
+    plt.figure(figsize=(16, 9))
+    sns.clustermap(df, cmap="YlGnBu", annot=True, cbar_pos=(0, .2, .03, .4))
+    plt.xlabel('Distance from Insertion site')
+    plt.ylabel('Read with insertion')
+    plt.title('')
+    plt.savefig(outfile, bbox_inches="tight")
