@@ -29,11 +29,13 @@ rule all:
 		#Methylation
 		expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/FAKEFAKE_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
 		#Visuals
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
+		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#PROCESS+"LOCALIZATION/Heatmap/",
 		#deeper
 		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
@@ -168,17 +170,20 @@ rule prepare_BAM:
 			
 rule methylation_bedMethyl:
 	input:
-		PROCESS+"MAPPING/{sample}_sorted.bam"
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		#ref=config["ref_genome"]
+		
 	output:
 		PROCESS+"METHYLATION/Methyl_{sample}.bed"
 	shell:
-		"modkit pileup {input} {output}"
+		"modkit pileup {input.bam} --filter-threshold C:0.8 {output}" #high threshhold for C modifications
+		#"modkit pileup {input.bam} {output} --cpg --ref {input.ref}" 
 
 rule insertion_proximity:
 	input:
 		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	params: 
-		10000
+		10000 #this value has to be same as in mean methylation!
 	output:
 		PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	run:
@@ -205,17 +210,30 @@ rule fasta_to_insertion_proximity:
     run:
         vhf.add_sequence_column(input.prox, input.fasta, output[0])
 
+#this rule is added for performance, so that the following pythons cript only reads in relevant parts of the methylation file and not the full genome
+
+rule methyl_specific:
+    input:
+        insertions = PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+        methyl = PROCESS+"METHYLATION/Methyl_{sample}.bed"
+    output:
+        PROCESS+"METHYLATION/Specific_Methyl_{sample}.bed"
+    shell:
+        """
+        bedtools intersect -wb -a {input.methyl} -b {input.insertions} > {output}
+        """
+
 rule mean_methylation:
 	input:
-		methbed=PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+		methbed=PROCESS+"METHYLATION/Specific_Methyl_{sample}.bed",
 		insertionfastabed=PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed"
 	params:
 		window_size=500,
 		max_distance=10000
 	output:
-		PROCESS+"METHYLATION/FAKEFAKE_{sample}.bed"
+		PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed"
 	run: 
-		vhf.methylation_in_insertion_proximity(input.methbed, input.insertionfastabed, int(params.window_size), int(params.max_distance), output[0])      
+		vhf.methylation_in_insertion_proximity(input.methbed, input.insertionfastabed, params.window_size, params.max_distance,  output[0])  
 #Visuals	
 rule chromosome_read_plots:
 	input:
@@ -233,15 +251,20 @@ rule chromosome_read_plots:
 		"""	
 rule fragmentation_distribution_plots:
 	input:
-		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		FRAG
 	output:
-		outpath=directory(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}")
+		outpath=directory(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}"),
+		outpath2=directory(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}")
 	run:
 		shell("mkdir {output.outpath}")
 		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
 		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0])
+		shell("mkdir {output.outpath2}")
+		vhf.fragmentation_match_distribution(input[1], params[0], output[1])
+		vhf.fragmentation_read_match_distribution(input[1], params[0], output[1])
 
 rule insertion_heatmap:
 	input:
@@ -251,6 +274,14 @@ rule insertion_heatmap:
 	run:
 		print(input)
 		vhf.plot_bed_files_as_heatmap(input, output[0])
+
+rule insertion_modification_heatmap:
+	input:
+		PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed"
+	output:
+		PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png"
+	run:
+		vhf.plot_modification_proximity(input[0], output[0])
 		
 #deeper: BLASTN vector against human genome to see which parts might be matching in the UTD
 rule find_vector_BLASTn_in_humanRef:
@@ -269,3 +300,14 @@ rule hardcode_blast_header_humanRef:
 		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
 		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
+		
+'''
+#deeper: Sniffles for variant calling: May be BLAST alternative?
+rule variant_sniffles:
+	input:
+		PROCESS+"MAPPING/{sample}_sorted.bam"
+	output:
+		PROCESS+"MAPPING/Variant_{sample}.vcf"
+	shell:
+		"sniffles -i {input} -v {output}"
+'''

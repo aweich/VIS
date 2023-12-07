@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib_venn import venn3
 import collections
 import seaborn as sns
-#from pybedtools import BedTool
+from pybedtools import BedTool
    
 def chunks(lst, n):
     """
@@ -67,8 +67,6 @@ def insertion_normalisation(insertions,bases, n, outpath):
         output_file.write("Normalisation factor: " + str(n) + "\n")
         output_file.write("Insertions per " + str(n) + " bases: " + str(normalised))
 
-
-#Hardcoded visualisations
                     
 def read_length_distribution(fasta):
     """
@@ -81,17 +79,19 @@ def read_length_distribution(fasta):
     plt.title('Read length distribution')
     plt.savefig('read_length_distribution.pdf')
 
-#read_length_distribution(sys.argv[1])
-#fragmentation_fasta(sys.argv[1], int(sys.argv[2]))
-#print(chunks("EASTBEJDNEDENDNLKEDLKEDLEDLKMDLKMDKMD", 10))
 def fragmentation_match_distribution(data, fragment_specifier, outpath):
     """
     Takes the vector fragments and plots histogram of their frequency in the alignment
     """
     blasted = pd.read_csv(data, sep="\t")
-    blasted[['Vector', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
-    blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
-    freq = collections.Counter(blasted["Fragment"].sort_values())
+    if blasted['QueryID'][0].startswith("V"):
+        blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
+        blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
+        freq = collections.Counter(blasted["Fragment"].sort_values())
+    else:
+        blasted[['Vector', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
+        blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
+        freq = collections.Counter(blasted["Fragment"].sort_values())
     plt.bar(freq.keys(), freq.values(), color='black')
     #print(blasted["Fragment"].sort_values())
     if (10000/fragment_specifier) < 50:    
@@ -112,7 +112,10 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath):
     Takes the read ids with matches and plots histogram of their frequency
     """
     blasted = pd.read_csv(data, sep="\t")
-    freq = collections.Counter(blasted["QueryID"])
+    if blasted["QueryID"][0].startswith("V"):
+        freq = collections.Counter(blasted["SubjectID"])
+    else:
+        freq = collections.Counter(blasted["QueryID"])
     plt.bar(freq.keys(), freq.values(), color='black')
     plt.xticks(rotation=90)
     plt.ylabel('Read match Frequency')
@@ -177,7 +180,7 @@ def insertion_proximity(bedfile, binsize, outfile):
 
 def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
     """
-    Adds the fasta sequence to the respective bed gaps. This makes the following methylation counting step easier.
+    Adds the fasta sequence to the respective bed gaps. This makes the counting of Cytosines easier for a later step.
     """
     bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2], names=['Chromosome', 'Start', 'End'])
     fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
@@ -187,19 +190,64 @@ def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
     
     bed_df.to_csv(output_bed_path, sep='\t', header=False, index=False)
 
-def bed_in_bed(chromosome, start, end, bed_data):
+####all below are just for the mean methylation in the equal sized bin in proximity of the read with the insertion
+def bed_intersect_count(chromosome, start, stop, meth_bed):
     """
-    Uses start and stop coordinates and checks how many entries of bed_data are contained within start and stop. 
+    Python wrapper of bed intersect function that returns the number of intersections. 
+    Takes in a single chr start stop combination and a whole file of possible intersections. 
     """
-    count=0
-    for index,entry in bed_data.iterrows(): #if entry on chr Z is within interval, modification counter +1 #pack into function later that returns number of mods
-        if chromosome == entry['Chr'] and start <= entry['start'] and end >= entry['end']:
-                    count += 1
-    return count
- 
+    # Create a temporary BED file from the list of coordinates
+    temp_bed = BedTool(f"{chromosome}\t{start}\t{stop}", from_string=True)
+    # Perform the intersect operation and count the number of overlaps (-c option)
+    intersected = temp_bed.intersect(meth_bed, c=True)
+    # Calculate and return the number of overlaps
+    num_overlaps = intersected[0][3]
+    return int(num_overlaps)
+'''
+def count_equal_entries(bed_file_path):
+    """
+    Counts how often a chr start stop entry occurs in a bed file. 
+    """
+    # Read the BED file using pybedtools
+    bed = BedTool(bed_file_path)
+
+    # Initialize a dictionary to store counts
+    entry_counts = {}
+
+    # Count occurrences of each entry using only the first three columns
+    for entry in bed:
+        entry_str = '\t'.join(map(str, entry.fields[:3]))
+        entry_counts[entry_str] = entry_counts.get(entry_str, 0) + 1
+
+    return entry_counts
+'''
+def collapse_equal_entries(bed_file):
+    """
+    Collapses duplicates chr start stop entries into a single representative.
+    """
+    bed = BedTool(bed_file)
+    # Initialize a set to keep track of unique entries
+    unique_entries = set()
+    # Create a list to store representative entries
+    representative_entries = []
+    # Iterate through each entry
+    for entry in bed:
+        entry_str = '\t'.join(map(str, entry.fields[:3]))
+
+        # Check if the entry is unique
+        if entry_str not in unique_entries:
+            unique_entries.add(entry_str)
+            representative_entries.append(entry)
+
+    # Create a new BedTool with representative entries
+    collapsed_entries = BedTool(representative_entries)
+
+    return collapsed_entries
+
+
 def C_in_range(fasta, start, stop):
     """
-    ´Uses start and stop coordinates and checks how many Cs are contained within start and stop. 10k from each end in 500 steps. Only read have more than 500 Cs
+    Uses start and stop coordinates and checks how many Cs are contained within start and stop. 
     """
     count=0
     subfasta = fasta[start:stop]
@@ -208,14 +256,21 @@ def C_in_range(fasta, start, stop):
         return count
     else:
         return 1
+
 def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max_distance, outfile):
+    """
+    For each entry in insertion bed, a interval of window_size will be scanned for occurring Cytosines (=N total Cs) up to max_distance in positive and negative direction.
+    For each of these intervals, the meth_bed file is scanned for entries contained within the genomic ranges (=N modified Cs). 
+    The modification ratio in % for each interval is calculated and a dataframe is returned.
+    """
     # Read the genomic coordinates BED file
     insertion_bed = pd.read_csv(insertion_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "seq"])
     print("This will take a while...")
 
     # Read the target BED file
-    meth_bed = pd.read_csv(meth_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "mod"])
-
+    #meth_bed = pd.read_csv(meth_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "mod"])
+    with_duplicates = BedTool(meth_bed) #if I at some point figure out why one entry can be in this stupid file up to twelve times, I might change this
+    meth_bed = collapse_equal_entries(with_duplicates)
     #output BED
     final_bed = insertion_bed.copy()
     # Iterate through each genomic coordinate
@@ -227,15 +282,15 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
         orig_insertion= str(start)+"_"+str(end)
         final_bed.loc[index, "Insertion"] = str(orig_insertion)
         #methylation at insertion itself: Good overview of basic principle
-        modifications = bed_in_bed(chromosome, start, end, meth_bed) #counts number of entries in modification bed in range start-end
+        modifications = bed_intersect_count(chromosome, start, end, meth_bed)
         bases = C_in_range(row.iloc[3], max_distance, len(row.iloc[3]) - max_distance) #the proximity bed file with fasta has the structure: max_dist-start-stop-max_dist
-        final_bed.loc[index, str("Insertion_point")] = modifications/(bases) *100 #puts key (0)-value(methylation-ratio) pair into dataframe in the respective line (index)
+        final_bed.loc[index, str("Insertion_point")] = (modifications/bases) *100 #puts key (0)-value(methylation-ratio) pair into dataframe in the respective line (index)
         #methylation in 3' direction in window-size steps up to max_distance
         i=0
-        while i < max_distance: #3' direction
+        while i < max_distance+1: #3' direction
             start_interval = end + i
             stop_interval = start_interval + window_size
-            modifications = bed_in_bed(chromosome, start_interval, stop_interval, meth_bed) #still bad quality code, but better
+            modifications = bed_intersect_count(chromosome, start_interval, stop_interval, meth_bed)
             column_name="+" + str(i+window_size)
             bases = C_in_range(row.iloc[3], max_distance+intervalsize+i, max_distance+intervalsize+i+window_size)
             print(i, chromosome, orig_insertion, modifications, bases)
@@ -246,7 +301,7 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
         while abs(i) < max_distance: #5' direction
             start_interval = start - i
             stop_interval = start_interval - window_size
-            modifications = bed_in_bed(chromosome, stop_interval, start_interval, meth_bed) #still bad quality code, but better; start and stop exchanged!
+            modifications = bed_intersect_count(chromosome, stop_interval, start_interval, meth_bed)
             column_name=str(i-window_size)
             bases = C_in_range(row.iloc[3], max_distance-i-window_size, max_distance-i)
             print(i, chromosome, orig_insertion, modifications, bases)
@@ -254,24 +309,43 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
             i = i - window_size 
             
     print(list(final_bed.columns))
-    print(np.array(final_bed.iloc[:,5:47]).sum(axis=0))
+    #print(np.array(final_bed.iloc[:,5:47]).sum(axis=0))
+    #result = count_equal_entries(meth_bed)
+    #for entry, count in result.items():
+    #    print(f"Entry: {entry}, Count: {count}")
+
     final_bed.to_csv(outfile, sep='\t', header=True, index=False)
+
+def flatten_comprehension(matrix):
+    """
+    Flattens a nested list and makes each element a str.
+    """
+    return [str(item) for row in matrix for item in row]
 
 def plot_modification_proximity(bedfile, outfile):
     """
-    Creates heatmap
+    Creates heatmap of interval and methylation mean based on the data created in 'methylation_in_insertion_proximity()'
     """
     # Process each BED file
     df = pd.read_csv(bedfile, sep='\t')
-    df["Concatenated"] = df["Chr"] + "_" + df["Insertion"]
-    df = df.set_index('Concatenated')
+    df["Read with insertion"] = df["Chr"] + "_" + df["Insertion"]
+    df = df.set_index('Read with insertion')
     df = df.drop(columns=["Chr","start","end","seq","Insertion"])
-    print(df.head())
+    
+    #for x axis
+    pos=list(range(0, 10001, 500))
+    pos = [f'+{num}' if num > 0 else num for num in pos]
+    column_order = flatten_comprehension([list(range(-10000, 0, 500)), ["Insertion_point"], pos])
+    column_order.remove('0')
+    # Reorder the DataFrame columns
+    df_reordered = df[column_order]
 
     # Create a Seaborn heatmap
     plt.figure(figsize=(16, 9))
-    sns.clustermap(df, cmap="YlGnBu", annot=True, cbar_pos=(0, .2, .03, .4))
-    plt.xlabel('Distance from Insertion site')
-    plt.ylabel('Read with insertion')
+    sns.clustermap(df_reordered, cmap="YlGnBu", annot=False, row_cluster=True, col_cluster=False,\
+                   cbar_pos=(0.25, .9, .5, 0.01), cbar_kws={'orientation': 'horizontal'},\
+                   dendrogram_ratio=(.15))
+    plt.xlabel("%C with modification")
+    plt.ylabel('')
     plt.title('')
     plt.savefig(outfile, bbox_inches="tight")
