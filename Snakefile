@@ -38,7 +38,8 @@ rule all:
 		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#PROCESS+"LOCALIZATION/Heatmap/",
 		#deeper
-		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/Variant_{sample}.vcf", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -301,13 +302,14 @@ rule hardcode_blast_header_humanRef:
 	run:	
 		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
 		
-'''
+
 #deeper: Sniffles for variant calling: May be BLAST alternative?
 rule variant_sniffles:
 	input:
-		PROCESS+"MAPPING/{sample}_sorted.bam"
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		genome=config["ref_genome"]
 	output:
 		PROCESS+"MAPPING/Variant_{sample}.vcf"
 	shell:
-		"sniffles -i {input} -v {output}"
-'''
+		"sniffles -i {input.bam} --reference {input.genome} --output-rnames -v {output}"
+
