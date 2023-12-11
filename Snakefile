@@ -26,6 +26,8 @@ rule all:
 		expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
+		#exact coordinates
+		expand(PROCESS+"LOCALIZATION/Exact_GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		#Methylation
 		expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
@@ -35,11 +37,16 @@ rule all:
 		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
-		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		#PROCESS+"LOCALIZATION/Heatmap/",
 		#deeper
 		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		expand(PROCESS+"MAPPING/Variant_{sample}.vcf", sample=SAMPLES)
+		#sniffles
+		#expand(PROCESS+"VARIANTS/Variant_{sample}.vcf", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/INS_Variant_{sample}.vcf", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/Intersect_{sample}.bed", sample=SAMPLES),
+		#svim
+		#expand(PROCESS+"VARIANTS/SVIM_{sample}/", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -303,13 +310,75 @@ rule hardcode_blast_header_humanRef:
 		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
 		
 
+
+
+
+#exact coordinates of the matching fragments
+rule blastn_bed_merger:
+	input:
+		blast=PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
+	output:
+		merged=PROCESS+"LOCALIZATION/Exact_GenomicLocation_"+str(FRAG)+"_{sample}.bed"
+	run:
+		vhf.blastn_bed_merger(input.blast, input.bed, output.merged)
+
+
+
+
+
+
 #deeper: Sniffles for variant calling: May be BLAST alternative?
 rule variant_sniffles:
 	input:
 		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
 		genome=config["ref_genome"]
 	output:
-		PROCESS+"MAPPING/Variant_{sample}.vcf"
+		PROCESS+"VARIANTS/Variant_{sample}.vcf"
 	shell:
 		"sniffles -i {input.bam} --reference {input.genome} --output-rnames -v {output}"
 
+rule reshape_sniffles: # can be replaced at some point with bedops: https://bedops.readthedocs.io/en/latest/content/reference/file-management/conversion/vcf2bed.html
+	input:
+		PROCESS+"VARIANTS/Variant_{sample}.vcf"
+	output:
+		out=PROCESS+"VARIANTS/Reformatted_Variant_{sample}.vcf",
+		out2=PROCESS+"VARIANTS/INS_Variant_{sample}.vcf",
+		out3=PROCESS+"VARIANTS/OTHER_Variant_{sample}.vcf"
+	run:
+		vhf.preprocess_sniffles(input[0], output.out, output.out2, output.out3)
+
+#intersect withBLAST matches 
+rule intersect_insertions_with_BLAST:
+	input:
+		blast=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+		vcf=PROCESS+"VARIANTS/OTHER_Variant_{sample}.vcf"
+	output:
+		PROCESS+"VARIANTS/Intersect_{sample}.bed"
+	shell:
+		"""
+		bedtools intersect -a {input.blast} -b {input.vcf} -wo > {output}
+		"""
+
+rule svim_variants:
+	input:
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		genome=config["ref_genome"]
+	output:
+		outdir=PROCESS+"VARIANTS/SVIM_{sample}/",
+		file=PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed", 
+		
+	shell:
+		"svim alignment {output.outdir} {input.bam} {input.genome} --types INS"
+
+#intersect withBLAST matches 
+rule intersect_svim_insertions_with_BLAST:
+	input:
+		blast=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+		vcf=PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed"
+	output:
+		PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed"
+	shell:
+		"""
+		bedtools intersect -a {input.blast} -b {input.vcf} -wo > {output}
+		"""
