@@ -22,23 +22,23 @@ rule all:
 		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
 		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
 		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
-		expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
+		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
+		#expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
 		#exact coordinates
-		expand(PROCESS+"LOCALIZATION/Exact_GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/Exact_GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		#Methylation
-		expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
 		#Visuals
-		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		#deeper
-		expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
 		#expand(PROCESS+"VARIANTS/Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/INS_Variant_{sample}.vcf", sample=SAMPLES),
@@ -47,14 +47,56 @@ rule all:
 		#expand(PROCESS+"VARIANTS/SVIM_{sample}/", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed", sample=SAMPLES)
+		#new approach for insertion identification
+		expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
     return config["samples"][wildcards.sample]
 
+#BAM Operations:
+#Add rule to remove supplementary and secondary alignments
+#samtools view -F 2304 -bo filtered.bam original.bam (via picard: supplementary alignment, not primary alignment): Added to prepare BAM rule
+rule get_cleavage_sites_for_fasta:
+	input:
+		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	run:
+		vhf.splitting_borders(input[0], output[0])
+rule mapping_qc:
+	input:
+		#get_input_names
+		PROCESS+"MAPPING/{sample}_sorted.bam"
+	output:
+		PROCESS+"MAPPING/BasicMapping_{sample}.qc"
+	run:
+		shell("samtools flagstats {input} > {output}")  
+		
+rule BAM_to_BED:
+	input:
+		#get_input_names
+		PROCESS+"MAPPING/{sample}_sorted.bam"
+	output:
+		PROCESS+"MAPPING/BasicMapping_{sample}.bed"
+	run:
+		shell("bedtools bamtobed -i {input} > {output}")  
+
+rule prepare_BAM: #sorts, index, and removes supllementary and secondary alignments
+	input:
+		get_input_names
+	output:
+		PROCESS+"MAPPING/{sample}_sorted.bam"
+	shell:
+		"""
+		samtools sort {input} | samtools view -F 2304 -o {output}
+		samtools index {output}
+		"""
+
 rule make_FASTA:
 	input:
-		fq=get_input_names
+		#fq=get_input_names
+		fq=PROCESS+"MAPPING/{sample}_sorted.bam"
 	output:
 		fasta=PROCESS+"FASTA/{sample}.fa"
 	run: 
@@ -111,7 +153,8 @@ rule hardcode_blast_header:
 
 rule nBases_for_insertion_count:
 	input:
-		get_input_names
+		#get_input_names
+		PROCESS+"MAPPING/{sample}_sorted.bam"
 	output:
 		temp(PROCESS+"MAPPING/Number_of_Bases_{sample}.normalisation")
 	shell:
@@ -128,23 +171,6 @@ rule normalisation_for_insertion_count:
 	run:
 		vhf.insertion_normalisation(input.insertions, input.number_of_bases, params[0], output[0])
 
-rule mapping_qc:
-	input:
-		get_input_names
-		#PROCESS+"MAPPING/BasicMapping_{sample}.bam"
-	output:
-		PROCESS+"MAPPING/BasicMapping_{sample}.qc"
-	run:
-		shell("samtools flagstats {input} > {output}")  
-		
-rule BAM_to_BED:
-	input:
-		get_input_names
-		#PROCESS+"MAPPING/BasicMapping_{sample}.bam"
-	output:
-		PROCESS+"MAPPING/BasicMapping_{sample}.bed"
-	run:
-		shell("bedtools bamtobed -i {input} > {output}")  
 
 rule get_read_identifiers:
 	input:
@@ -165,17 +191,7 @@ rule reads_with_BLASTn_matches:
 
 
 #Methylation
-rule prepare_BAM:
-	input:
-		get_input_names
-	output:
-		PROCESS+"MAPPING/{sample}_sorted.bam"
-	shell:
-		"""
-		samtools sort {input} -o {output}
-		samtools index {output}
-		"""
-			
+
 rule methylation_bedMethyl:
 	input:
 		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
@@ -245,7 +261,8 @@ rule mean_methylation:
 #Visuals	
 rule chromosome_read_plots:
 	input:
-		bam=get_input_names,
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		#get_input_names,
 		#bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
 		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	output:

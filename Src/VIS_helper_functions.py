@@ -404,3 +404,55 @@ def blastn_bed_merger(blast, bed, outfile):
     print(merged_bed.head())
     # Save the merged BED file
     merged_bed.to_csv(outfile, sep='\t', index=False)
+
+####this part here is dedicated to the splitting of blast-match including fasta reads
+def merge_intervals(intervals):
+    # Sort intervals by start coordinates
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+
+    merged_intervals = []
+    current_interval = sorted_intervals[0]
+    #the following part does not work yet: It needs to take our different list properties into account!
+    for interval in sorted_intervals[1:]:
+        if interval[0] - current_interval[1] <= 10 or current_interval[0] - interval[1] <= 10:
+            # Merge close intervals
+            current_interval = (min(current_interval[0], interval[0]), max(current_interval[1], interval[1]))
+        else:
+            merged_intervals.append(current_interval)
+            current_interval = interval
+
+    merged_intervals.append(current_interval)  # Add the last interval
+
+    return merged_intervals
+
+   
+def splitting_borders(blast_file, outfile):
+    """
+    This function takes in a BLASTn output file and returns a file with the reads and the respective borders for fasta splitting.
+    Output format: Read_ID cut1, cut2, cutN 
+    """
+    # Read the BLAST output into a DataFrame
+    blast_data = pd.read_csv(blast_file, sep='\t')
+
+    # Group the data by QueryID
+    grouped_data = blast_data.groupby('QueryID')
+
+    # Dictionary to store intervals for each QueryID
+    intervals_dict = {}
+
+    # Iterate over groups and extract intervals
+    for query_id, group in grouped_data:
+        intervals = []
+        for _, row in group.iterrows():
+            start, end = row['QueryStart'], row['QueryEnd']
+            intervals.append((start, end))
+        # Store the intervals for each QueryID
+        intervals_dict[query_id] = intervals
+
+    result_dict = {key: merge_intervals(intervals) for key, intervals in intervals_dict.items()}
+    with open(outfile, 'w') as f:
+        print(result_dict, file=f)
+        #result_dict.to_csv(outfile, sep='\t', index=False)
+
+
+
