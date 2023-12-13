@@ -22,6 +22,7 @@ rule all:
 		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
 		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
 		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
@@ -60,10 +61,37 @@ def get_input_names(wildcards):
 rule get_cleavage_sites_for_fasta:
 	input:
 		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	params:
+		overlap=2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	output:
 		PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:
-		vhf.splitting_borders(input[0], output[0])
+		vhf.splitting_borders(input[0],params[0], output[0])
+
+rule split_fasta:
+	input:
+		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+		fasta=PROCESS+"FASTA/{sample}.fa"
+	output:
+		PROCESS+"FASTA/Cleaved_{sample}_noVector.fa"
+	run:
+		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, output[0])
+		
+#rule to create the BAM files with the non-insertion reads and the splitted read fragments
+rule Non_insertion_mapping:
+	input:
+		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
+		genome=config["ref_genome"] #cut _index
+	output:
+		PROCESS+"MAPPING/CutOut_{sample}_sorted.bam"
+	shell:
+		"""
+		minimap2 -x map-ont -a {input.genome} {input.fasta} | samtools sort -o {output} 
+		samtools index {output}
+		"""   # alignment map-ont specifies input/task
+
+
+#check if BAM still has the modification TAGS
 rule mapping_qc:
 	input:
 		#get_input_names
@@ -76,7 +104,8 @@ rule mapping_qc:
 rule BAM_to_BED:
 	input:
 		#get_input_names
-		PROCESS+"MAPPING/{sample}_sorted.bam"
+		#PROCESS+"MAPPING/{sample}_sorted.bam"
+		PROCESS+"MAPPING/CutOut_{sample}_sorted.bam"
 	output:
 		PROCESS+"MAPPING/BasicMapping_{sample}.bed"
 	run:

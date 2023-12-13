@@ -16,6 +16,7 @@ from matplotlib_venn import venn3
 import collections
 import seaborn as sns
 from pybedtools import BedTool
+import json
    
 def chunks(lst, n):
     """
@@ -392,41 +393,45 @@ def blastn_bed_merger(blast, bed, outfile):
     blast = pd.read_csv(blast, sep='\t')
     bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
     bed["ReadSize"] = bed[2] - bed[1]
-    bed = bed.drop(bed[bed.ReadSize < 80].index) #gets rid of matches that can't be the insertion site (since they are shorted than the smallest fragment (80bp/VO99))
-    # Merge based on read names
-    #merged_bed = pd.merge(blast, bed, left_on=["QueryID", "QueryLength"], right_on=[3, "ReadSize"])
     merged_bed = pd.merge(blast, bed, left_on=["QueryID"], right_on=[3])
     #reshape
     #start = merged_bed[1] +
     #stop = merged_bed[2] - 
     #insertions = pd.DataFrame({"Chromosome": merged_bed[0], "Start": merged_bed[1] , "Stop": merged_bed[2], "Fragment": merged_bed["SubjectID"], "Read": merged_bed["QueryID"]})
     #merged_bed = merged_bed[['Chromosome', 'Start', 'Stop', 'SVType']]
-    print(merged_bed.head())
+    print(blast.head())
+    print(bed.head())
     # Save the merged BED file
     merged_bed.to_csv(outfile, sep='\t', index=False)
 
 ####this part here is dedicated to the splitting of blast-match including fasta reads
-def merge_intervals(intervals):
+def merge_intervals(intervals, overlap):
     # Sort intervals by start coordinates
-    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    #sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    intervals.sort() #sorts all intervals in ascending order: Overlaps are possible! #sorts inplace
+    print(intervals)
 
     merged_intervals = []
-    current_interval = sorted_intervals[0]
     #the following part does not work yet: It needs to take our different list properties into account!
-    for interval in sorted_intervals[1:]:
-        if interval[0] - current_interval[1] <= 10 or current_interval[0] - interval[1] <= 10:
-            # Merge close intervals
-            current_interval = (min(current_interval[0], interval[0]), max(current_interval[1], interval[1]))
-        else:
-            merged_intervals.append(current_interval)
-            current_interval = interval
+    
+    #first coordinates
+    merged_intervals.append(intervals[0]) #start that needs to be there always
+    
+    #intermediate coordinates if needed
+    for i in range(0, len(intervals)-1): #iterating over start and stops with 1 offset! this means that we take a look at stop_interval1 and start_interval2
+        #print(str(intervals[i]),str(intervals[i + 1]))
+        if abs(intervals[i] - intervals[i + 1]) >= overlap: #strictness filter
+            merged_intervals.append(intervals[i]) #adds intermediate coordinate as end of interval
+            merged_intervals.append(intervals[i+1]) # = new start
+    
+    #last element
+    merged_intervals.append(intervals[-1]) #last element    
 
-    merged_intervals.append(current_interval)  # Add the last interval
-
+    print(merged_intervals)
     return merged_intervals
 
    
-def splitting_borders(blast_file, outfile):
+def splitting_borders(blast_file, overlap, outfile):
     """
     This function takes in a BLASTn output file and returns a file with the reads and the respective borders for fasta splitting.
     Output format: Read_ID cut1, cut2, cutN 
@@ -445,14 +450,61 @@ def splitting_borders(blast_file, outfile):
         intervals = []
         for _, row in group.iterrows():
             start, end = row['QueryStart'], row['QueryEnd']
-            intervals.append((start, end))
+            intervals.append(start)
+            intervals.append(end)
         # Store the intervals for each QueryID
         intervals_dict[query_id] = intervals
 
-    result_dict = {key: merge_intervals(intervals) for key, intervals in intervals_dict.items()}
-    with open(outfile, 'w') as f:
-        print(result_dict, file=f)
+    result_dict = {key: merge_intervals(intervals, overlap) for key, intervals in intervals_dict.items()}
+    json.dump(result_dict, open(outfile,'w'))
         #result_dict.to_csv(outfile, sep='\t', index=False)
 
+def split_fasta_with_breakpoints(fasta_string, breakpoints):
+    """
+    Takes fasta string and corresponding list of breakpoints as arguments and returns list of sequences :breakpoint1,breakpoint2:breakpoint3, ... breakpointn:
+    """
+    sequences = []
+    
+    # Add the sequence before the first breakpoint
+    sequences.append(fasta_string[:breakpoints[0]])
+    #print(fasta_string)
+    print("Breakpoints: " + str(breakpoints))
+
+    # Iterate over pairs of breakpoints
+    for i in range(len(breakpoints) - 1):
+        start = breakpoints[i]
+        end = breakpoints[i + 1]
+        sequences.append(fasta_string[start:end])
+
+    # Add the sequence after the last breakpoint
+    sequences.append(fasta_string[breakpoints[-1]:])
+    #drop every second interval if there are more than two snippets of the fasta: -> To save only the intervals without vector
+    if len(sequences) > 2:
+        del sequences[1::2]  
+    print([len(i) for i in sequences])
+
+    return sequences
 
 
+def split_fasta_by_borders(border_dict, fasta, outfasta):
+    """
+    Uses previously created breakpoints in border dict to cut out insertions from fasta file
+    """
+    border_dict = json.load(open(border_dict)) 
+    with open(outfasta, 'w') as output_file:
+        # opening given fasta file using the file path
+        with open(fasta, 'r') as fasta_file:
+            # extracting multiple data in single fasta file using biopython
+            for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
+                #split FASTA sequence into equally sized sub-lists with different id
+                record_id = record.id
+                record_seq = record.seq
+                if record_id in border_dict:
+                    record_list = split_fasta_with_breakpoints(record_seq, border_dict[record_id])
+                    for i,entry in enumerate(record_list):
+                        record_seq_new = record_list[i]
+                        record_id_new = str(record_id) + '_%i' % (i)
+                        print("Split " + str(record_id) + "into " + str(record_id_new))
+                        output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n") 
+                else:
+                    output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
