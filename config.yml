@@ -1,7 +1,7 @@
 # Long-read data
 experiment: "ModBAM_Methylation_Vector_integration_site"
 samples:
-    full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123+_dorado_ref.bam"
+    #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123+_dorado_ref.bam"
     #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/ads/gfp_pos_ads.fq.gz"
     full_ads: "/home/weichan/permanent/Projects/VIS/dev/ADS_dorado_ref.bam" #bam from dorado with reference an mod bases option

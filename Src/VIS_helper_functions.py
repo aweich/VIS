@@ -323,7 +323,7 @@ def flatten_comprehension(matrix):
     """
     return [str(item) for row in matrix for item in row]
 
-def plot_modification_proximity(bedfile, outfile):
+def plot_modification_proximity(bedfile, outfile): #needs arguments for the range and step-size
     """
     Creates heatmap of interval and methylation mean based on the data created in 'methylation_in_insertion_proximity()'
     """
@@ -332,18 +332,19 @@ def plot_modification_proximity(bedfile, outfile):
     df["Read with insertion"] = df["Chr"] + "_" + df["Insertion"]
     df = df.set_index('Read with insertion')
     df = df.drop(columns=["Chr","start","end","seq","Insertion"])
+    df['Insertion_point'] = 100 #replace insertion site values with max to create a border
     
     #for x axis
     pos=list(range(0, 10001, 500))
     pos = [f'+{num}' if num > 0 else num for num in pos]
-    column_order = flatten_comprehension([list(range(-10000, 0, 500)), ["Insertion_point"], pos])
+    column_order = flatten_comprehension([list(range(-10000, 0, 500)),["Insertion_point"], pos]) #["Insertion_point"], before pos
     column_order.remove('0')
     # Reorder the DataFrame columns
     df_reordered = df[column_order]
-
+    #print(df_reordered["Insertion_point"])
     # Create a Seaborn heatmap
     plt.figure(figsize=(16, 9))
-    sns.clustermap(df_reordered, cmap="YlGnBu", annot=False, row_cluster=True, linewidths=.5, col_cluster=False,\
+    sns.clustermap(df_reordered, cmap="YlGnBu", annot=False, row_cluster=True, linewidths=.75, col_cluster=False,\
                    cbar_pos=(0.25, .9, .5, 0.01), cbar_kws={'orientation': 'horizontal'},\
                    dendrogram_ratio=(.15))
     
@@ -481,12 +482,12 @@ def split_fasta_with_breakpoints(fasta_string, breakpoints):
     #drop every second interval if there are more than two snippets of the fasta: -> To save only the intervals without vector
     if len(sequences) > 2:
         del sequences[1::2]  
-    print([len(i) for i in sequences])
+    #print([len(i) for i in sequences])
 
     return sequences
 
 
-def split_fasta_by_borders(border_dict, fasta, outfasta):
+def split_fasta_by_borders(border_dict, fasta, mode, outfasta):
     """
     Uses previously created breakpoints in border dict to cut out insertions from fasta file
     """
@@ -501,10 +502,46 @@ def split_fasta_by_borders(border_dict, fasta, outfasta):
                 record_seq = record.seq
                 if record_id in border_dict:
                     record_list = split_fasta_with_breakpoints(record_seq, border_dict[record_id])
-                    for i,entry in enumerate(record_list):
-                        record_seq_new = record_list[i]
-                        record_id_new = str(record_id) + '_%i' % (i)
-                        print("Split " + str(record_id) + "into " + str(record_id_new))
-                        output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n") 
+                    if mode == "Separated":
+                        #this part only if the non-insertion fragments should NOT be combined
+                        for i,entry in enumerate(record_list):
+                            record_seq_new = record_list[i]
+                            record_id_new = str(record_id) + '_%i' % (i)
+                            print("Split " + str(record_id) + "into " + str(record_id_new))
+                            output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
+                    else: 
+                        record_seq_new = ''.join([str(n) for n in record_list])
+                        record_id_new = str(record_id) + '_Insertion'
+                        output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
                 else:
                     output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
+
+def exact_insertion_coordinates(border_dict, bed, diff, outfile):
+    """
+    Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
+    Then stop will be +1 of start.
+    """
+    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
+    border_dict = json.load(open(border_dict))
+    newbed = []
+    for index,row in bed.iterrows():
+        read_mod = row[3].split("_")[0]
+        start = row[1] #int(bed.loc[bed[3] == read][1]) #start coordinate of the read
+        if read_mod in border_dict:
+            starts = [start + num for num in border_dict[read_mod][0::2]] #different new start coordinates for each insertion in the read
+            if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one
+                starts = starts[0]
+            for coordinate in starts:
+                #print(str(bed.loc[bed[3] == read][0]))
+                newbed.append(
+            {
+                'Chr': row[0],
+                'Start': coordinate,
+                'Stop':  coordinate + 1,
+                'Read':  row[3]
+            }
+        )
+    out=pd.DataFrame(newbed)
+    out.to_csv(outfile, sep='\t', index=False, header=False)
+
+    
