@@ -326,14 +326,32 @@ def flatten_comprehension(matrix):
 def plot_modification_proximity(bedfile, outfile): #needs arguments for the range and step-size
     """
     Creates heatmap of interval and methylation mean based on the data created in 'methylation_in_insertion_proximity()'
-    """
-    # Process each BED file
-    df = pd.read_csv(bedfile, sep='\t')
+    """ 
+    if "ID" in pd.read_csv(bedfile, sep='\t'):
+        print("Can use existing IDs...")
+        df = pd.read_csv(bedfile, sep='\t')
+    elif type(bedfile) is not str: #checks if we have snakemake list input or regular str input (i.e. multiple files (snakemake list) or just one)
+        bedlist=[]
+        print("Create IDs...")
+        for filename in bedfile:
+            df = pd.read_csv(filename, sep='\t')
+            df["ID"] = str(filename).split("/")[-1]
+            bedlist.append(df)
+        df = pd.concat(bedlist, axis=0, ignore_index=True)
+    else:
+        print("IDs from filename...")
+        df = pd.read_csv(bedfile, sep='\t')
+        df["ID"] = str(bedfile).split("/")[-1]
+    
     df["Read with insertion"] = df["Chr"] + "_" + df["Insertion"]
     df = df.set_index('Read with insertion')
     df = df.drop(columns=["Chr","start","end","seq","Insertion"])
     df['Insertion_point'] = 100 #replace insertion site values with max to create a border
     
+    #ID column
+    ID=df["ID"]
+    lut = dict(zip(ID.unique(), 'rgb')) #needs to be adjusted for number of samples of course
+    row_color = ID.map(lut)
     #for x axis
     pos=list(range(0, 10001, 500))
     pos = [f'+{num}' if num > 0 else num for num in pos]
@@ -341,13 +359,17 @@ def plot_modification_proximity(bedfile, outfile): #needs arguments for the rang
     column_order.remove('0')
     # Reorder the DataFrame columns
     df_reordered = df[column_order]
-    #print(df_reordered["Insertion_point"])
     # Create a Seaborn heatmap
     plt.figure(figsize=(16, 9))
-    sns.clustermap(df_reordered, cmap="YlGnBu", annot=False, row_cluster=True, linewidths=.75, col_cluster=False,\
+    sns.clustermap(df_reordered, row_colors=row_color,yticklabels=True, cmap="YlGnBu", annot=False, row_cluster=True, linewidths=.75, col_cluster=False,\
                    cbar_pos=(0.25, .9, .5, 0.01), cbar_kws={'orientation': 'horizontal'},\
                    dendrogram_ratio=(.15))
     
+    #legend for ID column
+    for label in df["ID"].unique():
+        plt.bar(0, 0, color=lut[label], label=label, linewidth=0)
+    plt.legend(loc='lower center', bbox_to_anchor=[0.5, 0.75])
+
     #plt.setp(g.ax_heatmap.xaxis.get_majorticklabels(), rotation=45) # For x axis #add g =sns...
     plt.xlabel("%C with modification")
     plt.ylabel('')
@@ -544,4 +566,23 @@ def exact_insertion_coordinates(border_dict, bed, diff, outfile):
     out=pd.DataFrame(newbed)
     out.to_csv(outfile, sep='\t', index=False, header=False)
 
-    
+def combine_beds_add_ID(beds, outfile): #maybe at some point add to the heatmap plotting function
+    """
+    Combines BEDs and gives them an ID column
+    """
+    bedlist=[]
+    for filename in beds:
+        df = pd.read_csv(filename, sep='\t', header=None)
+        df[len(df.columns)] = str(filename).split("/")[-1] #add column to dataframe without header
+        bedlist.append(df)
+    df = pd.concat(bedlist, ignore_index=True)
+    df.to_csv(outfile, sep='\t', index=False, header=False)
+
+def add_annotation_column_bed(bed1, bed2, outfile):
+    """
+    Adds column of one bed to another bed if coordinates match
+    """
+    bed1 = pd.read_csv(bed1, sep='\t')
+    bed2 = pd.read_csv(bed2, sep='\t', usecols=[0,1,2,3,4], names = ["Chr","start","end","seq","ID"])
+    bed1 = bed1.merge(bed2, on=["Chr","start","end","seq"])
+    bed1.to_csv(outfile, sep='\t', index=False, header=True)

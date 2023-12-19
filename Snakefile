@@ -20,12 +20,12 @@ rule all:
 	input: 
 		#expand(PROCESS+"FASTA/Full_{sample}.fa", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
-		expand(PROCESS+"FASTA/Cleaved_{sample}_noVector.fa", sample=SAMPLES),
-		expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
-		expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
-		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
-		#expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
+		#expand(PROCESS+"FASTA/Cleaved_{sample}_noVector.fa", sample=SAMPLES),
+		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
+		#expand(PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		#expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
 		#exact coordinates
@@ -35,23 +35,32 @@ rule all:
 		#expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
+		#Differential Methylation
+		#PROCESS+"LOCALIZATION/ExactInsertions_combined.bed",
+		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
+		#expand(PROCESS+"METHYLATION/MeanMods_Proximity_combined_in_{sample}_with_Insertion_ID.bed", sample=SAMPLES),
 		#Visuals
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
+		#PROCESS+"METHYLATION/Heatmap_MeanMods_combined.png",
+		expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
+		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
-		#expand(PROCESS+"VARIANTS/Variant_{sample}.vcf", sample=SAMPLES),
+		expand(PROCESS+"VARIANTS/Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/Intersect_{sample}.bed", sample=SAMPLES),
 		#svim
 		#expand(PROCESS+"VARIANTS/SVIM_{sample}/", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed", sample=SAMPLES),
-		#expand(PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed", sample=SAMPLES)
+		expand(PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed", sample=SAMPLES),
+		#nanovar
+		expand(PROCESS+"VARIANTS/NanoVar_{sample}/fig/depth_of_coverage.png", sample=SAMPLES),
 		#new approach for insertion identification
-		expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		#expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -124,24 +133,7 @@ rule BAM_to_BED:
 		PROCESS+"MAPPING/BasicMapping_{sample}.bed"
 	run:
 		shell("bedtools bamtobed -i {input} > {output}")  
-'''
-rule get_read_identifiers:
-	input:
-		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"BLASTN/ID/ID_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	shell: 
-		"cut -f 1  {input} > {output}"
-	
-rule reads_with_BLASTn_matches:
-	input:
-		refbed=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
-		matchreads=PROCESS+"BLASTN/ID/ID_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
-	shell:
-		"grep -F -f {input.matchreads} {input.refbed} > {output}"
-'''
+
 rule reads_with_BLASTn_matches:
 	input:
 		refbed=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
@@ -303,6 +295,54 @@ rule mean_methylation:
 
 ######
 ######
+###### Differential methylation
+######
+######
+
+#GOAL: Use bed insertions from all exact matches and check for the methylation pattern in healthy and non-healthy
+#rule 1: combine the files with ID column
+#rule 2: Mean methylation CD123 vs UTD, once in UTD, once in ADS, once in CD123
+#rule 3: Heatmap
+
+rule combine_exact_matches:
+	input:
+		expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES)
+	output:
+		temp(PROCESS+"METHYLATION/All_Insertions/Insertion_fasta_proximity_combined.bed")
+	run:
+		vhf.combine_beds_add_ID(input, output[0]) 
+
+rule combined_mean_methylation:
+	input:
+		methbed=PROCESS+"METHYLATION/Specific_Methyl_{sample}.bed",
+		insertionfastabed=PROCESS+"METHYLATION/All_Insertions/Insertion_fasta_proximity_combined.bed"
+	params:
+		window_size=500,
+		max_distance=10000
+	output:
+		temp(PROCESS+"METHYLATION/All_Insertions/MeanMods_Proximity_combined_in_{sample}.bed")
+	run: 
+		vhf.methylation_in_insertion_proximity(input.methbed, input.insertionfastabed, params.window_size, params.max_distance,  output[0])
+
+rule add_ID:
+	input:
+		bed1=PROCESS+"METHYLATION/All_Insertions/MeanMods_Proximity_combined_in_{sample}.bed",
+		bed2=PROCESS+"METHYLATION/All_Insertions/Insertion_fasta_proximity_combined.bed"
+	output:
+		PROCESS+"METHYLATION/All_Insertions/MeanMods_Proximity_combined_in_{sample}_with_Insertion_ID.bed"
+	run:
+		vhf.add_annotation_column_bed(input.bed1, input.bed2, output[0])
+		
+rule healty_combined_insertion_modification_heatmap:
+	input:
+		PROCESS+"METHYLATION/All_Insertions/MeanMods_Proximity_combined_in_{sample}_with_Insertion_ID.bed"
+	output:
+		PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png"
+	run:
+		vhf.plot_modification_proximity(input[0], output[0])
+
+######
+######
 ###### BLAST Searches - Against Vector and healthy human reference
 ######
 ######
@@ -325,7 +365,7 @@ rule make_BLASTN_DB:
 
 rule find_vector_BLASTn:
 	input:
-		fasta=PROCESS+"Full_FASTA/{sample}.fa",
+		fasta=PROCESS+"FASTA/Full_{sample}.fa",
 		dummy=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa.ndb" #provokes the building of the database first!
 	params:
 		#vector=config["blastn_db"] #vector db
@@ -411,12 +451,21 @@ rule insertion_heatmap:
 
 rule insertion_modification_heatmap:
 	input:
-		PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed"
+		single=PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed",
 	output:
-		PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png"
+		singleout=PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png",
 	run:
-		vhf.plot_modification_proximity(input[0], output[0])
-
+		vhf.plot_modification_proximity(input.single, output.singleout)
+'''
+rule combined_insertion_modification_heatmap:
+	input:
+		#allsamples=PROCESS+"METHYLATION/MeanMods_Proximity_combined.bed"
+		combined=expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES)
+	output:
+		allout=PROCESS+"METHYLATION/Heatmap_MeanMods_combined.png"
+	run:
+		vhf.plot_modification_proximity(input.combined, output.allout)
+'''
 ######
 ######
 ###### Variant callers and overlap check of Insertions with BLAST matches
@@ -425,8 +474,8 @@ rule insertion_modification_heatmap:
 
 rule variant_sniffles:
 	input:
-		#bam=PROCESS+"MAPPING/{sample}_sorted.bam",
-		bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", #14.12.23
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		#bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", #14.12.23
 		genome=config["ref_genome"]
 	output:
 		PROCESS+"VARIANTS/Variant_{sample}.vcf"
@@ -462,7 +511,7 @@ rule svim_variants:
 		genome=config["ref_genome"]
 	output:
 		outdir=PROCESS+"VARIANTS/SVIM_{sample}/",
-		file=PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed", 
+		file=PROCESS+"VARIANTS/SVIM_{sample}/signatures/ins.bed", 
 		
 	shell:
 		"svim alignment {output.outdir} {input.bam} {input.genome} --types INS"
@@ -471,7 +520,7 @@ rule svim_variants:
 rule intersect_svim_insertions_with_BLAST:
 	input:
 		blast=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed",
-		vcf=PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed"
+		vcf=PROCESS+"VARIANTS/SVIM_{sample}/signatures/ins.bed"
 	output:
 		PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed"
 	shell:
@@ -479,6 +528,17 @@ rule intersect_svim_insertions_with_BLAST:
 		bedtools intersect -a {input.blast} -b {input.vcf} -wo > {output}
 		"""
 
+rule nanoVar:
+	input:
+		ref=config["ref_genome"],
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam"
+	output:
+		PROCESS+"VARIANTS/NanoVar_{sample}/fig/depth_of_coverage.png"
+	shell:
+		"""
+		nanovar -f hg38 {input.bam} {input.ref} {output} 
+
+		"""
 ######
 ######
 ###### WIP rules
