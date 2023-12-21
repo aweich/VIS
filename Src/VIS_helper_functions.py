@@ -163,7 +163,13 @@ def plot_bed_files_as_heatmap(bed_files, outfile):
 
     # Create a Seaborn heatmap
     plt.figure(figsize=(16, 9))
-    sns.clustermap(counts_df, cmap="YlGnBu", annot=True, cbar_pos=(0, .2, .03, .4))
+    if len(counts_df.columns) > 1:
+        sns.clustermap(counts_df, cmap="YlGnBu", annot=True, cbar_pos=(0, .2, .03, .4))
+        plt.xlabel('File ID')
+        plt.ylabel('Chromosome')
+        plt.title('Chromosome Occurrences \n  in BED Files')
+        plt.savefig(outfile, bbox_inches="tight")
+    sns.heatmap(counts_df, annot=True,cmap="YlGnBu")
     plt.xlabel('File ID')
     plt.ylabel('Chromosome')
     plt.title('Chromosome Occurrences \n  in BED Files')

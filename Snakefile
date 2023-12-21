@@ -50,15 +50,15 @@ rule all:
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
-		expand(PROCESS+"VARIANTS/Variant_{sample}.vcf", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/Intersect_{sample}.bed", sample=SAMPLES),
 		#svim
 		#expand(PROCESS+"VARIANTS/SVIM_{sample}/", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/SVIM_{sample}/candidates/candidates_novel_insertions.bed", sample=SAMPLES),
-		expand(PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/SVIM_Intersect_{sample}.bed", sample=SAMPLES),
 		#nanovar
-		expand(PROCESS+"VARIANTS/NanoVar_{sample}/fig/depth_of_coverage.png", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/fig/depth_of_coverage.png", sample=SAMPLES),
 		#new approach for insertion identification
 		#expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 
@@ -409,11 +409,9 @@ rule hardcode_blast_header_humanRef:
 	
 rule chromosome_read_plots:
 	input:
-		#bam=PROCESS+"MAPPING/{sample}_sorted.bam",
-		bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", #14.12.23
-		#get_input_names,
-		#bam=PROCESS+"MAPPING/BasicMapping_{sample}.bam",
-		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
+		bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam",
+		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
+		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	output:
 		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
 	params:

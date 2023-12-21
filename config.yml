@@ -1,13 +1,13 @@
 # Long-read data
-experiment: "Vector_integration_site_12_2023"
+experiment: "SUP_Vector_integration_site"
 samples:
-    full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123+_dorado_ref.bam"
+    #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123+_dorado_ref.bam"
     #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/ads/gfp_pos_ads.fq.gz"
-    full_ads: "/home/weichan/permanent/Projects/VIS/dev/ADS_dorado_ref.bam" #bam from dorado with reference an mod bases option
+    #full_ads: "/home/weichan/permanent/Projects/VIS/dev/ADS_dorado_ref.bam" #bam from dorado with reference an mod bases option
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/gfp_pos_ads.fq.gz"
     #UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
-    UTD: "/home/weichan/permanent/Projects/VIS/dev/UTD_dorado_ref.bam"
+    UTD: "/home/weichan/permanent/Projects/VIS/dev/UTD_sup_dorado_ref.bam"
     #dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"

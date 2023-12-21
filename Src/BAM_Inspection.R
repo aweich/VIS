@@ -67,9 +67,10 @@ for (i in 1:nrow(bed_data)) {
   
   
   #1: Load BED of Insertions
-  coord <- AnnotationTrack(bed, name = "Pertubated Reads")
+  coord <- AnnotationTrack(bed, name = "Insertions")
   
   #2: Load BAM Coverage
+  altrack <- AlignmentsTrack(bampath, isPaired = FALSE)
 
   cov <- DataTrack(Cov, type=("heatmap"), name="Coverage")
   #3: Use respective Ideogram and GenomeAxis (automatic)
@@ -79,8 +80,8 @@ for (i in 1:nrow(bed_data)) {
   #4: Plot all
   filename <- sprintf("%s_start%s_end%s.jpeg",chromosome, start, stop)
   jpeg(file=paste(outputpath,filename, sep="/"))
-  plotTracks(c(itrack,gtrack,biomTrack,cov,coord),
+  plotTracks(c(itrack,gtrack,altrack,biomTrack,cov,coord),
              chromosome =chromosome, from = start_coord,
-             to = end_coord, transcriptAnnotation="symbol", shape="box", col="black",fill="red")
+             to = end_coord, transcriptAnnotation="symbol", shape="box", col="black")
   dev.off()
 }
