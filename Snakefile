@@ -40,7 +40,7 @@ rule all:
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
 		#expand(PROCESS+"METHYLATION/MeanMods_Proximity_combined_in_{sample}_with_Insertion_ID.bed", sample=SAMPLES),
 		#Visuals
-		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
@@ -504,8 +504,8 @@ rule intersect_insertions_with_BLAST:
 
 rule svim_variants:
 	input:
-		#bam=PROCESS+"MAPPING/{sample}_sorted.bam",
-		bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", #14.12.23
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		#bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", #14.12.23
 		genome=config["ref_genome"]
 	output:
 		outdir=PROCESS+"VARIANTS/SVIM_{sample}/",

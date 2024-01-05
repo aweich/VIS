@@ -85,7 +85,7 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath):
     Takes the vector fragments and plots histogram of their frequency in the alignment
     """
     blasted = pd.read_csv(data, sep="\t")
-    if blasted['QueryID'][0].startswith("V"):
+    if any(x.isupper() for x in blasted['QueryID'][0]): #to make sure the right column is used for plotting. Reads do not have any uppercase letters
         blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
         blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
         freq = collections.Counter(blasted["Fragment"].sort_values())
@@ -113,7 +113,7 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath):
     Takes the read ids with matches and plots histogram of their frequency
     """
     blasted = pd.read_csv(data, sep="\t")
-    if blasted["QueryID"][0].startswith("V"):
+    if any(x.isupper() for x in blasted['QueryID'][0]):
         freq = collections.Counter(blasted["SubjectID"])
     else:
         freq = collections.Counter(blasted["QueryID"])
@@ -169,11 +169,12 @@ def plot_bed_files_as_heatmap(bed_files, outfile):
         plt.ylabel('Chromosome')
         plt.title('Chromosome Occurrences \n  in BED Files')
         plt.savefig(outfile, bbox_inches="tight")
-    sns.heatmap(counts_df, annot=True,cmap="YlGnBu")
-    plt.xlabel('File ID')
-    plt.ylabel('Chromosome')
-    plt.title('Chromosome Occurrences \n  in BED Files')
-    plt.savefig(outfile, bbox_inches="tight")
+    else:    
+        sns.heatmap(counts_df, annot=True,cmap="YlGnBu")
+        plt.xlabel('File ID')
+        plt.ylabel('Chromosome')
+        plt.title('Chromosome Occurrences \n  in BED Files')
+        plt.savefig(outfile, bbox_inches="tight")
 
 def insertion_proximity(bedfile, binsize, outfile):
     """
