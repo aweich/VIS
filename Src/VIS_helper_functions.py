@@ -192,7 +192,6 @@ def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
     """
     bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2], names=['Chromosome', 'Start', 'End'])
     fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
-
     # Add a new column to the DataFrame with the corresponding sequence from the FASTA file
     bed_df['Sequence'] = [fasta_sequences[i].seq for i,n in enumerate(fasta_sequences)]
     
@@ -330,7 +329,7 @@ def flatten_comprehension(matrix):
     """
     return [str(item) for row in matrix for item in row]
 
-def plot_modification_proximity(bedfile, outfile): #needs arguments for the range and step-size
+def plot_modification_proximity(bedfile,window_size, max_distance, outfile): #needs arguments for the range and step-size
     """
     Creates heatmap of interval and methylation mean based on the data created in 'methylation_in_insertion_proximity()'
     """ 
@@ -360,9 +359,9 @@ def plot_modification_proximity(bedfile, outfile): #needs arguments for the rang
     lut = dict(zip(ID.unique(), 'rgb')) #needs to be adjusted for number of samples of course
     row_color = ID.map(lut)
     #for x axis
-    pos=list(range(0, 10001, 500))
+    pos=list(range(0, max_distance+1, window_size))
     pos = [f'+{num}' if num > 0 else num for num in pos]
-    column_order = flatten_comprehension([list(range(-10000, 0, 500)),["Insertion_point"], pos]) #["Insertion_point"], before pos
+    column_order = flatten_comprehension([list(range(-max_distance, 0, window_size)),["Insertion_point"], pos]) #["Insertion_point"], before pos
     column_order.remove('0')
     # Reorder the DataFrame columns
     df_reordered = df[column_order]
@@ -384,9 +383,10 @@ def plot_modification_proximity(bedfile, outfile): #needs arguments for the rang
     plt.savefig(outfile, bbox_inches="tight")
 
 #sniffles
+    ''' replaced by bedops:  8.1: Will be removed if not used again by 22.1
 def preprocess_sniffles(vcf_path, outfile, outfile2, outfile3):
     """
-    Reads sniffles output and re-formats it into something more useful. 
+    Reads sniffles/vcf in general output and re-formats it into something more useful for the insertion plot. 
     Deletion gets also a start coordinate although this does not make any biological sense! This is just for the plotting later!
     """
     # Read VCF file into a DataFrame
@@ -415,7 +415,8 @@ def preprocess_sniffles(vcf_path, outfile, outfile2, outfile3):
     OTHER = relevant_columns[~mask]
     INS.to_csv(outfile2, sep='\t', header=False, index=False)
     OTHER.to_csv(outfile3, sep='\t', header=False, index=False)
-
+'''
+''' 8.1: Will be removed if not used again by 22.1
 def blastn_bed_merger(blast, bed, outfile):
     """
     Merge script for blastn output and bamtobed output to further narrow insertion from read level to coordinate level.
@@ -433,6 +434,7 @@ def blastn_bed_merger(blast, bed, outfile):
     print(bed.head())
     # Save the merged BED file
     merged_bed.to_csv(outfile, sep='\t', index=False)
+'''
 
 ####this part here is dedicated to the splitting of blast-match including fasta reads
 def merge_intervals(intervals, overlap):

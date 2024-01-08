@@ -20,7 +20,9 @@ source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
 vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/pSLCAR-CD19-28z.fasta"
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 fragment_size: 100 #input for custom function
+MinLength: 66
 ref_genome: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
+#ref_genome: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Magdeburg_sup_Vector_integration_site/FASTA/Full_S3.fa"
 ref_genome_index: "/home/lischecr/permanent/Src/hg38/genome/hg38.ref.mmi" #minimap output
 #methylation call
 #fast5path: "/home/weichan/permanent/Projects/VIS/dev/ads/pod5tofast5/" #only ads currently
