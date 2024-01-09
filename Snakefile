@@ -29,9 +29,8 @@ rule all:
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
 		#exact coordinates
-		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"LOCALIZATION/Reshaped_GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/Reshaped_GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		#Methylation
 		#expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
@@ -39,26 +38,29 @@ rule all:
 		#Differential Methylation
 		#PROCESS+"LOCALIZATION/ExactInsertions_combined.bed",
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
-		#expand(PROCESS+"METHYLATION/MeanMods_Proximity_combined_in_{sample}_with_Insertion_ID.bed", sample=SAMPLES),
 		#Visuals
 		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		#PROCESS+"METHYLATION/Heatmap_MeanMods_combined.png",
-		expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
-		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		#expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
+		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
-		expand(PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.vcf", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#svim
-		expand(PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.vcf", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#nanovar
-		expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.vcf", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#new approach for insertion identification
 		#expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		#expand(PROCESS+"FASTA/Insertion_{sample}_Vector.fa", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Insertion_MeanMods_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -73,7 +75,7 @@ def get_input_names(wildcards):
 ###### Insertion BAM: Convert to FASTA 
 ######
 ######
-
+#bam with insertions
 rule prepare_BAM: #sorts, index, and removes supllementary and secondary alignments
 	input:
 		get_input_names
@@ -125,7 +127,7 @@ rule BAM_to_BED:
 	input:
 		#get_input_names
 		#PROCESS+"MAPPING/{sample}_sorted.bam"
-		PROCESS+"MAPPING/CutOut_{sample}_sorted.bam"
+		PROCESS+"MAPPING/CutOut_{sample}_sorted.bam" #Reads that contained an insertion before, are now marked with "_Insertion"
 	output:
 		PROCESS+"MAPPING/BasicMapping_{sample}.bed"
 	run:
@@ -163,9 +165,10 @@ rule split_fasta:
 	params:
 		mode="Join" #if each split FASTA substring should be used individually, use "Separated"
 	output:
-		PROCESS+"FASTA/Cleaved_{sample}_noVector.fa"
+		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
+		vector=PROCESS+"FASTA/Insertion_{sample}_Vector.fa"
 	run:
-		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output[0])
+		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.vector)
 
 ######
 ######
@@ -219,7 +222,7 @@ rule normalisation_for_insertion_count:
 
 ######
 ######
-###### Base modification file preparation and calling: Might be completely replaced soon!
+###### Base modification file preparation
 ######
 ######
 
@@ -236,7 +239,6 @@ rule methylation_bedMethyl:
 
 rule insertion_proximity:
 	input:
-		#PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" #alternative file? alternative code? # in theory I can get rid of this, since we only have the proximity left in the data!
 		PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
 	params: 
 		10000 #this value has to be same as in mean methylation!
@@ -294,6 +296,7 @@ rule mean_methylation:
 ######## INSERTION C_MODIFICATION
 
 #creates fasta only with insertions
+'''
 rule insertion_methylation:
 	input:
 		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
@@ -301,32 +304,44 @@ rule insertion_methylation:
 		PROCESS+"LOCALIZATION/Reshaped_GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	shell:
 		"awk -v OFS='\t' '{{print $4,$2,$3,$1}}' {input} > {output}"
-
-
 '''
 #fasta to insertion
 rule fasta_to_insertion:
     input:
-        ins = PROCESS+"LOCALIZATION/Reshaped_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
-        fasta = PROCESS+"FASTA/Full_{sample}.fa"
+        ins = PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", #exact coordinates
+        fasta = PROCESS+"FASTA/Insertion_{sample}_Vector.fa"
     output:
         PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed"
     run:
-        "bedtools getfasta -fi {input.fasta} -bed {input.ins} > {output}"
+        vhf.add_insertion_sequence(input.ins, input.fasta, output[0])
+
+
+#this rule is added for performance, so that the following pythons cript only reads in relevant parts of the methylation file and not the full genome
+
+rule insertion_methyl_specific: #can be merged into rule above later
+    input:
+        insertions = PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed",
+        methyl = PROCESS+"METHYLATION/Methyl_{sample}.bed"
+    output:
+        temp(PROCESS+"METHYLATION/Insertion_Specific_Methyl_{sample}.bed")
+    shell:
+        """
+        bedtools intersect -wb -a {input.methyl} -b {input.insertions} > {output}
+        """
 
 #mean methylation in the insertion
 rule insertion_mean_methylation:
 	input:
-		methbed=PROCESS+"METHYLATION/Methyl_{sample}.bed"
-		insertionfastabed=
+		methbed=PROCESS+"METHYLATION/Specific_Methyl_{sample}.bed",
+		insertionfastabed=PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed"
 	params:
-		window_size=200,
+		window_size=50,
 		max_distance=0
 	output:
-		temp(PROCESS+"METHYLATION/Insertion_MeanMods_{sample}.bed")
+		PROCESS+"METHYLATION/Insertion_MeanMods_{sample}.bed"
 	run: 
 		vhf.methylation_in_insertion_proximity(input.methbed, input.insertionfastabed, params.window_size, params.max_distance,  output[0])
-'''
+
 ######
 ######
 ###### Differential methylation
@@ -515,7 +530,6 @@ rule combined_insertion_modification_heatmap:
 rule variant_sniffles:
 	input:
 		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
-		#bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", #14.12.23
 		genome=config["ref_genome"]
 	output:
 		PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
@@ -600,9 +614,10 @@ rule exact_insertion_coordinates:
 	params:
 		diff = 50 #mean difference in the insertion start positions. If less than this threshhold, the first insertion will be treated as a representative
 	output:
-		PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
+		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
+		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed"
 	run:
-		vhf.exact_insertion_coordinates(input.borders, input.bed, params.diff, output[0])
+		vhf.exact_insertion_coordinates(input.borders, input.bed, params.diff, output.out, output.out2)
 
 #filter for BLAST matches
 rule extract_by_length:

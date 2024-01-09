@@ -197,6 +197,25 @@ def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
     
     bed_df.to_csv(output_bed_path, sep='\t', header=False, index=False)
 
+def add_insertion_sequence(bed_file_path, fasta_file_path, output_bed_path):
+    """
+    Adds the fasta sequence to the insertion itself. This makes the counting of Cytosines easier for a later step.
+    """
+    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2,3], names=['Chromosome', 'Start', 'End', 'Read'])
+    fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
+    # Add a new column to the DataFrame with the corresponding sequence from the FASTA file
+    seqs=[]
+
+    for entry in bed_df["Read"]: #part before _Insertion
+        entry = entry.split("_")[0]
+        for i,n in enumerate(fasta_sequences):  
+            if fasta_sequences[i].id.split("_")[0] == entry: #part before _0/_1 etc.     
+                seqs.append(fasta_sequences[i].seq)
+    
+    bed_df["Sequence"] = seqs
+    bed_df = bed_df[['Chromosome', 'Start', 'End', 'Sequence', 'Read']]
+    bed_df.to_csv(output_bed_path, sep='\t', header=False, index=False)
+
 ####all below are just for the mean methylation in the equal sized bin in proximity of the read with the insertion
 def bed_intersect_count(chromosome, start, stop, meth_bed):
     """
@@ -280,6 +299,7 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
     meth_bed = collapse_equal_entries(with_duplicates)
     #output BED
     final_bed = insertion_bed.copy()
+    percent_dict={} #collection for the insertions
     # Iterate through each genomic coordinate
     for index, row in insertion_bed.iterrows():
         chromosome = row.iloc[0]
@@ -288,39 +308,51 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
         intervalsize = end - start
         orig_insertion= str(start)+"_"+str(end)
         final_bed.loc[index, "Insertion"] = str(orig_insertion)
+        
         #methylation at insertion itself: Good overview of basic principle
         modifications = bed_intersect_count(chromosome, start, end, meth_bed)
         bases = C_in_range(row.iloc[3], max_distance, len(row.iloc[3]) - max_distance) #the proximity bed file with fasta has the structure: max_dist-start-stop-max_dist
         final_bed.loc[index, str("Insertion_point")] = (modifications/bases) *100 #puts key (0)-value(methylation-ratio) pair into dataframe in the respective line (index)
         #methylation in 3' direction in window-size steps up to max_distance
-        i=0
-        while i < max_distance+1: #3' direction
-            start_interval = end + i
-            stop_interval = start_interval + window_size
-            modifications = bed_intersect_count(chromosome, start_interval, stop_interval, meth_bed)
-            column_name="+" + str(i+window_size)
-            bases = C_in_range(row.iloc[3], max_distance+intervalsize+i, max_distance+intervalsize+i+window_size)
-            print(i, chromosome, orig_insertion, modifications, bases)
-            final_bed.loc[index, column_name] = (modifications/bases) *100
-            i = i + window_size
-        #methylation in 5' direction in window-size steps up to max_distance
-        i= 0
-        while abs(i) < max_distance: #5' direction
-            start_interval = start - i
-            stop_interval = start_interval - window_size
-            modifications = bed_intersect_count(chromosome, stop_interval, start_interval, meth_bed)
-            column_name=str(i-window_size)
-            bases = C_in_range(row.iloc[3], max_distance-i-window_size, max_distance-i)
-            print(i, chromosome, orig_insertion, modifications, bases)
-            final_bed.loc[index, column_name] = (modifications/bases) *100
-            i = i - window_size 
-            
-    print(list(final_bed.columns))
-    #print(np.array(final_bed.iloc[:,5:47]).sum(axis=0))
-    #result = count_equal_entries(meth_bed)
-    #for entry, count in result.items():
-    #    print(f"Entry: {entry}, Count: {count}")
-
+    
+        #settings for the proximity
+        if max_distance != 0:
+            i=0
+            while i < max_distance+1: #3' direction
+                start_interval = end + i
+                stop_interval = start_interval + window_size
+                modifications = bed_intersect_count(chromosome, start_interval, stop_interval, meth_bed)
+                column_name="+" + str(i+window_size)
+                bases = C_in_range(row.iloc[3], max_distance+intervalsize+i, max_distance+intervalsize+i+window_size)
+                #print(i, chromosome, orig_insertion, modifications, bases)
+                final_bed.loc[index, column_name] = (modifications/bases) *100
+                i = i + window_size
+            #methylation in 5' direction in window-size steps up to max_distance
+            i= 0
+            while abs(i) < max_distance: #5' direction
+                start_interval = start - i
+                stop_interval = start_interval - window_size
+                modifications = bed_intersect_count(chromosome, stop_interval, start_interval, meth_bed)
+                column_name=str(i-window_size)
+                bases = C_in_range(row.iloc[3], max_distance-i-window_size, max_distance-i)
+                #print(i, chromosome, orig_insertion, modifications, bases)
+                final_bed.loc[index, column_name] = (modifications/bases) *100
+                i = i - window_size 
+        
+            final_bed.to_csv(outfile, sep='\t', header=True, index=False)    
+        
+    #settings for the insertion itself:
+        percent=[]
+        for n,i in enumerate(range(start, end+window_size, window_size)):
+            #c in range
+            bases = C_in_range(row.iloc[3], n*window_size, (n+1)*window_size)
+            modifications = bed_intersect_count(chromosome, i, i+window_size, meth_bed)
+            #print(i,i+window_size, chromosome, modifications, bases)
+            percent.append((modifications/bases) *100)
+            percent_dict[row.iloc[3]] = [percent]
+    
+    final_bed['Modification'] = final_bed['seq'].map(percent_dict)
+    print(percent_dict)
     final_bed.to_csv(outfile, sep='\t', header=True, index=False)
 
 def flatten_comprehension(matrix):
@@ -513,56 +545,74 @@ def split_fasta_with_breakpoints(fasta_string, breakpoints):
     #drop every second interval if there are more than two snippets of the fasta: -> To save only the intervals without vector
     if len(sequences) > 2:
         del sequences[1::2]  
-    #print([len(i) for i in sequences])
+    
+    #extraction of the vector sequence
+    vector=[]
+    
+    for i in range(len(breakpoints)):
+        if i % 2 == 0 or i == 0:
+            vector.append(fasta_string[breakpoints[i]:breakpoints[i+1]])
+    
+    return sequences, vector
 
-    return sequences
 
-
-def split_fasta_by_borders(border_dict, fasta, mode, outfasta):
+def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
     """
     Uses previously created breakpoints in border dict to cut out insertions from fasta file
     """
     border_dict = json.load(open(border_dict)) 
     with open(outfasta, 'w') as output_file:
-        # opening given fasta file using the file path
-        with open(fasta, 'r') as fasta_file:
-            # extracting multiple data in single fasta file using biopython
-            for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
-                #split FASTA sequence into equally sized sub-lists with different id
-                record_id = record.id
-                record_seq = record.seq
-                if record_id in border_dict:
-                    record_list = split_fasta_with_breakpoints(record_seq, border_dict[record_id])
-                    if mode == "Separated":
-                        #this part only if the non-insertion fragments should NOT be combined
-                        for i,entry in enumerate(record_list):
-                            record_seq_new = record_list[i]
-                            record_id_new = str(record_id) + '_%i' % (i)
-                            print("Split " + str(record_id) + "into " + str(record_id_new))
+        with open(outvector, 'w') as output_vector_file:
+            # opening given fasta file using the file path
+            with open(fasta, 'r') as fasta_file:
+                # extracting multiple data in single fasta file using biopython
+                for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
+                    #split FASTA sequence into equally sized sub-lists with different id
+                    record_id = record.id
+                    record_seq = record.seq
+                    if record_id in border_dict:
+                        record_list, vector_list = split_fasta_with_breakpoints(record_seq, border_dict[record_id])
+                        # write out inserted vector sequence
+                        for i,entry in enumerate(vector_list):
+                            vector_seq_new = vector_list[i]
+                            vector_id_new = str(record_id) + '_%i' % (i)
+                            print("Split " + str(record_id) + "into " + str(vector_id_new))
+                            output_vector_file.write(">"+str(vector_id_new)+"\n"+str(vector_seq_new) + "\n")
+                        # write out fasta without insertion        
+                        if mode == "Separated":
+                            #this part only if the non-insertion fragments should NOT be combined
+                            for i,entry in enumerate(record_list):
+                                record_seq_new = record_list[i]
+                                record_id_new = str(record_id) + '_%i' % (i)
+                                print("Split " + str(record_id) + "into " + str(record_id_new))
+                                output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
+                        else: 
+                            record_seq_new = ''.join([str(n) for n in record_list])
+                            record_id_new = str(record_id) + '_Insertion'
                             output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
-                    else: 
-                        record_seq_new = ''.join([str(n) for n in record_list])
-                        record_id_new = str(record_id) + '_Insertion'
-                        output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
-                else:
-                    output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
+                    else:
+                        output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
-def exact_insertion_coordinates(border_dict, bed, diff, outfile):
+def exact_insertion_coordinates(border_dict, bed, diff, outfile, outfile2):
     """
     Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
-    Then stop will be +1 of start.
+    Then stop will be +1 of start. Second output will give the full insertion size so that it can be used for the methylation potting on the other BAM.
+    This is error-prone and has not been tested for insertions that have breaks in the fasta!
     """
     bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
     border_dict = json.load(open(border_dict))
     newbed = []
+    fullcoordinatesbed=[]
     for index,row in bed.iterrows():
         read_mod = row[3].split("_")[0]
         start = row[1] #int(bed.loc[bed[3] == read][1]) #start coordinate of the read
         if read_mod in border_dict:
             starts = [start + num for num in border_dict[read_mod][0::2]] #different new start coordinates for each insertion in the read
+            #ranges for the stop coordinate
+            ranges = [y - x for x, y in zip(border_dict[read_mod], border_dict[read_mod][1:])] #substracts the previous element from the following
             if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one
                 starts = starts[0]
-            for coordinate in starts:
+            for n,coordinate in enumerate(starts):
                 #print(str(bed.loc[bed[3] == read][0]))
                 newbed.append(
             {
@@ -571,9 +621,19 @@ def exact_insertion_coordinates(border_dict, bed, diff, outfile):
                 'Stop':  coordinate + 1,
                 'Read':  row[3]
             }
+            )
+                fullcoordinatesbed.append(
+                {
+                    'Chr': row[0],
+                    'Start': coordinate,
+                    'Stop':  coordinate + ranges[n],
+                    'Read':  row[3]
+                }
         )
     out=pd.DataFrame(newbed)
+    out2=pd.DataFrame(fullcoordinatesbed)
     out.to_csv(outfile, sep='\t', index=False, header=False)
+    out2.to_csv(outfile2, sep='\t', index=False, header=False)
 
 def combine_beds_add_ID(beds, outfile): #maybe at some point add to the heatmap plotting function
     """
