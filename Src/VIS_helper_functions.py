@@ -299,7 +299,7 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
     meth_bed = collapse_equal_entries(with_duplicates)
     #output BED
     final_bed = insertion_bed.copy()
-    percent_dict={} #collection for the insertions
+    #percent_dict={} #collection for the insertions
     # Iterate through each genomic coordinate
     for index, row in insertion_bed.iterrows():
         chromosome = row.iloc[0]
@@ -311,7 +311,7 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
         
         #methylation at insertion itself: Good overview of basic principle
         modifications = bed_intersect_count(chromosome, start, end, meth_bed)
-        bases = C_in_range(row.iloc[3], max_distance, len(row.iloc[3]) - max_distance) #the proximity bed file with fasta has the structure: max_dist-start-stop-max_dist
+        bases = C_in_range(row.iloc[3], max_distance, len(row.iloc[3])+1 - max_distance) #the proximity bed file with fasta has the structure: max_dist-start-stop-max_dist
         final_bed.loc[index, str("Insertion_point")] = (modifications/bases) *100 #puts key (0)-value(methylation-ratio) pair into dataframe in the respective line (index)
         #methylation in 3' direction in window-size steps up to max_distance
     
@@ -342,17 +342,20 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
             final_bed.to_csv(outfile, sep='\t', header=True, index=False)    
         
     #settings for the insertion itself:
-        percent=[]
-        for n,i in enumerate(range(start, end+window_size, window_size)):
+        #percent=[]
+        for n,i in enumerate(range(start, end, window_size)):
             #c in range
+            #print(row.iloc[3])
             bases = C_in_range(row.iloc[3], n*window_size, (n+1)*window_size)
             modifications = bed_intersect_count(chromosome, i, i+window_size, meth_bed)
+            #print(chromosome, i, i+window_size)
             #print(i,i+window_size, chromosome, modifications, bases)
-            percent.append((modifications/bases) *100)
-            percent_dict[row.iloc[3]] = [percent]
+            #percent.append((modifications/bases) *100)
+            #percent_dict[row.iloc[3]] = [percent]
+            final_bed.loc[index, (n+1)*window_size] = (modifications/bases) *100
     
-    final_bed['Modification'] = final_bed['seq'].map(percent_dict)
-    print(percent_dict)
+    #final_bed['Modification'] = final_bed['seq'].map(percent_dict)
+    #print(percent_dict)
     final_bed.to_csv(outfile, sep='\t', header=True, index=False)
 
 def flatten_comprehension(matrix):
@@ -655,3 +658,25 @@ def add_annotation_column_bed(bed1, bed2, outfile):
     bed2 = pd.read_csv(bed2, sep='\t', usecols=[0,1,2,3,4], names = ["Chr","start","end","seq","ID"])
     bed1 = bed1.merge(bed2, on=["Chr","start","end","seq"])
     bed1.to_csv(outfile, sep='\t', index=False, header=True)
+
+def plot_modification_per_vectorlength(meanmodbed, window_size, outfile):
+    mod = pd.read_csv(meanmodbed, sep='\t')
+    mod["ID"] = mod["Chr"] + "_" + mod["Insertion"]
+    mod = mod.drop(columns=['Chr', 'start','end','seq', 'Insertion_point', 'Insertion'])
+    mod = pd.melt(mod, id_vars=['ID'])
+    #print(mod.head())
+    plt.figure(figsize=(16, 9))
+    sns.lineplot(data=mod, x="variable", y="value", hue="ID", alpha=0.7, linewidth=4)
+    plt.xticks(rotation=90)
+    plt.xlabel("Length of the insertion")
+    plt.ylabel('%C modified')
+    plt.title('')
+    plt.savefig(outfile, bbox_inches="tight")
+
+def variant_bed_to_fasta(bed, outfasta):
+    variants = pd.read_csv(bed, sep='\t')
+    variants = variants.iloc[:, [3,6]]
+    with open(outfasta, 'w') as fasta:
+         for i in range(len(variants)):
+             if len(variants.iloc[i, 1]) >= 100:
+                 fasta.write(">"+str(variants.iloc[i, 0])+"\n"+str(variants.iloc[i, 1]) + "\n")            

@@ -1,13 +1,13 @@
 #!/usr/bin/env Rscript
 
-cran_packages <- c("BiocManager", "argparse")
+cran_packages <- c("stringi", "BiocManager", "argparse")
 bio_packages <- c("GenomicFeatures", "Gviz", "Rsamtools","biomaRt", "GenomicRanges", "rtracklayer")
 for (i in cran_packages) {
-  if (!require(i, quietly = TRUE))
-    invisible(install.packages(i, repos = "http://cran.us.r-project.org", quiet = TRUE)) #point to the CRAN mirror
+  if (!require(i, character.only = TRUE))
+    install.packages(i, repos="https://cloud.r-project.org/", quiet = TRUE) #point to the CRAN mirror
 }
 for (i in bio_packages) {
-  if (!require(i, quietly = TRUE))
+  if (!require(i, quietly = TRUE, character.only = TRUE))
     invisible(BiocManager::install(i)) 
 }
 
