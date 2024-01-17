@@ -23,11 +23,12 @@ rule all:
 		#expand(PROCESS+"FASTA/Cleaved_{sample}_noVector.fa", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
 		expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" , sample=SAMPLES),
+		#expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa" , sample=SAMPLES),
 		#exact coordinates
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/Reshaped_GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
@@ -40,8 +41,8 @@ rule all:
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
 		#Visuals
 		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
 		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
@@ -56,7 +57,7 @@ rule all:
 		#reads in insertion variants
 		#expand(PROCESS+"VARIANTS/Reads_with_BLAST_SVIM_INS_Variant_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.fasta", sample=SAMPLES),
-		expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
+		#expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
 		#new approach for insertion identification
 		#expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
@@ -94,17 +95,45 @@ rule prepare_BAM: #sorts, index, and removes supllementary and secondary alignme
 		samtools sort {input} > {output} #| samtools view -F 2304 -o {output} #removal for a test run
 		samtools index {output}
 		"""
+rule minimap_index:
+	input:
+		ref=config["ref_genome"] #cut _index
+	output:
+		index=PROCESS+"MAPPING/ref_genome_index.mmi"
+	shell:
+		"minimap2 -d {output.index} {input.ref}"
 
-rule make_FASTA:
+rule conserve_tags: #works
+	input:
+		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		minimapref=PROCESS+"MAPPING/ref_genome_index.mmi",
+		ref=config["ref_genome"]
+	output:
+		PROCESS+"MAPPING/Conservedtags_{sample}_sorted.bam"
+	shell:
+		"""
+		samtools bam2fq -T 'MM' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort > {output}
+		"""
+
+rule make_FASTA_with_tags:
 	input:
 		#fq=get_input_names
-		fq=PROCESS+"MAPPING/{sample}_sorted.bam"
+		fq=PROCESS+"MAPPING/Conservedtags_{sample}_sorted.bam"
+	output:
+		fasta=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa"
+	run: 
+		#shell("samtools bam2fq -T 'MM' {input} > {output}") #seqkit had to be installed with conda
+		shell("samtools fasta {input} -o {output} > {output}") #takes in bam and outputs fasta, output has to be mentioned twice: 1 for the location, 2 for the option to write "both" reads to one fasta
+
+rule make_FASTA_without_tags:
+	input:
+		fq=get_input_names
+		#fq=PROCESS+"MAPPING/{sample}_sorted.bam"
 	output:
 		fasta=PROCESS+"FASTA/Full_{sample}.fa"
 	run: 
-		#shell("seqkit fq2fa {input.fq} -o {output.fasta}") #seqkit had to be installed with conda
+		#shell("samtools bam2fq -T 'MM' {input} > {output}") #seqkit had to be installed with conda
 		shell("samtools fasta {input} -o {output} > {output}") #takes in bam and outputs fasta, output has to be mentioned twice: 1 for the location, 2 for the option to write "both" reads to one fasta
-
 ######
 ######
 ###### "Clean" BAM: Cut-out FASTA to BAM via Mapping to reference 
@@ -115,14 +144,14 @@ rule make_FASTA:
 rule Non_insertion_mapping:
 	input:
 		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
-		genome=config["ref_genome"] #cut _index
+		genome=PROCESS+"MAPPING/ref_genome_index.mmi"
 	output:
 		PROCESS+"MAPPING/CutOut_{sample}_sorted.bam"
 	shell:
 		"""
-		minimap2 -x map-ont -a {input.genome} {input.fasta} | samtools sort > {output} # |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments #removed removal for test run
+		minimap2 -y -ax map-ont {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
 		samtools index {output}
-		"""   # alignment map-ont specifies input/task
+		"""   
 
 
 ######
@@ -171,7 +200,8 @@ rule get_cleavage_sites_for_fasta:
 rule split_fasta:
 	input:
 		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		fasta=PROCESS+"FASTA/Full_{sample}.fa"
+		#fasta=PROCESS+"FASTA/Full_{sample}.fa" #removed for test
+		fasta=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa"
 	params:
 		mode="Join" #if each split FASTA substring should be used individually, use "Separated"
 	output:
@@ -185,10 +215,18 @@ rule split_fasta:
 ###### Vector preparation: Fragmentation 
 ######
 ######
-
+rule reverse_vector:
+	input:
+		config["vector_fasta"] #vector fasta sequence
+	output: 
+		fasta=PROCESS+"FASTA/Fragments/Forward_Backward_Vector.fa"
+	run:
+		vhf.reversevector(input[0], output[0])
+		
 rule vector_fragmentation:
 	input: 
-		config["vector_fasta"] #vector fasta sequence
+		#config["vector_fasta"] #vector fasta sequence
+		PROCESS+"FASTA/Fragments/Forward_Backward_Vector.fa"
 	params:
 		FRAG
 	output: 
@@ -306,15 +344,6 @@ rule mean_methylation:
 ######## INSERTION C_MODIFICATION
 
 #creates fasta only with insertions
-'''
-rule insertion_methylation:
-	input:
-		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
-	output:
-		PROCESS+"LOCALIZATION/Reshaped_GenomicLocation_"+str(FRAG)+"_{sample}.bed"
-	shell:
-		"awk -v OFS='\t' '{{print $4,$2,$3,$1}}' {input} > {output}"
-'''
 #fasta to insertion
 rule fasta_to_insertion:
     input:
@@ -445,7 +474,7 @@ rule find_vector_BLASTn:
 	output:
 		temp(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:
-		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'") 
+		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs'") 
 
 rule hardcode_blast_header:		
 	input: 
@@ -453,7 +482,7 @@ rule hardcode_blast_header:
 	output:
 		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
-		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
+		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
 		
 #BLASTN vector against human genome: Which vector parts are close to human sequences so that they might raise a false positivite BLAST match
 rule find_vector_BLASTn_in_humanRef:
@@ -472,7 +501,14 @@ rule hardcode_blast_header_humanRef:
 		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
 		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
-		
+
+rule blast_to_gff:
+	input: 
+		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff"	
+	run:
+		vhf.blast2gff(input[0], output[0])	
 ######
 ######
 ###### Visualisations of intermediate results
@@ -546,15 +582,6 @@ rule variant_sniffles:
 		PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
 	shell:
 		"sniffles -i {input.bam} --reference {input.genome} --output-rnames -v {output}"
-'''
-rule reshape_sniffles:
-	input:
-		PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
-	output:
-		PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.bed"
-	shell:
-		"vcf2bed --do-not-sort < {input} | grep 'INS' > {output}" 
-'''
 
 rule svim_variants:
 	input:
@@ -569,15 +596,6 @@ rule svim_variants:
 		svim alignment {params.outdir} {input.bam} {input.genome} --types INS
 		touch {output}
 		"""
-'''
-rule reshape_svim: 
-	input:
-		PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf"
-	output:
-		PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.bed"
-	run:
-		shell("vcf2bed --do-not-sort < {input} | grep 'INS' > {output}" )
-'''
 
 rule nanoVar:
 	input:
@@ -592,15 +610,7 @@ rule nanoVar:
 		nanovar -f hg38 {input.bam} {input.ref} {params.outdir}
 		touch {output}
 		"""
-'''		
-rule reshape_nanovar:
-	input:
-		PROCESS+"VARIANTS/NanoVar_{sample}/{sample}_sorted.nanovar.pass.vcf"
-	output:
-		PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.bed"
-	run:
-		shell("vcf2bed --do-not-sort < {input} | grep 'INS' > {output}")
-'''
+
 #reshapes the variants in a more usable format for downstream analysis
 rule reshape_variants:
 	input:

@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "Incl_Sec_and_multiple_Alignments_Magdeburg_sup_Vector_integration_site"
+experiment: "ModRefGenome_Magdeburg_sup_Vector_integration_site"
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123_sup_dorado_ref.bam"
     #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder
@@ -21,9 +21,9 @@ vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/pSLCAR-CD1
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 fragment_size: 100 #input for custom function
 MinLength: 66
-ref_genome: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
-#ref_genome: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/Magdeburg_sup_Vector_integration_site/FASTA/Full_S3.fa"
-ref_genome_index: "/home/lischecr/permanent/Src/hg38/genome/hg38.ref.mmi" #minimap output
+#ref_genome: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
+ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/hg38_CD19.fasta"
+#ref_genome_index: "/home/lischecr/permanent/Src/hg38/genome/hg38.ref.mmi" #minimap output
 #methylation call
 #fast5path: "/home/weichan/permanent/Projects/VIS/dev/ads/pod5tofast5/" #only ads currently
 #sequencingsummary: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_ADS/20230602_1106_MN37858_FAW82898_dd8938f8/sequencing_summary_FAW82898_dd8938f8_c07a3414.txt"

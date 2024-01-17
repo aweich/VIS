@@ -660,6 +660,9 @@ def add_annotation_column_bed(bed1, bed2, outfile):
     bed1.to_csv(outfile, sep='\t', index=False, header=True)
 
 def plot_modification_per_vectorlength(meanmodbed, window_size, outfile):
+    """
+    PLots how many bases are modified for the length of the inserted sequence
+    """
     mod = pd.read_csv(meanmodbed, sep='\t')
     mod["ID"] = mod["Chr"] + "_" + mod["Insertion"]
     mod = mod.drop(columns=['Chr', 'start','end','seq', 'Insertion_point', 'Insertion'])
@@ -674,9 +677,37 @@ def plot_modification_per_vectorlength(meanmodbed, window_size, outfile):
     plt.savefig(outfile, bbox_inches="tight")
 
 def variant_bed_to_fasta(bed, outfasta):
+    """
+    Uses the variant callers sequence column output to generate a fasta from it.
+    """
     variants = pd.read_csv(bed, sep='\t')
     variants = variants.iloc[:, [3,6]]
     with open(outfasta, 'w') as fasta:
          for i in range(len(variants)):
              if len(variants.iloc[i, 1]) >= 100:
                  fasta.write(">"+str(variants.iloc[i, 0])+"\n"+str(variants.iloc[i, 1]) + "\n")            
+
+def blast2gff(blast,outfile):
+    """
+    Transforms blast output into gff format.
+    """
+    with open(blast, 'r') as blast_file, open(outfile, 'w') as gff_file:
+        for line in blast_file:
+            fields = line.strip().split('\t')
+            # Assuming your BLAST format; adjust as needed
+            sequence_id, subject_id, start, end = fields[0], fields[1], fields[8], fields[9]
+            gff_file.write(f"{subject_id}\t{start}\t{end}\tBLAST\tfeature\t.\t.\t{sequence_id}\n")
+
+def reversevector(fastain, fastaout):
+    with open(fastaout, 'w') as output_file:
+        # opening given fasta file using the file path
+        with open(fastain, 'r') as fasta_file:
+            # extracting multiple data in single fasta file using biopython
+            for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
+                #split FASTA sequence into equally sized sub-lists with different id
+                record_id = record.id
+                record_seq = record.seq
+                reversed_record_seq = record.seq[::-1]
+                record_id_reversed = str(record_id) + '_reversed'
+                output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")
+                output_file.write(">"+str(record_id_reversed)+"\n"+str(reversed_record_seq) + "\n") 
