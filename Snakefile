@@ -22,12 +22,12 @@ rule all:
 		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"),
 		#expand(PROCESS+"FASTA/Cleaved_{sample}_noVector.fa", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa{ext}", ext=[ ".ndb",".nhr",".nin",".not",".nsq",".ntf",".nto"]), 
-		expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		#expand(PROCESS+"FASTA/Insertion_{sample}_Vector.fa", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
-		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"MAPPING/Postcut_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa" , sample=SAMPLES),
 		#exact coordinates
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
@@ -40,12 +40,12 @@ rule all:
 		#PROCESS+"LOCALIZATION/ExactInsertions_combined.bed",
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
 		#Visuals
-		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
-		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
+		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
@@ -85,6 +85,7 @@ def get_input_names(wildcards):
 ######
 ######
 #bam with insertions
+'''
 rule prepare_BAM: #sorts, index, and removes supllementary and secondary alignments
 	input:
 		get_input_names
@@ -95,6 +96,7 @@ rule prepare_BAM: #sorts, index, and removes supllementary and secondary alignme
 		samtools sort {input} > {output} #| samtools view -F 2304 -o {output} #removal for a test run
 		samtools index {output}
 		"""
+'''
 rule minimap_index:
 	input:
 		ref=config["ref_genome"] #cut _index
@@ -102,37 +104,22 @@ rule minimap_index:
 		index=PROCESS+"MAPPING/ref_genome_index.mmi"
 	shell:
 		"minimap2 -d {output.index} {input.ref}"
-
-rule conserve_tags: #works
-	input:
-		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
-		minimapref=PROCESS+"MAPPING/ref_genome_index.mmi",
-		ref=config["ref_genome"]
-	output:
-		PROCESS+"MAPPING/Conservedtags_{sample}_sorted.bam"
-	shell:
-		"""
-		samtools bam2fq -T 'MM' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort > {output}
-		"""
-
-rule make_FASTA_with_tags:
+'''
+rule make_FASTA_with_tags: #needed for precut path
 	input:
 		#fq=get_input_names
 		fq=PROCESS+"MAPPING/Conservedtags_{sample}_sorted.bam"
 	output:
 		fasta=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa"
 	run: 
-		#shell("samtools bam2fq -T 'MM' {input} > {output}") #seqkit had to be installed with conda
-		shell("samtools fasta {input} -o {output} > {output}") #takes in bam and outputs fasta, output has to be mentioned twice: 1 for the location, 2 for the option to write "both" reads to one fasta
-
-rule make_FASTA_without_tags:
+		shell("samtools bam2fq -T 'MM' {input} > {output}") 
+'''
+rule make_FASTA_without_tags: #fasta of raw data no trimming whatsoever
 	input:
 		fq=get_input_names
-		#fq=PROCESS+"MAPPING/{sample}_sorted.bam"
 	output:
 		fasta=PROCESS+"FASTA/Full_{sample}.fa"
 	run: 
-		#shell("samtools bam2fq -T 'MM' {input} > {output}") #seqkit had to be installed with conda
 		shell("samtools fasta {input} -o {output} > {output}") #takes in bam and outputs fasta, output has to be mentioned twice: 1 for the location, 2 for the option to write "both" reads to one fasta
 ######
 ######
@@ -141,17 +128,43 @@ rule make_FASTA_without_tags:
 ######
 		
 #rule to create the BAM files with the non-insertion reads and the splitted read fragments
-rule Non_insertion_mapping:
+rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 	input:
 		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
-		genome=PROCESS+"MAPPING/ref_genome_index.mmi"
+		genome=config["ref_genome"] #_ctrl, if we still use the modified reference genome, we will detect the reads that have no matches with blast but are still assigned to reference! -> should be zero, but lets see
 	output:
-		PROCESS+"MAPPING/CutOut_{sample}_sorted.bam"
+		PROCESS+"MAPPING/Postcut_{sample}_sorted.bam"
 	shell:
 		"""
 		minimap2 -y -ax map-ont {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
 		samtools index {output}
 		"""   
+'''
+#rule to create BAM files with unperturbed reads
+rule insertion_mapping: #mapping with the added vector as genome
+	input:
+		fasta=PROCESS+"FASTA/Full_{sample}.fa",
+		genome=PROCESS+"MAPPING/ref_genome_index.mmi"
+	output:
+		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+	shell:
+		"""
+		minimap2 -y -ax map-ont {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
+		samtools index {output}
+		"""   
+'''
+rule insertion_mapping: #conserves tags!
+	input:
+		bam=get_input_names,
+		minimapref=PROCESS+"MAPPING/ref_genome_index.mmi",
+		ref=config["ref_genome"]
+	output:
+		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+	shell:
+		"""
+		samtools bam2fq -T 'MM' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
+		samtools index {output}
+		"""
 
 
 ######
@@ -163,10 +176,10 @@ rule Non_insertion_mapping:
 rule BAM_to_BED:
 	input:
 		#get_input_names
-		precut=PROCESS+"MAPPING/{sample}_sorted.bam",
-		postcut=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam" #Reads that contained an insertion before, are now marked with "_Insertion"
+		precut=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
+		postcut=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam" #Reads that contained an insertion before, are now marked with "_Insertion"
 	output:
-		postcut=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
+		postcut=PROCESS+"MAPPING/Postcut_{sample}.bed",
 		precut=PROCESS+"MAPPING/Precut_{sample}.bed"
 	run:
 		shell("bedtools bamtobed -i {input.precut} > {output.precut}")
@@ -174,8 +187,7 @@ rule BAM_to_BED:
 
 rule reads_with_BLASTn_matches:
 	input:
-		refbed=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
-		#matchreads=PROCESS+"BLASTN/ID/ID_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+		refbed=PROCESS+"MAPPING/Postcut_{sample}.bed",
 	output:
 		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
 	shell:
@@ -200,8 +212,7 @@ rule get_cleavage_sites_for_fasta:
 rule split_fasta:
 	input:
 		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		#fasta=PROCESS+"FASTA/Full_{sample}.fa" #removed for test
-		fasta=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa"
+		fasta=PROCESS+"FASTA/Full_{sample}.fa"
 	params:
 		mode="Join" #if each split FASTA substring should be used individually, use "Separated"
 	output:
@@ -226,7 +237,7 @@ rule reverse_vector:
 rule vector_fragmentation:
 	input: 
 		#config["vector_fasta"] #vector fasta sequence
-		PROCESS+"FASTA/Fragments/Forward_Backward_Vector.fa"
+		PROCESS+"FASTA/Fragments/Forward_Backward_Vector.fa" #does not change anything so it can be removed imo
 	params:
 		FRAG
 	output: 
@@ -241,17 +252,15 @@ rule vector_fragmentation:
 ######
 rule mapping_qc:
 	input:
-		#get_input_names
-		PROCESS+"MAPPING/{sample}_sorted.bam" #before cut out, but after removal of secondary and supplementary alignments
+		PROCESS+"MAPPING/Precut_{sample}_sorted.bam" #before cut out, but after removal of secondary and supplementary alignments
 	output:
-		PROCESS+"MAPPING/BasicMapping_{sample}.qc"
+		PROCESS+"MAPPING/{sample}.qc"
 	run:
 		shell("samtools flagstats {input} > {output}")  
 		
 rule nBases_for_insertion_count:
 	input:
-		#get_input_names
-		PROCESS+"MAPPING/{sample}_sorted.bam" #has to be without the cutout, since otherwise we don't get the total aligned bases
+		PROCESS+"MAPPING/Precut_{sample}_sorted.bam" #has to be without the cutout, since otherwise we don't get the total aligned bases
 	output:
 		temp(PROCESS+"MAPPING/Number_of_Bases_{sample}.normalisation")
 	shell:
@@ -276,9 +285,8 @@ rule normalisation_for_insertion_count:
 
 rule methylation_bedMethyl:
 	input:
-		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
 		#ref=config["ref_genome"]
-		
 	output:
 		PROCESS+"METHYLATION/Methyl_{sample}.bed"
 	shell:
@@ -340,7 +348,7 @@ rule mean_methylation:
 		PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed"
 	run: 
 		vhf.methylation_in_insertion_proximity(input.methbed, input.insertionfastabed, params.window_size, params.max_distance,  output[0])  
-
+'''
 ######## INSERTION C_MODIFICATION
 
 #creates fasta only with insertions
@@ -390,7 +398,7 @@ rule plot_insertion_mean_methylation:
 		PROCESS+"METHYLATION/MeanModificiation_Insertion_{sample}.png"
 	run:
 		vhf.plot_modification_per_vectorlength(input[0], params.window_size, output[0])
-
+'''
 ######
 ######
 ###### Differential methylation
@@ -515,9 +523,9 @@ rule blast_to_gff:
 ######
 ######
 	
-rule chromosome_read_plots:
+rule chromosome_read_plots: #currently fails as there is a irregular chr in file (CD19 CAR obv)
 	input:
-		bam=PROCESS+"MAPPING/CutOut_{sample}_sorted.bam",
+		bam=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
 		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
 		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	output:
@@ -531,9 +539,7 @@ rule chromosome_read_plots:
 		"""	
 rule fragmentation_distribution_plots:
 	input:
-		#PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		#PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 		PROCESS+"BLASTN/HUMANREF/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		FRAG
@@ -554,7 +560,6 @@ rule insertion_heatmap:
 	output:
 		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png"
 	run:
-		print(input)
 		vhf.plot_bed_files_as_heatmap(input, output[0])
 
 rule insertion_modification_heatmap:
@@ -576,7 +581,7 @@ rule insertion_modification_heatmap:
 
 rule variant_sniffles:
 	input:
-		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
 		genome=config["ref_genome"]
 	output:
 		PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
@@ -585,7 +590,7 @@ rule variant_sniffles:
 
 rule svim_variants:
 	input:
-		bam=PROCESS+"MAPPING/{sample}_sorted.bam",
+		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
 		genome=config["ref_genome"]
 	output:
 		PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf", 
@@ -600,7 +605,7 @@ rule svim_variants:
 rule nanoVar:
 	input:
 		ref=config["ref_genome"],
-		bam=PROCESS+"MAPPING/{sample}_sorted.bam"
+		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
 	output:
 		PROCESS+"VARIANTS/NanoVar_{sample}/{sample}_sorted.nanovar.pass.vcf"
 	params:
@@ -642,9 +647,6 @@ rule reads_with_BLAST_from_callers:
 		svim=PROCESS+"VARIANTS/Reads_with_BLAST_SVIM_INS_Variant_{sample}.bed",
 		sniffles=PROCESS+"VARIANTS/Reads_with_BLAST_SNIFFLES_INS_Variant_{sample}.bed"
 	run:
-		#shell("if ! grep -F -f {input.matches} {input.nanovar}; then echo not found; fi > {output.nanovar}")
-		#shell("if ! grep -F -f {input.matches} {input.svim}; then echo not found; fi > {output.svim}")
-		#shell("if ! grep -F -f {input.matches} {input.sniffles}; then echo not found; fi > {output.sniffles}")
 		#shell("bedtools intersect -a {input.matches} -b {input.nanovar} > {output.nanovar}")
 		shell("bedtools intersect -a {input.matches} -b {input.svim} > {output.svim}")
 		shell("bedtools intersect -a {input.matches} -b {input.sniffles} > {output.sniffles}")
@@ -692,21 +694,10 @@ rule variants_hardcode_blast_header:
 ######
 ######
 #exact coordinates of the matching fragments
-''' temp block until necessary
-rule blastn_bed_merger:
-	input:
-		#blast=PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		blast=PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
-	output:
-		merged=PROCESS+"LOCALIZATION/Exact_GenomicLocation_"+str(FRAG)+"_{sample}.bed"
-	run:
-		vhf.blastn_bed_merger(input.blast, input.bed, output.merged)
-'''
+
 rule exact_insertion_coordinates:
 	input:
-		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed",
-		bed=PROCESS+"MAPPING/BasicMapping_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
+		bed=PROCESS+"MAPPING/Precut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
 		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		diff = 50 #mean difference in the insertion start positions. If less than this threshhold, the first insertion will be treated as a representative
@@ -730,16 +721,10 @@ rule extract_by_length:
 		shell("awk -F'\t' '$7>={params.threshold}' {input.blast} > {output.blast}")
 		shell("awk -F'\t' '$11>={params.threshold}' {input.humanref} > {output.humanref}") 
 
-#####CHecking for overlaps of Insertions detected by BLAST with Insertions detected by the variant callers:
-#Strategy: Get READ IDs from blast matches, trace back to dorado basecalled bam reads, extract coordinates of the reads in the dorado bam; then
-# check if there are overlaps. General problem: We must assume that the dorado basecalled bam has a low resolution when it comes to the INsertions
-# -> this may alter the variant callers ability for the detection of insertions 
-
-
 #Control of the workflow: How do the genomic coordinates of my two BAMs differ for the insertion vectors! # CUrrently it looks like all the insertion reads do not really differ pre and post cut -> either the cut out is not sensitive ennough (try with split reads) or the vector doesn't really alter the alignment!
 rule check_mapping_pre_and_postcut:
 	input:
-		postcutbed=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
+		postcutbed=PROCESS+"MAPPING/Postcut_{sample}.bed",
 		precutbed=PROCESS+"MAPPING/Precut_{sample}.bed",
 	output:
 		notinpostcut=PROCESS+"MAPPING/Not_in_postcut_{sample}.bed",
@@ -761,7 +746,7 @@ rule pre_post_cut_and_reads_with_matches:
 	input:
 		#notinpostcut=PROCESS+"MAPPING/Not_in_postcut_{sample}.bed",
 		#notinprecut=PROCESS+"MAPPING/Not_in_precut_{sample}.bed",
-		notinpostcut=PROCESS+"MAPPING/BasicMapping_{sample}.bed",
+		notinpostcut=PROCESS+"MAPPING/Postcut_{sample}.bed",
 		notinprecut=PROCESS+"MAPPING/Precut_{sample}.bed",
 		matches=PROCESS+"BLASTN/Reads_with_VectorMatches_{sample}.blastn"
 	output:
