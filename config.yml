@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "Raw_Magdeburg_sup_Vector_integration_site"
+experiment: "Magdeburg_sup_Vector_integration_site"
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123_sup_dorado_ref.bam"
     #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder

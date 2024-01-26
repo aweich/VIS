@@ -25,17 +25,17 @@ rule all:
 		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Insertion_{sample}_Vector.fa", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
-		#expand(PROCESS+"MAPPING/BasicMapping_{sample}.qc", sample=SAMPLES),
-		#expand(PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt", sample=SAMPLES),
-		expand(PROCESS+"MAPPING/Postcut_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa" , sample=SAMPLES),
+		#expand(PROCESS+"QC/{sample}.qc", sample=SAMPLES),
+		#expand(PROCESS+"QC/Normalisation_IPM_{sample}.txt", sample=SAMPLES),
+		#expand(PROCESS+"MAPPING/Postcut_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam" , sample=SAMPLES),
 		#exact coordinates
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"LOCALIZATION/Reshaped_GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		#Methylation
-		#expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
 		#Differential Methylation
 		#PROCESS+"LOCALIZATION/ExactInsertions_combined.bed",
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
@@ -43,9 +43,9 @@ rule all:
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
-		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
@@ -55,8 +55,6 @@ rule all:
 		#nanovar
 		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#reads in insertion variants
-		#expand(PROCESS+"VARIANTS/Reads_with_BLAST_SVIM_INS_Variant_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.fasta", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
 		#new approach for insertion identification
 		#expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
@@ -70,6 +68,7 @@ rule all:
 		#expand(PROCESS+"MAPPING/Matches_different_in_precut_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"EVAL/Matches_different_in_precut_FASTA_{sample}.fa", sample=SAMPLES),
 		#expand(PROCESS+"EVAL/Matches_different_in_precut_{sample}.bed", sample=SAMPLES)
+		#expand(PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES)
 
 #actual filenames
 def get_input_names(wildcards):
@@ -104,15 +103,15 @@ rule minimap_index:
 		index=PROCESS+"MAPPING/ref_genome_index.mmi"
 	shell:
 		"minimap2 -d {output.index} {input.ref}"
-'''
+''' 
 rule make_FASTA_with_tags: #needed for precut path
 	input:
-		#fq=get_input_names
-		fq=PROCESS+"MAPPING/Conservedtags_{sample}_sorted.bam"
+		fq=get_input_names
+		#fq=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
 	output:
 		fasta=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa"
 	run: 
-		shell("samtools bam2fq -T 'MM' {input} > {output}") 
+		shell("samtools bam2fq -T '*' {input} > {output}") 
 '''
 rule make_FASTA_without_tags: #fasta of raw data no trimming whatsoever
 	input:
@@ -162,7 +161,7 @@ rule insertion_mapping: #conserves tags!
 		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
 	shell:
 		"""
-		samtools bam2fq -T 'MM' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
+		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
 		samtools index {output}
 		"""
 
@@ -203,7 +202,7 @@ rule get_cleavage_sites_for_fasta:
 		#PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
-		overlap=2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
+		overlap=2*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	output:
 		PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:
@@ -250,30 +249,43 @@ rule vector_fragmentation:
 ###### Quality control and normalization
 ######
 ######
+rule nanoplot:
+	input:
+		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+	output:
+		PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png"
+	params:
+		outdir=PROCESS+"QC/{sample}/"
+	shell: 
+		"""
+		NanoPlot --bam {input} -o {params.outdir}
+		touch {output}
+		"""
+
 rule mapping_qc:
 	input:
 		PROCESS+"MAPPING/Precut_{sample}_sorted.bam" #before cut out, but after removal of secondary and supplementary alignments
 	output:
-		PROCESS+"MAPPING/{sample}.qc"
+		PROCESS+"QC/{sample}.qc"
 	run:
 		shell("samtools flagstats {input} > {output}")  
 		
-rule nBases_for_insertion_count:
+rule nReads_for_insertion_count:
 	input:
-		PROCESS+"MAPPING/Precut_{sample}_sorted.bam" #has to be without the cutout, since otherwise we don't get the total aligned bases
+		get_input_names
 	output:
-		temp(PROCESS+"MAPPING/Number_of_Bases_{sample}.normalisation")
+		temp(PROCESS+"QC/Number_of_Reads_{sample}.normalisation")
 	shell:
-		"gatk CountBases -I {input} > {output}"				
+		"gatk CountReads -I {input} > {output}"				
 
 rule normalisation_for_insertion_count:
 	input:
 		insertions=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed",
-		number_of_bases=PROCESS+"MAPPING/Number_of_Bases_{sample}.normalisation"
+		number_of_bases=PROCESS+"QC/Number_of_Reads_{sample}.normalisation"
 	params:
-		scale=100000000 #IPHM
+		scale=1000000 #IPM
 	output:
-		PROCESS+"MAPPING/Normalisation_IPHM_{sample}.txt"
+		PROCESS+"QC/Normalisation_IPM_{sample}.txt"
 	run:
 		vhf.insertion_normalisation(input.insertions, input.number_of_bases, params[0], output[0])
 
@@ -282,20 +294,29 @@ rule normalisation_for_insertion_count:
 ###### Base modification file preparation
 ######
 ######
-
 rule methylation_bedMethyl:
 	input:
-		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
+		#bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
+		bam=PROCESS+"MAPPING/NoVectorAlignments_Precut_{sample}_sorted.bam"
 		#ref=config["ref_genome"]
 	output:
 		PROCESS+"METHYLATION/Methyl_{sample}.bed"
 	shell:
-		"modkit pileup {input.bam} --filter-threshold C:0.8 {output}" #high threshhold for C modifications
+		"modkit pileup {input.bam} --filter-threshold C:0.8 {output}" #high threshhold for C modifications, combines all C mods into one
 		#"modkit pileup {input.bam} {output} --cpg --ref {input.ref}" 
+
+rule remove_unmapped_from_insertion_list:
+	input:
+		PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
+	output:
+		temp(PROCESS+"LOCALIZATION/Onlymapped_ExactInsertions_{sample}.bed")
+	run:
+		shell("cat {input} | grep -v 'CD' > {output}")
 
 rule insertion_proximity:
 	input:
-		PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
+		#PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
+		PROCESS+"LOCALIZATION/Onlymapped_ExactInsertions_{sample}.bed"
 	params: 
 		10000 #this value has to be same as in mean methylation!
 	output:
@@ -308,7 +329,7 @@ rule insertion_proximity:
 rule insertion_methylation_proximity:
     input:
         prox = PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
-        fasta = config["ref_genome"]
+        fasta = config["ref_genome_ctrl"]
     output:
         temp(PROCESS+"METHYLATION/Insertion_methylation_proximity_{sample}.fa")
     shell:
@@ -521,18 +542,47 @@ rule blast_to_gff:
 ######
 ###### Visualisations of intermediate results
 ######
-######
-	
+###### the follwoing 2 rules are needed to remove the pseudo-alignment of the reads to the modified ref genome s this would otherwise break the plotting function
+rule get_reads_of_supplementary_matches:
+	input:
+		post=PROCESS+"MAPPING/Postcut_{sample}.bed",
+		pre=PROCESS+"MAPPING/Precut_{sample}.bed"
+	output:
+		post=PROCESS+"MAPPING/Postcut_{sample}_lostvector.reads",
+		pre=PROCESS+"MAPPING/Precut_{sample}_lostvector.reads"
+	run:
+		shell("awk '$1 ~ /CD/ {{print $4}}' {input.post} > {output.post}")
+		shell("awk '$1 ~ /CD/ {{print $4}}' {input.pre} > {output.pre}")
+
+rule remove_vector_alignments:
+	input:
+		prebam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
+		prelost=PROCESS+"MAPPING/Precut_{sample}_lostvector.reads",
+		postbam=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
+		postlost=PROCESS+"MAPPING/Postcut_{sample}_lostvector.reads"
+	output:
+		pre=PROCESS+"MAPPING/NoVectorAlignments_Precut_{sample}_sorted.bam",
+		post=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam"
+	shell:
+		"""
+		#samtools view -N ^{input.prelost} {input.prebam} -o {output.pre}
+		#samtools view -N ^{input.postlost} {input.postbam} -o {output.post}
+		samtools view -h {input.postbam} | grep -vf {input.postlost} | samtools view -bS -o {output.post} -
+		samtools index {output.post}
+		samtools view -h {input.prebam} | grep -vf {input.prelost} | samtools view -bS -o {output.pre} -
+		samtools index {output.pre}
+		"""
+
 rule chromosome_read_plots: #currently fails as there is a irregular chr in file (CD19 CAR obv)
 	input:
-		bam=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
 		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
+		bam=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam"
 		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 	output:
 		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
 	params:
 		buffer=50000
-	shell: 
+	shell: #
 		r"""
 		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
 		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -buffer {params.buffer} -o {output.outpath}   
@@ -556,7 +606,8 @@ rule fragmentation_distribution_plots:
 
 rule insertion_heatmap:
 	input:
-		expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES)
+		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES)
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES)
 	output:
 		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png"
 	run:
@@ -582,7 +633,7 @@ rule insertion_modification_heatmap:
 rule variant_sniffles:
 	input:
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-		genome=config["ref_genome"]
+		genome=config["ref_genome_ctrl"]
 	output:
 		PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
 	shell:
@@ -591,7 +642,7 @@ rule variant_sniffles:
 rule svim_variants:
 	input:
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-		genome=config["ref_genome"]
+		genome=config["ref_genome_ctrl"]
 	output:
 		PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf", 
 	params:
@@ -604,7 +655,7 @@ rule svim_variants:
 
 rule nanoVar:
 	input:
-		ref=config["ref_genome"],
+		ref=config["ref_genome_ctrl"],
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
 	output:
 		PROCESS+"VARIANTS/NanoVar_{sample}/{sample}_sorted.nanovar.pass.vcf"
@@ -619,16 +670,16 @@ rule nanoVar:
 #reshapes the variants in a more usable format for downstream analysis
 rule reshape_variants:
 	input:
-		nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/{sample}_sorted.nanovar.pass.vcf",
+		#nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/{sample}_sorted.nanovar.pass.vcf",
 		svim=PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf", 
 		sniffles=PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
 	output:
-		nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.bed",
+		#nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.bed",
 		svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.bed", 
 		sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.bed"
 	run:
 		#shell("convert2bed --input=vcf  < {input.nanovar} | grep 'INS' > {output.nanovar}") #--insertions does not wqork for some reason
-		shell("vcf2bed --do-not-sort < {input.nanovar} | grep 'INS' > {output.nanovar}") #do not sort is important to generate the file but results in error downstream :/
+		#shell("vcf2bed --do-not-sort < {input.nanovar} | grep 'INS' > {output.nanovar}") #do not sort is important to generate the file but results in error downstream :/
 		shell("convert2bed --input=vcf --insertions < {input.sniffles} > {output.sniffles}")
 		shell("convert2bed --input=vcf --insertions < {input.svim} > {output.svim}")
 		
@@ -718,7 +769,7 @@ rule extract_by_length:
 		blast=PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		humanref=PROCESS+"BLASTN/HUMANREF/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:
-		shell("awk -F'\t' '$7>={params.threshold}' {input.blast} > {output.blast}")
+		shell("awk -F'\t' '$11>={params.threshold}' {input.blast} > {output.blast}")
 		shell("awk -F'\t' '$11>={params.threshold}' {input.humanref} > {output.humanref}") 
 
 #Control of the workflow: How do the genomic coordinates of my two BAMs differ for the insertion vectors! # CUrrently it looks like all the insertion reads do not really differ pre and post cut -> either the cut out is not sensitive ennough (try with split reads) or the vector doesn't really alter the alignment!

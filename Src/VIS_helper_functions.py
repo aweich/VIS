@@ -59,14 +59,20 @@ def insertion_normalisation(insertions,bases, n, outpath):
         second_line = file.readline()
         # Convert the content to an integer
         n_bases = int(second_line.strip())
+    if n_bases != 0:    
+        normalised = (n/n_bases) * n_insertions
+        with open(outpath, 'w') as output_file:
+            output_file.write("Number of Reads: " + str(n_bases) + "\n") 
+            output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
+            output_file.write("Normalisation factor: " + str(n) + "\n")
+            output_file.write("Insertions per " + str(n) + " Reads: " + str(normalised))
+    else:
+         with open(outpath, 'w') as output_file:
+            output_file.write("Number of Reads: " + str(n_bases) + "\n") 
+            output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
+            output_file.write("Normalisation factor: " + str(n) + "\n")
+            output_file.write("No reads found. Check the input!")
         
-    normalised = (n/n_bases) * n_insertions
-    
-    with open(outpath, 'w') as output_file:
-        output_file.write("Number of aligned bases: " + str(n_bases) + "\n") 
-        output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
-        output_file.write("Normalisation factor: " + str(n) + "\n")
-        output_file.write("Insertions per " + str(n) + " bases: " + str(normalised))
 
                     
 def read_length_distribution(fasta):
@@ -614,7 +620,7 @@ def exact_insertion_coordinates(border_dict, bed, diff, outfile, outfile2):
             #ranges for the stop coordinate
             ranges = [y - x for x, y in zip(border_dict[read_mod], border_dict[read_mod][1:])] #substracts the previous element from the following
             if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one
-                starts = starts[0]
+                starts = list(starts[0]) #has to be list to be iterable
             for n,coordinate in enumerate(starts):
                 #print(str(bed.loc[bed[3] == read][0]))
                 newbed.append(

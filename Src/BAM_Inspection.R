@@ -35,16 +35,21 @@ bedpath <- xargs$input_bed #"~/Data/VIS_data/GenmoicLocation_100_full_ads.bed"
 bampath <- xargs$input_bam #"/home/weichan/Data/VIS_data/BasicMapping_full_ads.bam"
 outputpath <- xargs$outputpath #"~/Projects/VIS/PLOTS/"
 buffer <- xargs$buffer #50000
-bed <- import.bed(bedpath)
+
 bm <- useEnsembl(host = "https://grch37.ensembl.org", #should change hg37 to hg38
                  biomart = "ENSEMBL_MART_ENSEMBL", 
                  dataset = "hsapiens_gene_ensembl")
 
 Cov <- coverage(bampath)
 Cov <- GRanges(Cov)
+Cov
 
 #data from bed file for the coordinates
 bed_data <- read.table(bedpath, header = FALSE, sep = "\t")
+bed_data <- bed_data[grep("^chr", bed_data$V1), ] #drop rows that do not start with chr
+
+#create second bed as granges
+bed <- makeGRangesFromDataFrame(bed_data, seqnames.field=c("V1"), start.field="V2", end.field=c("V3"), keep.extra.columns = TRUE)
 
 # Extract and print the chromosome, start, and stop coordinates for each line
 for (i in 1:nrow(bed_data)) {
@@ -65,13 +70,13 @@ for (i in 1:nrow(bed_data)) {
                                       start = start_coord, end = end_coord,
                                       name = "ENSEMBL", biomart = bm, stacking = "squish")
   
-  
+  bed
   #1: Load BED of Insertions
   coord <- AnnotationTrack(bed, name = "Insertions")
   
   #2: Load BAM Coverage
-  altrack <- AlignmentsTrack(bampath, isPaired = FALSE)
-
+  altrack <- AlignmentsTrack(bampath, isPaired = FALSE) #bampath, isPaired = FALSE
+	
   cov <- DataTrack(Cov, type=("heatmap"), name="Coverage")
   #3: Use respective Ideogram and GenomeAxis (automatic)
   itrack <- IdeogramTrack(genome = ref_genome, chromosome = chromosome)
@@ -80,7 +85,7 @@ for (i in 1:nrow(bed_data)) {
   #4: Plot all
   filename <- sprintf("%s_start%s_end%s.jpeg",chromosome, start, stop)
   jpeg(file=paste(outputpath,filename, sep="/"))
-  plotTracks(c(itrack,gtrack,altrack,biomTrack,cov,coord),
+  plotTracks(c(itrack,gtrack,altrack,biomTrack, cov, coord), #altrack, 
              chromosome =chromosome, from = start_coord,
              to = end_coord, transcriptAnnotation="symbol", shape="box", col="black")
   dev.off()
