@@ -34,7 +34,7 @@ rule all:
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
 		#Methylation
 		#expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
+		##expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
 		#Differential Methylation
@@ -47,6 +47,7 @@ rule all:
 		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
 		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		PROCESS+"LOCALIZATION/Insertion_length.png",
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
@@ -64,7 +65,7 @@ rule all:
 		#expand(PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Insertion_MeanMods_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/MeanModificiation_Insertion_{sample}.png", sample=SAMPLES),
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
 		
 		
 
@@ -274,7 +275,7 @@ rule nReads_for_insertion_count:
 	output:
 		temp(PROCESS+"QC/Number_of_Reads_{sample}.normalisation")
 	shell:
-		"gatk CountReads -I {input} > {output}"				
+		"gatk CountBases -I {input} > {output}"				
 
 rule normalisation_for_insertion_count:
 	input:
@@ -622,6 +623,13 @@ rule insertion_modification_heatmap:
 	run:
 		vhf.plot_modification_proximity(input.single, params.window_size, params.max_distance, output.singleout)
 
+rule insertion_length_plot:
+	input:
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES)
+	output:
+		PROCESS+"LOCALIZATION/Insertion_length.png"
+	run:
+		vhf.plot_insertion_length(input, output[0])
 ######
 ######
 ###### Variant callers and overlap check of Insertions with BLAST matches
@@ -747,14 +755,12 @@ rule variants_hardcode_blast_header:
 rule exact_insertion_coordinates:
 	input:
 		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
-		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	params:
-		diff = 50 #mean difference in the insertion start positions. If less than this threshhold, the first insertion will be treated as a representative
+		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" #some entries with cleavage site won't be in the output, if they were not mapped to the genome in the postcut sample; but a insertion withput genomic coordinates does not help us anyway
 	output:
 		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
 		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed" #only to get FASTA sequence
 	run:
-		vhf.exact_insertion_coordinates(input.borders, input.bed, params.diff, output.out, output.out2)
+		vhf.exact_insertion_coordinates(input.borders, input.bed, output.out, output.out2)
 
 #filter for BLAST matches
 rule extract_by_length:

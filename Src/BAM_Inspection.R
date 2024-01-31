@@ -29,7 +29,7 @@ parser$add_argument('--buffer', '-buffer', help= 'Number of bases that are added
 
 xargs<- parser$parse_args()
 
-options(ucscChromosomeNames=FALSE)
+#options(ucscChromosomeNames=FALSE)
 
 #or use manual data and parameters
 bedpath <- xargs$input_bed #"~/Data/VIS_data/GenmoicLocation_100_full_ads.bed"
@@ -78,7 +78,7 @@ for (i in 1:nrow(bed_data)) {
   coord <- AnnotationTrack(bed, name = "Insertions")
   
   #2: Load BAM Coverage
-  altrack <- AlignmentsTrack(bampath, isPaired = FALSE) #bampath, isPaired = FALSE
+  #altrack <- AlignmentsTrack(bampath, isPaired = FALSE) #bampath, isPaired = FALSE
 	
   #cov <- DataTrack(Cov, type=("heatmap"), name="Coverage")
   #3: Use respective Ideogram and GenomeAxis (automatic)
@@ -88,7 +88,7 @@ for (i in 1:nrow(bed_data)) {
   #4: Plot all
   filename <- sprintf("%s_start%s_end%s.jpeg",chromosome, start, stop)
   jpeg(file=paste(outputpath,filename, sep="/"))
-  plotTracks(c(itrack,gtrack,biomTrack,altrack, coord), #altrack, , cov
+  plotTracks(c(itrack,gtrack,biomTrack, coord), #altrack, , cov
              chromosome =chromosome, from = start_coord,
              to = end_coord, transcriptAnnotation="symbol", shape="box", col="black")
   dev.off()

@@ -551,7 +551,7 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                     else:
                         output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
-def exact_insertion_coordinates(border_dict, bed, diff, outfile, outfile2):
+def exact_insertion_coordinates(border_dict, bed, outfile, outfile2): #diff,
     """
     Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
     Then stop will be +1 of start. Second output will give the full insertion size so that it can be used for the methylation potting on the other BAM.
@@ -566,10 +566,14 @@ def exact_insertion_coordinates(border_dict, bed, diff, outfile, outfile2):
         start = row[1] #int(bed.loc[bed[3] == read][1]) #start coordinate of the read
         if read_mod in border_dict:
             starts = [start + num for num in border_dict[read_mod][0::2]] #different new start coordinates for each insertion in the read
+            print(read_mod)
+            print(starts)
             #ranges for the stop coordinate
             ranges = [y - x for x, y in zip(border_dict[read_mod], border_dict[read_mod][1:])] #substracts the previous element from the following
-            if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one #maybe this part can be removed. I don't think this filter is necessary anymore
-                starts = list(starts[0]) #has to be list to be iterable
+            del ranges[1::2] #drops every second element starting from the second, since otherwise we articfically include insertions between the insertions
+            #if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one #maybe this part can be removed. I don't think this filter is necessary anymore
+            #    starts = list(starts[0]) #has to be list to be iterable
+            print(ranges)
             for n,coordinate in enumerate(starts):
                 #print(str(bed.loc[bed[3] == read][0]))
                 newbed.append(
@@ -666,3 +670,31 @@ def reversevector(fastain, fastaout):
                 record_id_reversed = str(record_id) + '_reversed'
                 output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")
                 output_file.write(">"+str(record_id_reversed)+"\n"+str(reversed_record_seq) + "\n") 
+
+def plot_insertion_length(bed, outfile):
+    """
+    Takes the full coordinates bed files and plots them by their length.
+    """
+    plt.figure(figsize=(16, 9))
+    
+    dfs = list()
+    for f in bed:
+        data = pd.read_csv(f, sep='\t', names=["Chr", "Start", "End", "Read"])
+        #add number to reads with multiple insertions so they don't overlap in the plot
+        mask = data['Read'].duplicated(keep=False)
+        data.loc[mask, 'Read'] += data.groupby('Read').cumcount().add(1).astype(str) #adds 1/2/3 respectively
+        data["Length"] = data["End"] - data["Start"]
+        head, tail = os.path.split(f)
+        data['ID'] = tail.split(".")[0]
+        dfs.append(data)
+    
+    df = pd.concat(dfs, ignore_index=True)
+    df2 = df.copy()
+    df2["Length"] = 0
+    df_all = pd.concat([df,df2], ignore_index=True)
+    sns.pointplot(data=df_all, x="Length", y="Read", hue='ID', linestyle="None", marker="_", legend=None, linewidth=2)
+    sns.scatterplot(data=df, x="Length", y="Read", hue='ID', linestyle="None", marker="o")
+    plt.legend(loc='lower center', bbox_to_anchor=[0.5, 1])
+    plt.savefig(outfile, bbox_inches="tight")
+            
+    
