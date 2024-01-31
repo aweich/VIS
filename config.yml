@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "Magdeburg_sup_Vector_integration_site"
+experiment: "Magdeburg_fullrun_Vector_integration_site"
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123_sup_dorado_ref.bam"
     #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder
@@ -14,6 +14,8 @@ samples:
     S3: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20231211_1304_MN35428_FAW87932_7d66ac35/S3_sup_dorado_ref.bam"
     S4: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20231211_1304_MN37858_FAX97335_cdcfc2d8/S4_sup_dorado_ref.bam"
     S4r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240115_1540_MN40944_FAW84844_01854254/S4_sup_dorado_ref.bam"
+    S3r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240122_1254_MN37858_FAX66721_25279206/S3_sup_dorado_ref.bam"
+    S4_ADS: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/ADS_S4/ADS_S4_sup_dorado_ref.bam"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa" #

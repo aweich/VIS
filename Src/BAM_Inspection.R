@@ -29,6 +29,7 @@ parser$add_argument('--buffer', '-buffer', help= 'Number of bases that are added
 
 xargs<- parser$parse_args()
 
+options(ucscChromosomeNames=FALSE)
 
 #or use manual data and parameters
 bedpath <- xargs$input_bed #"~/Data/VIS_data/GenmoicLocation_100_full_ads.bed"
@@ -42,6 +43,8 @@ bm <- useEnsembl(host = "https://grch37.ensembl.org", #should change hg37 to hg3
 
 Cov <- coverage(bampath)
 Cov <- GRanges(Cov)
+rows <- length(ranges(Cov)) -1
+Cov <- Cov[1:rows]
 Cov
 
 #data from bed file for the coordinates
@@ -77,7 +80,7 @@ for (i in 1:nrow(bed_data)) {
   #2: Load BAM Coverage
   altrack <- AlignmentsTrack(bampath, isPaired = FALSE) #bampath, isPaired = FALSE
 	
-  cov <- DataTrack(Cov, type=("heatmap"), name="Coverage")
+  #cov <- DataTrack(Cov, type=("heatmap"), name="Coverage")
   #3: Use respective Ideogram and GenomeAxis (automatic)
   itrack <- IdeogramTrack(genome = ref_genome, chromosome = chromosome)
   gtrack <- GenomeAxisTrack()
@@ -85,7 +88,7 @@ for (i in 1:nrow(bed_data)) {
   #4: Plot all
   filename <- sprintf("%s_start%s_end%s.jpeg",chromosome, start, stop)
   jpeg(file=paste(outputpath,filename, sep="/"))
-  plotTracks(c(itrack,gtrack,altrack,biomTrack, cov, coord), #altrack, 
+  plotTracks(c(itrack,gtrack,biomTrack,altrack, coord), #altrack, , cov
              chromosome =chromosome, from = start_coord,
              to = end_coord, transcriptAnnotation="symbol", shape="box", col="black")
   dev.off()

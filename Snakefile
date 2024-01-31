@@ -25,8 +25,9 @@ rule all:
 		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Insertion_{sample}_Vector.fa", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
-		#expand(PROCESS+"QC/{sample}.qc", sample=SAMPLES),
-		#expand(PROCESS+"QC/Normalisation_IPM_{sample}.txt", sample=SAMPLES),
+		expand(PROCESS+"QC/{sample}.qc", sample=SAMPLES),
+		expand(PROCESS+"QC/Normalisation_IPM_{sample}.txt", sample=SAMPLES),
+		expand(PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/Postcut_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam" , sample=SAMPLES),
 		#exact coordinates
@@ -41,11 +42,11 @@ rule all:
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
 		#Visuals
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
-		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#deeper
 		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
@@ -55,7 +56,7 @@ rule all:
 		#nanovar
 		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#reads in insertion variants
-		#expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
+		expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
 		#new approach for insertion identification
 		#expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
@@ -64,11 +65,8 @@ rule all:
 		#expand(PROCESS+"METHYLATION/Insertion_MeanMods_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/MeanModificiation_Insertion_{sample}.png", sample=SAMPLES),
-		#BAM evaulation
-		#expand(PROCESS+"MAPPING/Matches_different_in_precut_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"EVAL/Matches_different_in_precut_FASTA_{sample}.fa", sample=SAMPLES),
-		#expand(PROCESS+"EVAL/Matches_different_in_precut_{sample}.bed", sample=SAMPLES)
-		#expand(PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES)
+		
+		
 
 #actual filenames
 def get_input_names(wildcards):
@@ -329,7 +327,7 @@ rule insertion_proximity:
 rule insertion_methylation_proximity:
     input:
         prox = PROCESS+"LOCALIZATION/Proximity_GenomicLocation_"+str(FRAG)+"_{sample}.bed",
-        fasta = config["ref_genome_ctrl"]
+        fasta = config["ref_genome_ctrl"] #healhy genome here, since the one with the vector throws error
     output:
         temp(PROCESS+"METHYLATION/Insertion_methylation_proximity_{sample}.fa")
     shell:
@@ -460,7 +458,7 @@ rule add_ID:
 	run:
 		vhf.add_annotation_column_bed(input.bed1, input.bed2, output[0])
 		
-rule healty_combined_insertion_modification_heatmap:
+rule healthy_combined_insertion_modification_heatmap:
 	input:
 		PROCESS+"METHYLATION/All_Insertions/MeanMods_Proximity_combined_in_{sample}_with_Insertion_ID.bed"
 	params:
@@ -748,7 +746,7 @@ rule variants_hardcode_blast_header:
 
 rule exact_insertion_coordinates:
 	input:
-		bed=PROCESS+"MAPPING/Precut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
+		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
 		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		diff = 50 #mean difference in the insertion start positions. If less than this threshhold, the first insertion will be treated as a representative

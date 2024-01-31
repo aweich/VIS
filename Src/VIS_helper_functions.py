@@ -235,7 +235,7 @@ def bed_intersect_count(chromosome, start, stop, meth_bed):
     # Calculate and return the number of overlaps
     num_overlaps = intersected[0][3]
     return int(num_overlaps)
-'''
+''' #will be removed if not used by 14.2
 def count_equal_entries(bed_file_path):
     """
     Counts how often a chr start stop entry occurs in a bed file. 
@@ -397,7 +397,8 @@ def plot_modification_proximity(bedfile,window_size, max_distance, outfile): #ne
     
     #ID column
     ID=df["ID"]
-    lut = dict(zip(ID.unique(), 'rgb')) #needs to be adjusted for number of samples of course
+    palette = sns.color_palette("hls", len(ID.unique()))
+    lut = dict(zip(ID.unique(), palette)) #needs to be adjusted for number of samples of course #'rgb'
     row_color = ID.map(lut)
     #for x axis
     pos=list(range(0, max_distance+1, window_size))
@@ -423,59 +424,7 @@ def plot_modification_proximity(bedfile,window_size, max_distance, outfile): #ne
     plt.title('')
     plt.savefig(outfile, bbox_inches="tight")
 
-#sniffles
-    ''' replaced by bedops:  8.1: Will be removed if not used again by 22.1
-def preprocess_sniffles(vcf_path, outfile, outfile2, outfile3):
-    """
-    Reads sniffles/vcf in general output and re-formats it into something more useful for the insertion plot. 
-    Deletion gets also a start coordinate although this does not make any biological sense! This is just for the plotting later!
-    """
-    # Read VCF file into a DataFrame
-    vcf = pd.read_csv(vcf_path, comment='#', header=None, sep='\t', dtype=str)
-    # Extract relevant columns
-    relevant_columns = pd.DataFrame(vcf.iloc[:, [0, 1, 2]])
 
-    # Extract SVType from V3
-    relevant_columns['SVType'] = vcf.iloc[:, 2].str.split('.').str[1]
-    vcf["Start"] = vcf.iloc[:, 7].str.extract(r'SVLEN=(\d+)')
-    vcf['Start'] = vcf['Start'].fillna(0)
-    # Calculate start coordinates (subtract SVLEN from V2)
-    relevant_columns['Start'] = vcf.iloc[:, 1].astype(int) - vcf["Start"].astype(int)
-    # Rename and reshape columns
-    relevant_columns = relevant_columns.drop(2, axis=1)
-    relevant_columns = relevant_columns.rename(columns={0: 'Chromosome', 1: 'Stop'})
-    #relevant_columns.columns = ['Chromosome', 'Stop', 'SVType', 'Start']
-    relevant_columns = relevant_columns[['Chromosome', 'Start', 'Stop', 'SVType']]
-    # Filter out chromosomes
-    relevant_columns = relevant_columns[relevant_columns['Chromosome'].str.match(r'^chr(?:[1-9]|1[0-9]|2[0-2]|X|Y)$')]
-    print(relevant_columns["Chromosome"].value_counts())
-    relevant_columns.to_csv(outfile, sep='\t', header=True, index=False)
-    #split into INS and DEL
-    mask = relevant_columns.SVType.str.contains("INS")
-    INS = relevant_columns[mask]
-    OTHER = relevant_columns[~mask]
-    INS.to_csv(outfile2, sep='\t', header=False, index=False)
-    OTHER.to_csv(outfile3, sep='\t', header=False, index=False)
-'''
-''' 8.1: Will be removed if not used again by 22.1
-def blastn_bed_merger(blast, bed, outfile):
-    """
-    Merge script for blastn output and bamtobed output to further narrow insertion from read level to coordinate level.
-    """
-    blast = pd.read_csv(blast, sep='\t')
-    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
-    bed["ReadSize"] = bed[2] - bed[1]
-    merged_bed = pd.merge(blast, bed, left_on=["QueryID"], right_on=[3])
-    #reshape
-    #start = merged_bed[1] +
-    #stop = merged_bed[2] - 
-    #insertions = pd.DataFrame({"Chromosome": merged_bed[0], "Start": merged_bed[1] , "Stop": merged_bed[2], "Fragment": merged_bed["SubjectID"], "Read": merged_bed["QueryID"]})
-    #merged_bed = merged_bed[['Chromosome', 'Start', 'Stop', 'SVType']]
-    print(blast.head())
-    print(bed.head())
-    # Save the merged BED file
-    merged_bed.to_csv(outfile, sep='\t', index=False)
-'''
 
 ####this part here is dedicated to the splitting of blast-match including fasta reads
 def merge_intervals(intervals, overlap):
@@ -619,7 +568,7 @@ def exact_insertion_coordinates(border_dict, bed, diff, outfile, outfile2):
             starts = [start + num for num in border_dict[read_mod][0::2]] #different new start coordinates for each insertion in the read
             #ranges for the stop coordinate
             ranges = [y - x for x, y in zip(border_dict[read_mod], border_dict[read_mod][1:])] #substracts the previous element from the following
-            if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one
+            if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one #maybe this part can be removed. I don't think this filter is necessary anymore
                 starts = list(starts[0]) #has to be list to be iterable
             for n,coordinate in enumerate(starts):
                 #print(str(bed.loc[bed[3] == read][0]))
