@@ -26,8 +26,8 @@ fragment_size: 100 #input for custom function
 MinLength: 66
 ref_genome_ctrl: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
 ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
-#ref_genome_index: "/home/lischecr/permanent/Src/hg38/genome/hg38.ref.mmi" #minimap output
-#methylation call
-#fast5path: "/home/weichan/permanent/Projects/VIS/dev/ads/pod5tofast5/" #only ads currently
-#sequencingsummary: "/home/lischecr/temporary/NanoporeData/VIS/GFP_POS_ADS/20230602_1106_MN37858_FAW82898_dd8938f8/sequencing_summary_FAW82898_dd8938f8_c07a3414.txt"
+ucsc_repeats: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_RepeatMasker_02_24"
+ucsc_H3K4Me1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me1_02_24"
+ucsc_H3K27Ac: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K27Ac_02_24"
+ucsc_H3K4Me3: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me3_02_24"
 

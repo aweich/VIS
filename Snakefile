@@ -275,7 +275,7 @@ rule nReads_for_insertion_count:
 	output:
 		temp(PROCESS+"QC/Number_of_Reads_{sample}.normalisation")
 	shell:
-		"gatk CountBases -I {input} > {output}"				
+		"gatk CountReads -I {input} > {output}"				
 
 rule normalisation_for_insertion_count:
 	input:
@@ -575,16 +575,19 @@ rule remove_vector_alignments:
 rule chromosome_read_plots: #currently fails as there is a irregular chr in file (CD19 CAR obv)
 	input:
 		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
-		bam=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam"
+		bam=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam",
 		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
+		H3K4Me1=config["ucsc_H3K4Me1"],
+		H3K4Me3=config["ucsc_H3K4Me3"],
+		H3K27Ac=config["ucsc_H3K27Ac"]
 	output:
 		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
 	params:
 		buffer=50000
-	shell: #
+	shell: 
 		r"""
 		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
-		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -buffer {params.buffer} -o {output.outpath}   
+		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -iH3K4Me1 {input.H3K4Me1} -iH3K4Me3 {input.H3K4Me3} -iH3K27Ac {input.H3K27Ac} -buffer {params.buffer} -o {output.outpath}   
 		"""	
 rule fragmentation_distribution_plots:
 	input:
