@@ -25,31 +25,32 @@ rule all:
 		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/Insertion_{sample}_Vector.fa", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/CutOut_{sample}_sorted.bam", sample=SAMPLES),
-		expand(PROCESS+"QC/{sample}.qc", sample=SAMPLES),
-		expand(PROCESS+"QC/Normalisation_IPM_{sample}.txt", sample=SAMPLES),
-		expand(PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
+		##expand(PROCESS+"QC/{sample}.qc", sample=SAMPLES),
+		##expand(PROCESS+"QC/Normalisation_IPM_{sample}.txt", sample=SAMPLES),
+		##expand(PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/Postcut_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam" , sample=SAMPLES),
+		expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" , sample=SAMPLES),
 		#exact coordinates
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
 		#Methylation
 		#expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa", sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
+		##expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
 		#Differential Methylation
 		#PROCESS+"LOCALIZATION/ExactInsertions_combined.bed",
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
 		#Visuals
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
-		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		PROCESS+"LOCALIZATION/Insertion_length.png",
+		expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		##expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		##expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
+		##expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
+		##PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		##PROCESS+"LOCALIZATION/Insertion_length.png",
 		#deeper
-		#expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
+		##expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#sniffles
 		#expand(PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#svim
@@ -57,7 +58,7 @@ rule all:
 		#nanovar
 		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.vcf", sample=SAMPLES),
 		#reads in insertion variants
-		expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
+		##expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
 		#new approach for insertion identification
 		#expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 		#expand(PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
@@ -65,7 +66,7 @@ rule all:
 		#expand(PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Insertion_MeanMods_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES),
-		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
+		##expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
 		
 		
 
@@ -201,11 +202,13 @@ rule get_cleavage_sites_for_fasta:
 		#PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
+		filteroption=True,
+		filtervalue=1600, #212 eef1a length,cd247 1600nt
 		overlap=2*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	output:
 		PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:
-		vhf.splitting_borders(input[0],params[0], output[0])
+		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output[0])
 
 rule split_fasta:
 	input:
@@ -564,22 +567,22 @@ rule remove_vector_alignments:
 		post=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam"
 	shell:
 		"""
-		#samtools view -N ^{input.prelost} {input.prebam} -o {output.pre}
-		#samtools view -N ^{input.postlost} {input.postbam} -o {output.post}
-		samtools view -h {input.postbam} | grep -vf {input.postlost} | samtools view -bS -o {output.post} -
+		samtools view -h {input.postbam} | grep -v 'CAR' | samtools view -bS -o {output.post} -
 		samtools index {output.post}
-		samtools view -h {input.prebam} | grep -vf {input.prelost} | samtools view -bS -o {output.pre} -
+		samtools view -h {input.prebam} | grep -v 'CAR' | samtools view -bS -o {output.pre} -
 		samtools index {output.pre}
 		"""
 
-rule chromosome_read_plots: #currently fails as there is a irregular chr in file (CD19 CAR obv)
+rule chromosome_read_plots: 
 	input:
 		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
 		bam=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam",
-		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed"
 		H3K4Me1=config["ucsc_H3K4Me1"],
 		H3K4Me3=config["ucsc_H3K4Me3"],
-		H3K27Ac=config["ucsc_H3K27Ac"]
+		H3K27Ac=config["ucsc_H3K27Ac"],
+		DNaseH=config["ucsc_DNaseH"],
+		TF=config["ucsc_TF"],
+		
 	output:
 		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
 	params:
@@ -587,7 +590,7 @@ rule chromosome_read_plots: #currently fails as there is a irregular chr in file
 	shell: 
 		r"""
 		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
-		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -iH3K4Me1 {input.H3K4Me1} -iH3K4Me3 {input.H3K4Me3} -iH3K27Ac {input.H3K27Ac} -buffer {params.buffer} -o {output.outpath}   
+		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -iH3K4Me1 {input.H3K4Me1} -iH3K4Me3 {input.H3K4Me3} -iH3K27Ac {input.H3K27Ac} -iDNaseH {input.DNaseH} -iTF {input.TF} -buffer {params.buffer} -o {output.outpath}   
 		"""	
 rule fragmentation_distribution_plots:
 	input:
@@ -825,3 +828,23 @@ rule pre_post_cut_and_check_FASTA_changes:
 	run: 
 		shell("seqkit grep -r -f {input.matches} {input.postcut} -o {output.readsnotinpostcut}")
 		shell("seqkit grep -r -f {input.matches} {input.precut} -o {output.readsnotinprecut}")
+
+rule proximity_generator:
+	input:
+		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
+	params:
+		offsets=[500,1000,5000,10000]
+	output:
+		out=PROCESS+"LOCALIZATION/Proximity_to_ExactInsertions_{sample}.bed"
+	run:
+		vhf.proximity_generator_for_bed_file(input.bed, output.out, params.offsets)
+
+rule TF_binding: 
+	input:
+		bed=PROCESS+"LOCALIZATION/Proximity_to_ExactInsertions_{sample}.bed",
+		TF=config["ucsc_TF"]
+		
+	output:
+		PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed"
+	shell: 
+		"bedtools intersect -a {input.TF} -wb -b {input.bed} > {output}"

@@ -427,7 +427,7 @@ def plot_modification_proximity(bedfile,window_size, max_distance, outfile): #ne
 
 
 ####this part here is dedicated to the splitting of blast-match including fasta reads
-def merge_intervals(intervals, overlap):
+def merge_intervals(intervals, overlap, filtering, filtervalue):
     # Sort intervals by start coordinates
     #sorted_intervals = sorted(intervals, key=lambda x: x[0])
     intervals.sort() #sorts all intervals in ascending order: Overlaps are possible! #sorts inplace
@@ -450,10 +450,21 @@ def merge_intervals(intervals, overlap):
     merged_intervals.append(intervals[-1]) #last element    
 
     print(merged_intervals)
+    
+    #iterate throgh list and substract current from previous for the filter
+    if filtering:
+        for i in [y - x for x,y in zip(merged_intervals,merged_intervals[1:])]:
+            if abs(i) > filtervalue:
+                return merged_intervals
+            else:
+                return None
+    #if no filter, just return all of them
+    print("no filter...")
+    
     return merged_intervals
 
    
-def splitting_borders(blast_file, overlap, outfile):
+def splitting_borders(blast_file, filteroption, filtervalue,  overlap, outfile):
     """
     This function takes in a BLASTn output file and returns a file with the reads and the respective borders for fasta splitting.
     Output format: Read_ID cut1, cut2, cutN 
@@ -472,12 +483,26 @@ def splitting_borders(blast_file, overlap, outfile):
         intervals = []
         for _, row in group.iterrows():
             start, end = row['QueryStart'], row['QueryEnd']
+            #filter rule
+            #if filteroption:
+             #   print("filtering...")
+             #   if end - start < filtervalue:
+             #       print("too small: ")
+             #       print(end, start)
+             #       continue
             intervals.append(start)
             intervals.append(end)
         # Store the intervals for each QueryID
         intervals_dict[query_id] = intervals
-
-    result_dict = {key: merge_intervals(intervals, overlap) for key, intervals in intervals_dict.items()}
+    
+    #if nothing was found, return file anyway
+   # if len(intervals_dict.keys()) == 0:
+     #    with open(outfile, 'w') as output_file:
+     #        output_file.write("No matches")   
+    #
+    #output if something is found
+    result_dict = {key: merge_intervals(intervals, overlap, filteroption,filtervalue) for key, intervals in intervals_dict.items()}
+    result_dict = {k: v for k, v in result_dict.items() if v is not None}
     json.dump(result_dict, open(outfile,'w'))
         #result_dict.to_csv(outfile, sep='\t', index=False)
 
@@ -697,4 +722,15 @@ def plot_insertion_length(bed, outfile):
     plt.legend(loc='lower center', bbox_to_anchor=[0.5, 1])
     plt.savefig(outfile, bbox_inches="tight")
             
-    
+def proximity_generator_for_bed_file(input_bed, output_bed, offsets):
+    # Read the BED file into a DataFrame
+    bed_df = pd.read_csv(input_bed, sep='\t', header=None, names=['chrom', 'start', 'end', 'read'])
+    bed_df = bed_df[~bed_df['chrom'].str.contains('CAR')] #drop CAR
+
+    # Iterate through the list of offsets and modify the genomic locations
+    for offset in offsets:
+        bed_df['start'] = bed_df['start'] - offset
+        bed_df['end'] = bed_df['end'] + offset
+        bed_df["offset"] = offset
+        # Write the modified DataFrame back to the original BED file
+        bed_df.to_csv(output_bed, sep='\t', header=False, index=False, mode='a')  # 'a' for append    
