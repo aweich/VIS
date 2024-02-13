@@ -1,30 +1,33 @@
 # Long-read data
-experiment: "Magdeburg_filter_cd247_Vector_integration_site"
+experiment: "Full_CD19_filter_cd247_Vector_integration_site" #"CD123_filter_eef1a_Vector_integration_site" #change the threshhold fro CD19 and CD123
 samples:
-    #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123_sup_dorado_ref.bam"
-    #full_Cd123+: "/home/weichan/permanent/Projects/VIS/dev/cd123+/gfp_pos_native.fq.gz" #nanopolish idnex file sin folder
-    #full_ads: "/home/weichan/permanent/Projects/VIS/dev/ads/gfp_pos_ads.fq.gz"
-    #full_ads: "/home/weichan/permanent/Projects/VIS/dev/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
+    #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
+    #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/gfp_pos_ads.fq.gz"
     #UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
-    #UTD: "/home/weichan/permanent/Projects/VIS/dev/UTD_sup_dorado_ref.bam"
+    #UTD: "/home/weichan/permanent/Projects/VIS/dev/CD123/UTD_sup_dorado_ref.bam"
+    #GFP+_CD123_pooled: "/home/weichan/permanent/Projects/VIS/dev/CD123/Pooled_CD123_GFP+.bam"
     #dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
     #S1: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/S1_sup_dorado_ref.bam" #CD19
     #S2: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/S2_sup_dorado_ref.bam"
     #S3: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20231211_1304_MN35428_FAW87932_7d66ac35/S3_sup_dorado_ref.bam"
-    S4: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20231211_1304_MN37858_FAX97335_cdcfc2d8/S4_sup_dorado_ref.bam"
-    S4r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240115_1540_MN40944_FAW84844_01854254/S4_sup_dorado_ref.bam"
+    #S4: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20231211_1304_MN37858_FAX97335_cdcfc2d8/S4_sup_dorado_ref.bam"
+    #S4r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240115_1540_MN40944_FAW84844_01854254/S4_sup_dorado_ref.bam"
     #S3r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240122_1254_MN37858_FAX66721_25279206/S3_sup_dorado_ref.bam"
-    S4_ADS: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/ADS_S4/ADS_S4_sup_dorado_ref.bam"
+    #S4_ADS: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/ADS_S4/ADS_S4_sup_dorado_ref.bam"
+    #S3_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S3.bam"
+    S4_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S4.bam"
+    MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa" #
-#vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/cd123_car_ref.fa"
+#vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/CD123/cd123_car_ref.fa"
 vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 fragment_size: 100 #input for custom function
 MinLength: 66
 ref_genome_ctrl: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
+#ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta"
 ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
 ucsc_repeats: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_RepeatMasker_02_24"
 ucsc_H3K4Me1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me1_02_24"
@@ -32,4 +35,5 @@ ucsc_H3K27Ac: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K27Ac
 ucsc_H3K4Me3: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me3_02_24"
 ucsc_DNaseH: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_DNaseClusters_02_24_cut"
 ucsc_TF: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TFClusters_02_24_cut_1000"
+ucsc_Genes: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_AllGENCODEV44_02_24_mod"
 

@@ -45,12 +45,13 @@ def fragmentation_fasta(fasta, equal_fragments, outfilename):
                     record_id_chunk = str(record_id) + '_%i' % (i)
                     output_file.write(">"+str(record_id_chunk)+"\n"+str(chunk) + "\n")            
 
-def insertion_normalisation(insertions,bases, n, outpath):
+def insertion_normalisation(insertions,bases, n, fasta, outpath):
     """
     Uses the number of aligned bases, number of insertions, and scaling factor n for normalisation.
     Results in insertions per n aligned bases. 
     E.g. A Normalised count of 3 with the scaling factor 10000 means that there were on average 3 insertions detected for each 1kb aligned bases. 
     """
+    N50=get_N50(fasta)
     n_insertions = sum(1 for _ in open(insertions)) #bed entries are by definition 1 per line
     print(n_insertions)
     with open(bases, 'r') as file:
@@ -62,19 +63,20 @@ def insertion_normalisation(insertions,bases, n, outpath):
     if n_bases != 0:    
         normalised = (n/n_bases) * n_insertions
         with open(outpath, 'w') as output_file:
-            output_file.write("Number of Reads: " + str(n_bases) + "\n") 
+            output_file.write("N50: " + str(N50) + "\n")
+            output_file.write("Number of Bases: " + str(n_bases) + "\n") 
             output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
             output_file.write("Normalisation factor: " + str(n) + "\n")
-            output_file.write("Insertions per " + str(n) + " Reads: " + str(normalised))
+            output_file.write("Insertions per " + str(n) + " Bases: " + str(normalised))
     else:
          with open(outpath, 'w') as output_file:
-            output_file.write("Number of Reads: " + str(n_bases) + "\n") 
+            output_file.write("Number of Bases: " + str(n_bases) + "\n") 
             output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
             output_file.write("Normalisation factor: " + str(n) + "\n")
             output_file.write("No reads found. Check the input!")
         
 
-                    
+'''                    
 def read_length_distribution(fasta):
     """
     Plots read lengths of a FASTA file
@@ -85,6 +87,33 @@ def read_length_distribution(fasta):
     plt.xlabel("log10(bp)")
     plt.title('Read length distribution')
     plt.savefig('read_length_distribution.pdf')
+'''
+def get_read_lengths_from_fasta(fasta_file):
+    """
+    returns fasta read lengths
+    """
+    read_lengths = []
+    with open(fasta_file, 'r') as file:
+        sequence_length = 0
+        for line in file:
+            if line.startswith('>'):
+                if sequence_length > 0:
+                    read_lengths.append(sequence_length)
+                sequence_length = 0
+            else:
+                sequence_length += len(line.strip())
+
+        if sequence_length > 0:
+            read_lengths.append(sequence_length)
+    return read_lengths
+
+def get_N50(fasta):
+    """Calculate read length N50.
+    Based on https://github.com/PapenfussLab/Mungo/blob/master/bin/fasta_stats.py
+    """
+    lengths = get_read_lengths_from_fasta(fasta)
+    return lengths[np.where(np.cumsum(lengths) >= 0.5 * np.sum(lengths))[0][0]]
+
 
 def fragmentation_match_distribution(data, fragment_specifier, outpath):
     """
@@ -678,7 +707,6 @@ def blast2gff(blast,outfile):
     with open(blast, 'r') as blast_file, open(outfile, 'w') as gff_file:
         for line in blast_file:
             fields = line.strip().split('\t')
-            # Assuming your BLAST format; adjust as needed
             sequence_id, subject_id, start, end = fields[0], fields[1], fields[8], fields[9]
             gff_file.write(f"{subject_id}\t{start}\t{end}\tBLAST\tfeature\t.\t.\t{sequence_id}\n")
 
@@ -725,12 +753,21 @@ def plot_insertion_length(bed, outfile):
 def proximity_generator_for_bed_file(input_bed, output_bed, offsets):
     # Read the BED file into a DataFrame
     bed_df = pd.read_csv(input_bed, sep='\t', header=None, names=['chrom', 'start', 'end', 'read'])
-    bed_df = bed_df[~bed_df['chrom'].str.contains('CAR')] #drop CAR
+    bed_df = bed_df[bed_df['chrom'].str.contains('chr')]
+    bed_df2 = bed_df.copy()
 
     # Iterate through the list of offsets and modify the genomic locations
     for offset in offsets:
+        #downstream
         bed_df['start'] = bed_df['start'] - offset
-        bed_df['end'] = bed_df['end'] + offset
-        bed_df["offset"] = offset
+        bed_df['end'] = bed_df['end']
+        bed_df["offset"] = "-" + str(offset)
         # Write the modified DataFrame back to the original BED file
-        bed_df.to_csv(output_bed, sep='\t', header=False, index=False, mode='a')  # 'a' for append    
+        bed_df.to_csv(output_bed, sep='\t', header=False, index=False, mode='a')  # 'a' for append
+    for offset in offsets:
+        #upstream
+        bed_df2['start'] = bed_df2['start']
+        bed_df2['end'] = bed_df2['end'] + offset
+        bed_df2["offset"] = "+" + str(offset)
+        # Write the modified DataFrame back to the original BED file
+        bed_df2.to_csv(output_bed, sep='\t', header=False, index=False, mode='a')  # 'a' for append

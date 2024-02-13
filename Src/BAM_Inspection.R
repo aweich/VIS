@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 gc()
+getwd()
 cran_packages <- c("stringi", "BiocManager", "argparse")
 bio_packages <- c("GenomicFeatures", "Gviz", "Rsamtools","biomaRt", "GenomicRanges", "rtracklayer")
 for (i in cran_packages) {
@@ -10,6 +11,7 @@ for (i in bio_packages) {
   if (!require(i, quietly = TRUE, character.only = TRUE))
     invisible(BiocManager::install(i)) 
 }
+
 
 library(Gviz)
 library(GenomicRanges)
@@ -51,6 +53,14 @@ bm <- useEnsembl(host = "https://grch37.ensembl.org", #should change hg37 to hg3
                  biomart = "ENSEMBL_MART_ENSEMBL", 
                  dataset = "hsapiens_gene_ensembl")
 
+#getwd()
+#gtf <- rtracklayer::import('~/permanent/Projects/VIS/VIS_integration_site/Src/Homo_sapiens.GRCh38.103.gtf')
+#gtf_df <- as.data.frame(gtf)
+#gtf_df <- gtf_df[,c("seqnames","start","end","width","strand","type","gene_id","gene_name")]
+#names(gtf_df)[names(gtf_df) == 'seqnames'] <- 'chromosome'
+#gtf_df$chromosome <- sub("^", "chr", gtf_df$chromosome )
+#tail(gtf_df)
+
 #functional genomics
 H3K4Me1 <- read.table(H3K4Me1path, header = FALSE, sep = "\t",skip = 1)
 H3K4Me1 <- makeGRangesFromDataFrame(H3K4Me1, seqnames.field=c("V1"), start.field="V2", end.field=c("V3"), keep.extra.columns = T)
@@ -75,7 +85,7 @@ DNaseH <- makeGRangesFromDataFrame(DNaseH, seqnames.field="V1", start.field="V2"
 #colnames(mcols(hm))
 
 #TF data
-#TF <- read.table(TFpath, header = FALSE,skip = 1)
+#TF <- read.table(TFpath, header = FALSE)
 #TF <- makeGRangesFromDataFrame(TF, seqnames.field=c("V1"), start.field="V2", end.field=c("V3"), keep.extra.columns = TRUE)
 
 #data from bed file for the coordinates: ChatGPT create the following beauty to prevent my snakemake script from failing in case the BED is
@@ -112,10 +122,13 @@ for (i in 1:nrow(bed_data)) {
   
   #0: Get Gene Region data from biomart
   biomTrack <- BiomartGeneRegionTrack(genome = ref_genome, chromosome = chromosome, 
-                                      start = start_coord, end = end_coord, filter = list(with_hgnc = TRUE),
-                                      name = "ENSEMBL", biomart = bm,stacking = "squish",stackHeight=0.5,
-                                      transcriptAnnotation="symbol",fill = "salmon")
+                                      start = start_coord, end = end_coord, #filter = list(with_hgnc = TRUE),
+                                      name = "ENSEMBL", biomart = bm,stacking = "squish",col="black",collapseTranscripts=TRUE,
+                                      transcriptAnnotation="gene", fill="#fba247")
+  #biomTrack <- BiomartGeneRegionTrack(genome = ref_genome, chromosome = chromosome, start = start_coord, end = end_coord, biomart = bm, stacking ="squish",stackHeight=0.5,transcriptAnnotation="symbol",fill = "salmon")
   
+  #gtfTrack <- GeneRegionTrack(gtf_df, genome = ref_genome,
+  #                         chromosome = chromosome,start = start_coord, end = end_coord, name = "Gene Model")
   #bed
   #1: Load BED of Insertions
   coord <- AnnotationTrack(bed, name = "Insertions")
@@ -137,9 +150,12 @@ for (i in 1:nrow(bed_data)) {
   gtrack <- GenomeAxisTrack()
   
   #4: Plot all
-  filename <- sprintf("%s_start%s_end%s.pdf",chromosome, start, stop)
+  filename <- sprintf("%s_start%s_end%s.pdf",chromosome, start, stop) #itrack, altrack,, DNaseH
   pdf(file=paste(outputpath,filename, sep="/"))
-  plotTracks(list(itrack,gtrack,biomTrack,altrack,coord,H3K4Me1_track,H3K4Me3_track,H3K27Ac_track,DNaseH_track), chromosome =chromosome, from = start_coord, to = end_coord, background.title = "lightblue", sizes = c(0.25,0.25,1,1,0.25,0.25,0.25,0.25,0.25),
-  col.main="red", innerMargin=10) 
+  plotTracks(c(itrack,gtrack,biomTrack,altrack,coord,H3K4Me1_track,H3K4Me3_track,H3K27Ac_track),
+             chromosome =chromosome, from = start_coord,
+             to = end_coord, transcriptAnnotation="symbol", shape="box", col="black",background.title = "red4",col.main="red", innerMargin=10) 
+  #plotTracks(list(itrack,gtrack,biomTrack,altrack,coord,H3K4Me1_track,H3K4Me3_track,H3K27Ac_track,DNaseH), chromosome =chromosome, from = start_coord, to = end_coord, background.title = "lightblue", sizes = c(0.25,0.25,1,1,0.25,0.25,0.25,0.25,0.25),
+  #col.main="red", innerMargin=10) 
   dev.off()
 }
