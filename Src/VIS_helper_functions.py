@@ -754,6 +754,7 @@ def proximity_generator_for_bed_file(input_bed, output_bed, offsets):
     # Read the BED file into a DataFrame
     bed_df = pd.read_csv(input_bed, sep='\t', header=None, names=['chrom', 'start', 'end', 'read'])
     bed_df = bed_df[bed_df['chrom'].str.contains('chr')]
+    bed_df = bed_df[~bed_df['chrom'].str.contains('_')]
     bed_df2 = bed_df.copy()
 
     # Iterate through the list of offsets and modify the genomic locations
@@ -771,3 +772,16 @@ def proximity_generator_for_bed_file(input_bed, output_bed, offsets):
         bed_df2["offset"] = "+" + str(offset)
         # Write the modified DataFrame back to the original BED file
         bed_df2.to_csv(output_bed, sep='\t', header=False, index=False, mode='a')  # 'a' for append
+
+def reshape_functional_tables(input_bed, output_bed):
+    """
+    Reformat bed-like output from TF and GENE overlays to get better table
+    """
+    bed_df = pd.read_csv(input_bed, sep='\t', header=None, names=['chrom', 'start', 'end', 'read','distance','symbol'])
+    bed_df=bed_df.drop_duplicates()
+    bed_df['abs_distance'] = abs(bed_df["distance"])
+    bed_df = bed_df.loc[bed_df.groupby(['read','symbol']).abs_distance.idxmin()]
+    print(bed_df.head())
+    bed_df['entry'] = range(len(bed_df))
+    pivoted = bed_df.pivot(index=["entry","chrom","start","end","read"], columns="distance", values="symbol")
+    pivoted.to_csv(output_bed, sep='\t')

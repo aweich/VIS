@@ -18,9 +18,9 @@ import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 		
 rule all:
 	input: 
-		expand(PROCESS+"QC/short_{sample}.qc", sample=SAMPLES),
-		expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
-		expand(PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
+		##expand(PROCESS+"QC/short_{sample}.qc", sample=SAMPLES),
+		##expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
+		##expand(PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
 		#expand(PROCESS+"MAPPING/Postcut_{sample}.bed", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" , sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
@@ -30,12 +30,13 @@ rule all:
 		#PROCESS+"LOCALIZATION/ExactInsertions_combined.bed",
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
 		#Visuals
-		expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
+		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
+		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		##expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
 		##PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
@@ -193,7 +194,7 @@ rule get_cleavage_sites_for_fasta:
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		filteroption=True,
-		filtervalue=1600, #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1300 with buffer?
+		filtervalue=1600, #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
 		overlap=2*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	output:
 		PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
@@ -552,8 +553,8 @@ rule get_reads_of_supplementary_matches:
 		post=PROCESS+"MAPPING/Postcut_{sample}_lostvector.reads",
 		pre=PROCESS+"MAPPING/Precut_{sample}_lostvector.reads"
 	run:
-		shell("awk '$1 ~ /CD/ {{print $4}}' {input.post} > {output.post}")
-		shell("awk '$1 ~ /CD/ {{print $4}}' {input.pre} > {output.pre}")
+		shell("awk '$1 ~ /CAR/ {{print $4}}' {input.post} > {output.post}") #CD19 with CD/CAR, CD123 with V0. Uff that sucks
+		shell("awk '$1 ~ /CAR/ {{print $4}}' {input.pre} > {output.pre}")
 
 rule remove_vector_alignments:
 	input:
@@ -564,7 +565,7 @@ rule remove_vector_alignments:
 	output:
 		pre=PROCESS+"MAPPING/NoVectorAlignments_Precut_{sample}_sorted.bam",
 		post=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam"
-	shell:
+	shell: #V0 for CD123, CAR for CD19
 		"""
 		samtools view -h {input.postbam} | grep -v 'CAR' | samtools view -bS -o {output.post} -
 		samtools index {output.post}
@@ -579,17 +580,17 @@ rule chromosome_read_plots:
 		H3K4Me1=config["ucsc_H3K4Me1"],
 		H3K4Me3=config["ucsc_H3K4Me3"],
 		H3K27Ac=config["ucsc_H3K27Ac"],
-		DNaseH=config["ucsc_DNaseH"],
+		gtf=config["ucsc_Genes_gtf"],
 		TF=config["ucsc_TF"]#PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed",
 		
 	output:
 		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
 	params:
-		buffer=100000
+		buffer=50000
 	shell: 
 		r"""
 		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
-		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -iH3K4Me1 {input.H3K4Me1} -iH3K4Me3 {input.H3K4Me3} -iH3K27Ac {input.H3K27Ac} -iDNaseH {input.DNaseH} -iTF {input.TF} -buffer {params.buffer} -o {output.outpath}   
+		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -iH3K4Me1 {input.H3K4Me1} -iH3K4Me3 {input.H3K4Me3} -iH3K27Ac {input.H3K27Ac} -igtf {input.gtf} -iTF {input.TF} -buffer {params.buffer} -o {output.outpath}   
 		"""	
 rule fragmentation_distribution_plots:
 	input:
@@ -832,7 +833,7 @@ rule proximity_generator:
 	input:
 		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
 	params:
-		offsets=[1000,5000,10000]
+		offsets=[0,1000,5000,10000,500000]
 	output:
 		out=PROCESS+"LOCALIZATION/Proximity_to_ExactInsertions_{sample}.bed"
 	run:
@@ -856,4 +857,15 @@ rule Genes_in_prox:
 	output:
 		PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed"
 	shell: 
-		"bedtools intersect -wa -a {input.bed} -wb -b {input.TF} | cut -f1,2,3,4,5,9 | sort -k6 > {output}"		
+		"bedtools intersect -wa -a {input.bed} -wb -b {input.TF} | cut -f1,2,3,4,5,9 | sort -k6 > {output}"	
+
+rule reshape_functional_tables:
+	input:
+		TF=PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed",
+		Genes=PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed"
+	output:
+		TF=PROCESS+"FUNCTIONALGENOMICS/Formatted_TF_" + str(FRAG)+"_{sample}.bed",
+		Genes=PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed"
+	run:
+		vhf.reshape_functional_tables(input.TF, output.TF)
+		vhf.reshape_functional_tables(input.Genes, output.Genes) 	
