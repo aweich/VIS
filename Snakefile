@@ -24,7 +24,7 @@ rule all:
 		#expand(PROCESS+"MAPPING/Postcut_{sample}.bed", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" , sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/Methyl_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/Insertion_fasta_proximity_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/MeanMods_Proximity_{sample}.bed", sample=SAMPLES),
 		#Differential Methylation
 		#PROCESS+"LOCALIZATION/ExactInsertions_combined.bed",
@@ -32,9 +32,9 @@ rule all:
 		#Visuals
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
 		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
+		##expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		##expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		##expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
 		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
@@ -45,6 +45,7 @@ rule all:
 		##expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
 		#expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		##expand(PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf", sample=SAMPLES),
 		#pooling
 		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
@@ -181,7 +182,7 @@ rule reads_with_BLASTn_matches:
 	output:
 		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
 	shell:
-		"grep '_Insertion' {input.refbed} > {output}"
+		"grep '_' {input.refbed} > {output}" 
 ######
 ######
 ###### FASTA preparation: Cut out of blast-detected vector fragments and create new "cut-out" FASTA 
@@ -194,7 +195,7 @@ rule get_cleavage_sites_for_fasta:
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		filteroption=True,
-		filtervalue=1600, #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
+		filtervalue=config["MinInsertionLength"], 
 		overlap=2*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	output:
 		PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
@@ -206,12 +207,33 @@ rule split_fasta:
 		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		fasta=PROCESS+"FASTA/Full_{sample}.fa"
 	params:
-		mode="Join" #if each split FASTA substring should be used individually, use "Separated"
+		mode="Separated" #if each split FASTA substring should be used individually, use "Separated" Join
 	output:
 		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
 		vector=PROCESS+"FASTA/Insertion_{sample}_Vector.fa"
 	run:
 		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.vector)
+
+rule reads_with_insertion:
+	input:
+		fasta=PROCESS+"FASTA/Full_{sample}.fa",
+		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
+	run:
+		vhf.orf_prediction(input.fasta, input.breakpoints, output[0])
+
+rule orf_prediction:
+	input:
+		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
+	output:
+		proteinorf=PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf",
+		fastaorf=PROCESS+"FASTA/FASTA_Insertion_{sample}_Vector.orf"
+	shell:
+		"""
+		./Src/ORFfinder -s 0 -in {input} -outfmt 0 -out {output.proteinorf}
+		./Src/ORFfinder -s 0 -in {input} -outfmt 1 -out {output.fastaorf}
+		"""
 
 ######
 ######
@@ -502,7 +524,7 @@ rule find_vector_BLASTn:
 	output:
 		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:
-		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs'") 
+		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'") 
 
 rule hardcode_blast_header:		
 	input: 
@@ -510,7 +532,7 @@ rule hardcode_blast_header:
 	output:
 		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
-		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
+		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input} > {output}")
 		
 #BLASTN vector against human genome: Which vector parts are close to human sequences so that they might raise a false positivite BLAST match
 rule find_vector_BLASTn_in_humanRef:
@@ -521,14 +543,14 @@ rule find_vector_BLASTn_in_humanRef:
 	output:
 		temp(PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:
-		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs'")
+		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'")
 rule hardcode_blast_header_humanRef:		
 	input: 
 		PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
-		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input} > {output}")
+		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevaöue\tbitscore' | cat - {input} > {output}")
 
 rule blast_to_gff:
 	input: 
@@ -760,13 +782,14 @@ rule variants_hardcode_blast_header:
 
 rule exact_insertion_coordinates:
 	input:
-		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
+		#bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
+		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", 
 		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" #some entries with cleavage site won't be in the output, if they were not mapped to the genome in the postcut sample; but a insertion withput genomic coordinates does not help us anyway
 	output:
 		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
 		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed" #only to get FASTA sequence
 	run:
-		vhf.exact_insertion_coordinates(input.borders, input.bed, output.out, output.out2)
+		vhf.exact_insertion_coordinates2(input.borders, input.bed, output.out, output.out2)
 
 #filter for BLAST matches
 rule extract_by_length:

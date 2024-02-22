@@ -17,6 +17,7 @@ import collections
 import seaborn as sns
 from pybedtools import BedTool
 import json
+import subprocess
    
 def chunks(lst, n):
     """
@@ -605,7 +606,85 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                     else:
                         output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
-def exact_insertion_coordinates(border_dict, bed, outfile, outfile2): #diff,
+def exact_insertion_coordinates(border_dict, bed, outfile, outfile2):
+    """
+    Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
+    Then stop will be +1 of start. Second output will give the full insertion size so that it can be used for the methylation potting on the other BAM.
+    This is error-prone and has not been tested for insertions that have breaks in the fasta!
+    """
+    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
+    border_dict = json.load(open(border_dict))
+    newbed = []
+    fullcoordinatesbed=[]
+    for key in border_dict:
+        if len(border_dict[key]) == 2: #== only one insertion in this read
+            for index,row in bed.iterrows():
+                if row[3].split("_")[0] == key and row[3].split("_")[1] != '1': #read must be in cleavage sites and either "Insertion"/str or '0'.  
+                    insertion_start = row[1] + border_dict[key][0] #row[1] is where the read starts, so plus cleavage site value 0 gives the actual starting point here
+                    newbed.append( #add the location to file
+                    {
+                        'Chr': row[0],
+                        'Start': insertion_start,
+                        'Stop':  insertion_start + 1,
+                        'Read':  row[3] #actual read name, that could be _0 or _Insertion
+                    }
+                    )
+                    fullcoordinatesbed.append(
+                    {
+                        'Chr': row[0],
+                        'Start': insertion_start,
+                        'Stop':  insertion_start + border_dict[key][1] - border_dict[key][0], #dict values depend on each other, so difference between them is actual length
+                        'Read':  row[3]
+                    }
+                    )
+        elif len(border_dict[key]) > 2:
+            for index,row in bed.iterrows():
+                if row[3].split("_")[0] == key:
+                    if row[3].split("_")[1] == "Insertion": #for the pasted sequences
+                        starts = [row[1] + num for num in border_dict[key][0::2]] #different new start coordinates for each insertion in the read
+                        ranges = [y - x for x, y in zip(border_dict[key], border_dict[key][1:])] #substracts the previous element from the following
+                        del ranges[1::2] #drops every second element starting from the second, since otherwise we articfically include insertions between the insertions
+                        for n,coordinate in enumerate(starts):
+                            newbed.append(
+                            {
+                                'Chr': row[0],
+                                'Start': coordinate,
+                                'Stop':  coordinate + 1,
+                                'Read':  row[3]
+                            }
+                            )
+                            fullcoordinatesbed.append(
+                            {
+                                'Chr': row[0],
+                                'Start': coordinate,
+                                'Stop':  coordinate + ranges[n],
+                                'Read':  row[3]
+                            }
+                            )
+                    else: #for the separated sequences
+                        read_number = int(row[3].split("_")[1])    
+                        newbed.append(
+                        {
+                            'Chr': row[0],
+                            'Start': border_dict[key][read_number + read_number], #this is always the start position
+                            'Stop':  border_dict[key][read_number + read_number] + 1,
+                            'Read':  row[3]
+                        }
+                        )
+                        fullcoordinatesbed.append(
+                        {
+                            'Chr': row[0],
+                            'Start': border_dict[key][read_number + read_number],
+                            'Stop':  border_dict[key][read_number + read_number] + border_dict[key][read_number + read_number + 1] - border_dict[key][read_number + read_number],
+                            'Read':  row[3]
+                        }
+                        )
+    out1=pd.DataFrame(newbed)
+    out2=pd.DataFrame(fullcoordinatesbed)
+    out1.to_csv(outfile, sep='\t', index=False, header=False)
+    out2.to_csv(outfile2, sep='\t', index=False, header=False)
+
+def exact_insertion_coordinates2(border_dict, bed, outfile, outfile2):
     """
     Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
     Then stop will be +1 of start. Second output will give the full insertion size so that it can be used for the methylation potting on the other BAM.
@@ -616,40 +695,34 @@ def exact_insertion_coordinates(border_dict, bed, outfile, outfile2): #diff,
     newbed = []
     fullcoordinatesbed=[]
     for index,row in bed.iterrows():
-        read_mod = row[3].split("_")[0]
-        start = row[1] #int(bed.loc[bed[3] == read][1]) #start coordinate of the read
-        if read_mod in border_dict:
-            starts = [start + num for num in border_dict[read_mod][0::2]] #different new start coordinates for each insertion in the read
-            print(read_mod)
-            print(starts)
-            #ranges for the stop coordinate
-            ranges = [y - x for x, y in zip(border_dict[read_mod], border_dict[read_mod][1:])] #substracts the previous element from the following
-            del ranges[1::2] #drops every second element starting from the second, since otherwise we articfically include insertions between the insertions
-            #if abs(np.mean(starts) -start) < diff: #insertions are close together, just use one #maybe this part can be removed. I don't think this filter is necessary anymore
-            #    starts = list(starts[0]) #has to be list to be iterable
-            print(ranges)
-            for n,coordinate in enumerate(starts):
-                #print(str(bed.loc[bed[3] == read][0]))
+        if row[3].split("_")[0] in border_dict.keys():
+            key = row[3].split("_")[0]
+            for i,value in enumerate(border_dict[key]):
                 newbed.append(
-            {
-                'Chr': row[0],
-                'Start': coordinate,
-                'Stop':  coordinate + 1,
-                'Read':  row[3]
-            }
-            )
+                {
+                    'Chr': row[0],
+                    'Start': row[1] + border_dict[key][i], #this is always the start position
+                    'Stop':  row[1] + border_dict[key][i] + 1,
+                    'Read':  row[3] + "_" + str(value)
+                }
+                )
                 fullcoordinatesbed.append(
                 {
                     'Chr': row[0],
-                    'Start': coordinate,
-                    'Stop':  coordinate + ranges[n],
-                    'Read':  row[3]
+                    'Start': row[1] + border_dict[key][i],
+                    'Stop':  row[1] + border_dict[key][i] + 1,
+                    'Read':  row[3] + "_" + str(value)
                 }
-        )
-    out=pd.DataFrame(newbed)
+                )
+
+
+
+    out1=pd.DataFrame(newbed)
     out2=pd.DataFrame(fullcoordinatesbed)
-    out.to_csv(outfile, sep='\t', index=False, header=False)
+    out1.to_csv(outfile, sep='\t', index=False, header=False)
     out2.to_csv(outfile2, sep='\t', index=False, header=False)
+
+
 
 def combine_beds_add_ID(beds, outfile): #maybe at some point add to the heatmap plotting function
     """
@@ -785,3 +858,13 @@ def reshape_functional_tables(input_bed, output_bed):
     bed_df['entry'] = range(len(bed_df))
     pivoted = bed_df.pivot(index=["entry","chrom","start","end","read"], columns="distance", values="symbol")
     pivoted.to_csv(output_bed, sep='\t')
+
+def orf_prediction(infasta,border_dict,outfasta):
+    border_dict = json.load(open(border_dict))
+    with open(outfasta, 'w') as output_file: #append mode, if it does not work, just store the orfs in list an then paste into file
+        # opening given fasta file using the file path
+        with open(infasta, 'r') as fasta_file:
+            # extracting multiple data in single fasta file using biopython
+            for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
+                if record.id in border_dict:
+                    output_file.write(">"+str(record.id)+"\n"+str(record.seq) + "\n")
