@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "Noglue_bitscore_Full_CD19_filter_cd247_Vector_integration_site" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site "DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "BUFFERMODE100_CD19_cd247_Vector_integration_site" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site "DummyExample"#change the threshhold fro CD19 and CD123 and location plos
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
@@ -25,8 +25,10 @@ source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/CD123/cd123_car_ref.fa"
 vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
+# protein BLASTp database
+proteindb: "/home/weichan/swissprot/swissprot"
 fragment_size: 100 #input for custom function
-MinLength: 66
+MinLength: 1
 MinInsertionLength: 1600 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
 ref_genome_ctrl: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta"

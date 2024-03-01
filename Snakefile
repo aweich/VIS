@@ -31,7 +31,7 @@ rule all:
 		#PROCESS+"METHYLATION/Insertion_fasta_proximity_combined.bed",
 		#Visuals
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
-		expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		##expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		##expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
@@ -39,8 +39,8 @@ rule all:
 		##expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
-		##PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		##PROCESS+"LOCALIZATION/Insertion_length.png",
+		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		PROCESS+"LOCALIZATION/Insertion_length.png",
 		#deeper
 		##expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
@@ -49,6 +49,14 @@ rule all:
 		#pooling
 		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
+		#orfs
+		expand(PROCESS+"FASTA/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
+		expand(PROCESS+"FASTA/BED_{sample}_Vector.orf", sample=SAMPLES),
+		#WIP
+		expand(PROCESS+"QC/ReadLevel_MappingQuality_{sample}.txt", sample=SAMPLES),
+		expand(PROCESS+"QC/cigar_{sample}_postcut.txt", sample=SAMPLES),
+		#expand(PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 		
 		
 
@@ -58,7 +66,7 @@ def get_input_names(wildcards):
 
 #BAM Operations:
 #Add rule to remove supplementary and secondary alignments
-#samtools view -F 2304 -bo filtered.bam original.bam (via picard: supplementary alignment, not primary alignment): Added to prepare BAM rule
+#samtools view -F 2304 -bo filtered.bam original.bam (via picard: supplementary alignment, not primary alignment): Added to prepare BAM ruleF
 
 ######
 ######
@@ -125,25 +133,12 @@ rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 		genome=config["ref_genome"] #_ctrl, if we still use the modified reference genome, we will detect the reads that have no matches with blast but are still assigned to reference! -> should be zero, but lets see
 	output:
 		PROCESS+"MAPPING/Postcut_{sample}_sorted.bam"
-	shell:
+	shell: #added N=0 instead of default N=1
 		"""
-		minimap2 -y -ax map-ont {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
+		minimap2 -y -ax map-ont --score-N 0 {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
 		samtools index {output}
 		"""   
-'''
-#rule to create BAM files with unperturbed reads
-rule insertion_mapping: #mapping with the added vector as genome
-	input:
-		fasta=PROCESS+"FASTA/Full_{sample}.fa",
-		genome=PROCESS+"MAPPING/ref_genome_index.mmi"
-	output:
-		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
-	shell:
-		"""
-		minimap2 -y -ax map-ont {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
-		samtools index {output}
-		"""   
-'''
+
 rule insertion_mapping: #conserves tags!
 	input:
 		bam=get_input_names,
@@ -180,9 +175,9 @@ rule reads_with_BLASTn_matches:
 	input:
 		refbed=PROCESS+"MAPPING/Postcut_{sample}.bed",
 	output:
-		PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
+		loc=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
 	shell:
-		"grep '_' {input.refbed} > {output}" 
+		"grep '_' {input.refbed} > {output.loc}"  
 ######
 ######
 ###### FASTA preparation: Cut out of blast-detected vector fragments and create new "cut-out" FASTA 
@@ -196,18 +191,19 @@ rule get_cleavage_sites_for_fasta:
 	params:
 		filteroption=True,
 		filtervalue=config["MinInsertionLength"], 
-		overlap=2*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
+		overlap=3*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	output:
-		PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+		cleavage=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+		reads=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
 	run:
-		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output[0])
+		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output.cleavage, output.reads)
 
 rule split_fasta:
 	input:
 		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		fasta=PROCESS+"FASTA/Full_{sample}.fa"
 	params:
-		mode="Separated" #if each split FASTA substring should be used individually, use "Separated" Join
+		mode="Buffer" #if each split FASTA substring should be used individually, use "Separated" Join, New mode: Buffer
 	output:
 		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
 		vector=PROCESS+"FASTA/Insertion_{sample}_Vector.fa"
@@ -234,6 +230,36 @@ rule orf_prediction:
 		./Src/ORFfinder -s 0 -in {input} -outfmt 0 -out {output.proteinorf}
 		./Src/ORFfinder -s 0 -in {input} -outfmt 1 -out {output.fastaorf}
 		"""
+
+rule orf_reshape:
+	input:
+		orfs=PROCESS+"FASTA/FASTA_Insertion_{sample}_Vector.orf"
+	output:
+		bed=PROCESS+"FASTA/BED_{sample}_Vector.orf"
+	run:
+		vhf.orf_reshape(input.orfs, output.bed)
+
+###### ORF to protein BLAST
+rule protein_blast:
+	input:
+		PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf"
+	params: 
+		db=config["proteindb"]
+	output:
+		temp(PROCESS+"FASTA/PROTEINBLAST/Protein_Insertion_NoHeaderBlast_{sample}.temp")
+	shell:
+		"blastp -query {input} -db {params.db} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs evalue bitscore' -taxids 9606"
+		
+				
+rule protein_blast_header:		
+	input: 
+		PROCESS+"FASTA/PROTEINBLAST/Protein_Insertion_NoHeaderBlast_{sample}.temp"
+	output:
+		PROCESS+"FASTA/PROTEINBLAST/ORFs_{sample}.proteinblast"
+	shell:	
+		"echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tEvalue\tBitscore' | cat - {input} > {output}"
+
+
 
 ######
 ######
@@ -299,7 +325,7 @@ rule nReads_for_insertion_count:
 
 rule normalisation_for_insertion_count:
 	input:
-		insertions=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed",
+		insertions=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
 		number_of_bases=PROCESS+"QC/Number_of_Bases_{sample}.normalisation",
 		fasta=PROCESS+"FASTA/Full_{sample}.fa" #for N50
 	params:
@@ -308,7 +334,75 @@ rule normalisation_for_insertion_count:
 		PROCESS+"QC/Normalisation_IPG_{sample}.txt"
 	run:
 		vhf.insertion_normalisation(input.insertions, input.number_of_bases, params[0], input.fasta, output[0])
+
+rule mapping_for_cigar:
+	input:
+		bam=get_input_names,
+		ref=config["ref_genome_ctrl"]
+	output:
+		PROCESS+"QC/HealthyRef_cigar_{sample}_sorted.bam"
+	shell:
+		"""
+		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.ref} - | samtools sort |  samtools view -F 2304 -o {output}
+		samtools index {output}
+		"""
+
+rule cigar_strings:
+	input:
+		pre=PROCESS+"QC/HealthyRef_cigar_{sample}_sorted.bam", #PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
+		post=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
+		matches=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
+	output:
+		pre=PROCESS+"QC/cigar_{sample}_precut.txt",
+		names=PROCESS+"QC/cigar_{sample}_precut_names.txt",
+		post=PROCESS+"QC/cigar_{sample}_postcut.txt",
+	shell:
+		"""
+		samtools view {input.pre} | cut -f 1,3,4,6 | grep '[0-9]\{{4\}}I' > {output.pre}
+		samtools view {input.pre} | cut -f 1,3,4,6 | grep '[0-9]\{{4\}}I' | cut -f 1 > {output.names}
+		samtools view {input.post} | grep -f {input.matches} | cut -f 1,3,4,6 > {output.post}
+		"""
 		
+rule cigar_fasta:
+	input:
+		fasta=PROCESS+"FASTA/Full_{sample}.fa",
+		matches=PROCESS+"QC/cigar_{sample}_precut_names.txt",
+	output:
+		PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa",
+	run: 
+		shell("seqkit grep -r -f {input.matches} {input.fasta} -o {output}")
+
+rule cigar_fasta_blast:
+	input:
+		fasta=PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa",
+		dummy=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa.ndb" #provokes the building of the database first!
+	params:
+		#vector=config["blastn_db"] #vector db
+		vector=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
+	output:
+		PROCESS+"BLASTN/Cigar/cigar"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	run:
+		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'") 
+
+rule cigar_hardcode_blast_header:		
+	input: 
+		PROCESS+"BLASTN/Cigar/cigar"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	run:	
+		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input} > {output}")	
+			
+#### read-level stats
+rule read_level_stats:
+	input:
+		bam=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
+		matches=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt", 
+	output:
+		PROCESS+"QC/ReadLevel_MappingQuality_{sample}.txt"
+	shell:
+		"""
+		samtools view -h {input.bam} | grep -e '^@' -f {input.matches} | samtools stats | grep '^SN' | cut -f 2- > {output}
+		"""
 
 ######
 ######
@@ -603,8 +697,7 @@ rule chromosome_read_plots:
 		H3K4Me3=config["ucsc_H3K4Me3"],
 		H3K27Ac=config["ucsc_H3K27Ac"],
 		gtf=config["ucsc_Genes_gtf"],
-		TF=config["ucsc_TF"]#PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed",
-		
+		TF=config["ucsc_TF"]#PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed",		
 	output:
 		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
 	params:
@@ -633,7 +726,6 @@ rule fragmentation_distribution_plots:
 
 rule insertion_heatmap:
 	input:
-		#expand(PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES)
 		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES)
 	output:
 		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png"

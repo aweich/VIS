@@ -494,7 +494,7 @@ def merge_intervals(intervals, overlap, filtering, filtervalue):
     return merged_intervals
 
    
-def splitting_borders(blast_file, filteroption, filtervalue,  overlap, outfile):
+def splitting_borders(blast_file, filteroption, filtervalue,  overlap, outfile1, outfile2):
     """
     This function takes in a BLASTn output file and returns a file with the reads and the respective borders for fasta splitting.
     Output format: Read_ID cut1, cut2, cutN 
@@ -533,8 +533,10 @@ def splitting_borders(blast_file, filteroption, filtervalue,  overlap, outfile):
     #output if something is found
     result_dict = {key: merge_intervals(intervals, overlap, filteroption,filtervalue) for key, intervals in intervals_dict.items()}
     result_dict = {k: v for k, v in result_dict.items() if v is not None}
-    json.dump(result_dict, open(outfile,'w'))
-        #result_dict.to_csv(outfile, sep='\t', index=False)
+    json.dump(result_dict, open(outfile1,'w'))
+    with open(outfile2, 'w') as output_file:
+        for key in result_dict.keys():
+            output_file.write(f"{key}\n")
 
 def split_fasta_with_breakpoints(fasta_string, breakpoints):
     """
@@ -599,6 +601,12 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                                 record_id_new = str(record_id) + '_%i' % (i)
                                 print("Split " + str(record_id) + "into " + str(record_id_new))
                                 output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
+                        elif mode == "Buffer":
+                            buffer = 100*'N'
+                            record_seq_new = buffer.join([str(n) for n in record_list])
+                            print(record_seq_new)
+                            record_id_new = str(record_id) + '_Buffer20Insertion'
+                            output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
                         else: 
                             record_seq_new = ''.join([str(n) for n in record_list])
                             record_id_new = str(record_id) + '_Insertion'
@@ -691,36 +699,42 @@ def exact_insertion_coordinates2(border_dict, bed, outfile, outfile2):
     This is error-prone and has not been tested for insertions that have breaks in the fasta!
     """
     bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
+    bed['BaseRead'] = bed[3].str.split("_").str[0] #bed[3].map(lambda x: str(x)[:-2])
     border_dict = json.load(open(border_dict))
-    newbed = []
-    fullcoordinatesbed=[]
-    for index,row in bed.iterrows():
-        if row[3].split("_")[0] in border_dict.keys():
-            key = row[3].split("_")[0]
-            for i,value in enumerate(border_dict[key]):
-                newbed.append(
-                {
-                    'Chr': row[0],
-                    'Start': row[1] + border_dict[key][i], #this is always the start position
-                    'Stop':  row[1] + border_dict[key][i] + 1,
-                    'Read':  row[3] + "_" + str(value)
-                }
-                )
-                fullcoordinatesbed.append(
-                {
-                    'Chr': row[0],
-                    'Start': row[1] + border_dict[key][i],
-                    'Stop':  row[1] + border_dict[key][i] + 1,
-                    'Read':  row[3] + "_" + str(value)
-                }
-                )
+    matching_entries = bed[bed["BaseRead"].isin(border_dict.keys())]
 
-
-
-    out1=pd.DataFrame(newbed)
-    out2=pd.DataFrame(fullcoordinatesbed)
-    out1.to_csv(outfile, sep='\t', index=False, header=False)
-    out2.to_csv(outfile2, sep='\t', index=False, header=False)
+    # Combine 'Start' and 'Stop' into a new 'Coordinates' column as a list of tuples
+    matching_entries['Coordinates'] = list(zip(matching_entries[1], matching_entries[2]))
+    
+    grouped_entries = matching_entries.groupby(['BaseRead', 0])['Coordinates'].agg(sum).reset_index()
+    
+    # Sort the 'Coordinates' lists for each row in ascending order
+    grouped_entries['Coordinates'] = grouped_entries['Coordinates'].apply(lambda x: sorted(x))
+   
+    #grouped_entries['Start'] = grouped_entries['Coordinates'].apply(lambda x: [coord for coord in x[1::2]])
+    
+    # Create a new column 'Start' with different logic based on 'Coordinates' list length: If length <= 4: use the second element, if longer, use every second element
+    grouped_entries['Start'] = grouped_entries['Coordinates'].apply(lambda x: [coord[1] for coord in x[1::2]] if len(x) > 4 else [x[1]])
+    print(grouped_entries)
+     # Explode the DataFrame to duplicate rows based on the 'Start' list
+    exploded_df = grouped_entries.explode('Start').reset_index(drop=True)
+    exploded_df["Stop"] = exploded_df["Start"] +1
+    
+    # Reorder the columns
+    exploded_df = exploded_df[[0, 'Start', 'Stop', 'BaseRead', "Coordinates"]]
+    #print(matching_entries)
+    print(exploded_df)
+    exploded_df.to_csv(outfile, sep='\t', index=False, header=False)
+    
+    # exact coordinates
+    exact = pd.DataFrame(list(border_dict.items()), columns=['Key', 'Values'])
+    # Add a new column 'Differences' with the calculated differences
+    exact['Differences'] = exact['Values'].apply(lambda values: [b - a for a, b in zip(values[:-1], values[1:])])
+    merged_df = pd.merge(exploded_df, exact, left_on='BaseRead', right_on='Key', how='left').drop(columns=['Key'])
+    # Replace the 'Stop' column with a new one based on 'Start' + 'Differences'
+    merged_df['Stop'] = merged_df['Start'] + merged_df['Differences'].apply(lambda x: x[0]) #apply necessary because otherwise int + list
+    print(merged_df)
+    merged_df.to_csv(outfile2, sep='\t', index=False, header=False)
 
 
 
@@ -805,10 +819,11 @@ def plot_insertion_length(bed, outfile):
     
     dfs = list()
     for f in bed:
-        data = pd.read_csv(f, sep='\t', names=["Chr", "Start", "End", "Read"])
+        data = pd.read_csv(f, sep='\t', names=["Chr", "Start", "End", "Read"], usecols=[0,1,2,3])
         #add number to reads with multiple insertions so they don't overlap in the plot
         mask = data['Read'].duplicated(keep=False)
         data.loc[mask, 'Read'] += data.groupby('Read').cumcount().add(1).astype(str) #adds 1/2/3 respectively
+        data['Read'] = data['Read'] + "_" + data['Chr']
         data["Length"] = data["End"] - data["Start"]
         head, tail = os.path.split(f)
         data['ID'] = tail.split(".")[0]
@@ -868,3 +883,24 @@ def orf_prediction(infasta,border_dict,outfasta):
             for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
                 if record.id in border_dict:
                     output_file.write(">"+str(record.id)+"\n"+str(record.seq) + "\n")
+
+def orf_reshape(orf_fasta, filename):
+    """
+    Uses FASTA-like output from orf finder and reshapes it into bed-like file for plotting. - Strandedness is added if stop > start in the ORF. 
+    """
+    with open(filename, 'w') as output_file:
+        with open(orf_fasta, 'r') as fasta_file:
+            # extracting multiple data in single fasta file using biopython
+            for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
+                #split FASTA sequence into equally sized sub-lists with different id
+                orf_id = record.description.split(" ")[1]
+                read_id = orf_id.split(":")[0].split("_")[1]
+                orf_number = orf_id.split("_")[0]
+                orf_start=orf_id.split(":")[1]
+                orf_stop=orf_id.split(":")[2]
+                orf_seq=record.seq
+                if int(orf_start) > int(orf_stop):
+                    print(orf_start, orf_stop)
+                    output_file.write(str(read_id)+"\t"+str(orf_stop)+"\t"+str(orf_start)+"\t"+"-"+"\t"+str(orf_seq)+"\t"+str(orf_number)+"\n")
+                else:
+                    output_file.write(str(read_id)+"\t"+str(orf_start)+"\t"+str(orf_stop)+"\t"+"+"+"\t"+str(orf_seq)+"\t"+str(orf_number)+"\n") 

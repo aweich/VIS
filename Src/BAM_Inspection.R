@@ -159,7 +159,7 @@ for (i in 1:nrow(bed_data)) {
   TF_track <- AnnotationTrack(TF, name="TF", stacking="pack",featureAnnotation = "id",fontcolor.item="black", cex=0.5,just.group="above") 
   print(TF_track)
   #2: Load BAM Coverage
-  altrack <- AlignmentsTrack(bampath, isPaired = FALSE) #bampath, isPaired = FALSE
+  altrack <- AlignmentsTrack(bampath, isPaired = FALSE, type = c("coverage", "sashimi")) #bampath, isPaired = FALSE
 	
   #3: Use respective Ideogram and GenomeAxis (automatic)
   itrack <- IdeogramTrack(genome = ref_genome, chromosome = chromosome)
