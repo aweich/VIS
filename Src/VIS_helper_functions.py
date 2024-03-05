@@ -602,10 +602,11 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                                 print("Split " + str(record_id) + "into " + str(record_id_new))
                                 output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
                         elif mode == "Buffer":
-                            buffer = 100*'N'
+                            n_buffer = 100
+                            buffer = n_buffer*'N'
                             record_seq_new = buffer.join([str(n) for n in record_list])
                             print(record_seq_new)
-                            record_id_new = str(record_id) + '_Buffer20Insertion'
+                            record_id_new = str(record_id) + '_Buffer'+str(n_buffer)+'Insertion'
                             output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
                         else: 
                             record_seq_new = ''.join([str(n) for n in record_list])
@@ -696,17 +697,15 @@ def exact_insertion_coordinates2(border_dict, bed, outfile, outfile2):
     """
     Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
     Then stop will be +1 of start. Second output will give the full insertion size so that it can be used for the methylation potting on the other BAM.
-    This is error-prone and has not been tested for insertions that have breaks in the fasta!
+    This is error-prone and has not been tested for insertions that have breaks in the fasta! Especially full insertion site cannot be fully resolved since directionality info is lost!!!
     """
-    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
+    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3,5])
     bed['BaseRead'] = bed[3].str.split("_").str[0] #bed[3].map(lambda x: str(x)[:-2])
     border_dict = json.load(open(border_dict))
     matching_entries = bed[bed["BaseRead"].isin(border_dict.keys())]
-
     # Combine 'Start' and 'Stop' into a new 'Coordinates' column as a list of tuples
     matching_entries['Coordinates'] = list(zip(matching_entries[1], matching_entries[2]))
-    
-    grouped_entries = matching_entries.groupby(['BaseRead', 0])['Coordinates'].agg(sum).reset_index()
+    grouped_entries = matching_entries.groupby(['BaseRead', 0,5])['Coordinates'].agg(sum).reset_index()
     
     # Sort the 'Coordinates' lists for each row in ascending order
     grouped_entries['Coordinates'] = grouped_entries['Coordinates'].apply(lambda x: sorted(x))
@@ -715,15 +714,12 @@ def exact_insertion_coordinates2(border_dict, bed, outfile, outfile2):
     
     # Create a new column 'Start' with different logic based on 'Coordinates' list length: If length <= 4: use the second element, if longer, use every second element
     grouped_entries['Start'] = grouped_entries['Coordinates'].apply(lambda x: [coord[1] for coord in x[1::2]] if len(x) > 4 else [x[1]])
-    print(grouped_entries)
      # Explode the DataFrame to duplicate rows based on the 'Start' list
     exploded_df = grouped_entries.explode('Start').reset_index(drop=True)
-    exploded_df["Stop"] = exploded_df["Start"] +1
-    
+    exploded_df["Stop"] = exploded_df["Start"] #+1
     # Reorder the columns
-    exploded_df = exploded_df[[0, 'Start', 'Stop', 'BaseRead', "Coordinates"]]
+    exploded_df = exploded_df[[0, 'Start', 'Stop', 'BaseRead', "Coordinates",5]]
     #print(matching_entries)
-    print(exploded_df)
     exploded_df.to_csv(outfile, sep='\t', index=False, header=False)
     
     # exact coordinates
@@ -840,7 +836,8 @@ def plot_insertion_length(bed, outfile):
             
 def proximity_generator_for_bed_file(input_bed, output_bed, offsets):
     # Read the BED file into a DataFrame
-    bed_df = pd.read_csv(input_bed, sep='\t', header=None, names=['chrom', 'start', 'end', 'read'])
+    bed_df = pd.read_csv(input_bed, sep='\t', header=None, usecols=[0,1,2,3], names=['chrom', 'start', 'end', 'read'])
+    print(bed_df)
     bed_df = bed_df[bed_df['chrom'].str.contains('chr')]
     bed_df = bed_df[~bed_df['chrom'].str.contains('_')]
     bed_df2 = bed_df.copy()

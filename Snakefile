@@ -32,11 +32,11 @@ rule all:
 		#Visuals
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		##expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		##expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		##expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
-		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		##expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
+		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/All_Insertions/Heatmap_MeanMods_combined_in_{sample}_with_ID.png", sample=SAMPLES),
 		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
@@ -55,8 +55,8 @@ rule all:
 		#WIP
 		expand(PROCESS+"QC/ReadLevel_MappingQuality_{sample}.txt", sample=SAMPLES),
 		expand(PROCESS+"QC/cigar_{sample}_postcut.txt", sample=SAMPLES),
-		#expand(PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		expand(PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
 		
 		
 
@@ -67,6 +67,9 @@ def get_input_names(wildcards):
 #BAM Operations:
 #Add rule to remove supplementary and secondary alignments
 #samtools view -F 2304 -bo filtered.bam original.bam (via picard: supplementary alignment, not primary alignment): Added to prepare BAM ruleF
+
+print("Results in ...")
+print(PROCESS)
 
 ######
 ######
@@ -225,13 +228,13 @@ rule orf_prediction:
 	output:
 		proteinorf=PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf",
 		fastaorf=PROCESS+"FASTA/FASTA_Insertion_{sample}_Vector.orf"
-	shell:
+	shell: #-n = ignore nested ORFs: Should give us only the biggest right=
 		"""
 		./Src/ORFfinder -s 0 -in {input} -outfmt 0 -out {output.proteinorf}
-		./Src/ORFfinder -s 0 -in {input} -outfmt 1 -out {output.fastaorf}
+		./Src/ORFfinder -s 0 -n true -in {input} -outfmt 1 -out {output.fastaorf}
 		"""
 
-rule orf_reshape:
+rule orf_reshape: #start and stop for - strand is eínterchanged to make them plottable
 	input:
 		orfs=PROCESS+"FASTA/FASTA_Insertion_{sample}_Vector.orf"
 	output:

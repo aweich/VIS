@@ -17,7 +17,7 @@ samples:
     #S4_ADS: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/ADS_S4/ADS_S4_sup_dorado_ref.bam"
     ##S3_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S3.bam"
     S4_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S4.bam"
-    #MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
+    MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
     #Dummy: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Src"
