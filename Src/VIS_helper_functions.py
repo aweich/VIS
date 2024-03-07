@@ -237,7 +237,7 @@ def add_insertion_sequence(bed_file_path, fasta_file_path, output_bed_path):
     """
     Adds the fasta sequence to the insertion itself. This makes the counting of Cytosines easier for a later step.
     """
-    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2,3], names=['Chromosome', 'Start', 'End', 'Read'])
+    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2,3,4], names=['Chromosome', 'Start', 'End', 'Read','CleavageSites'])
     fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
     # Add a new column to the DataFrame with the corresponding sequence from the FASTA file
     seqs=[]
@@ -249,7 +249,7 @@ def add_insertion_sequence(bed_file_path, fasta_file_path, output_bed_path):
                 seqs.append(fasta_sequences[i].seq)
     
     bed_df["Sequence"] = seqs
-    bed_df = bed_df[['Chromosome', 'Start', 'End', 'Sequence', 'Read']]
+    bed_df = bed_df[['Chromosome', 'Start', 'End', 'Sequence', 'Read','CleavageSites']]
     bed_df.to_csv(output_bed_path, sep='\t', header=False, index=False)
 
 ####all below are just for the mean methylation in the equal sized bin in proximity of the read with the insertion
@@ -265,24 +265,7 @@ def bed_intersect_count(chromosome, start, stop, meth_bed):
     # Calculate and return the number of overlaps
     num_overlaps = intersected[0][3]
     return int(num_overlaps)
-''' #will be removed if not used by 14.2
-def count_equal_entries(bed_file_path):
-    """
-    Counts how often a chr start stop entry occurs in a bed file. 
-    """
-    # Read the BED file using pybedtools
-    bed = BedTool(bed_file_path)
 
-    # Initialize a dictionary to store counts
-    entry_counts = {}
-
-    # Count occurrences of each entry using only the first three columns
-    for entry in bed:
-        entry_str = '\t'.join(map(str, entry.fields[:3]))
-        entry_counts[entry_str] = entry_counts.get(entry_str, 0) + 1
-
-    return entry_counts
-'''
 def collapse_equal_entries(bed_file):
     """
     Collapses duplicates chr start stop entries into a single representative.
@@ -317,7 +300,7 @@ def C_in_range(fasta, start, stop):
     if count != 0:
         return count
     else:
-        return 1
+        return 1 #otherwise division 0/0 -> breaks
 
 def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max_distance, outfile):
     """
@@ -615,83 +598,6 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                     else:
                         output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
-def exact_insertion_coordinates(border_dict, bed, outfile, outfile2):
-    """
-    Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
-    Then stop will be +1 of start. Second output will give the full insertion size so that it can be used for the methylation potting on the other BAM.
-    This is error-prone and has not been tested for insertions that have breaks in the fasta!
-    """
-    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3])
-    border_dict = json.load(open(border_dict))
-    newbed = []
-    fullcoordinatesbed=[]
-    for key in border_dict:
-        if len(border_dict[key]) == 2: #== only one insertion in this read
-            for index,row in bed.iterrows():
-                if row[3].split("_")[0] == key and row[3].split("_")[1] != '1': #read must be in cleavage sites and either "Insertion"/str or '0'.  
-                    insertion_start = row[1] + border_dict[key][0] #row[1] is where the read starts, so plus cleavage site value 0 gives the actual starting point here
-                    newbed.append( #add the location to file
-                    {
-                        'Chr': row[0],
-                        'Start': insertion_start,
-                        'Stop':  insertion_start + 1,
-                        'Read':  row[3] #actual read name, that could be _0 or _Insertion
-                    }
-                    )
-                    fullcoordinatesbed.append(
-                    {
-                        'Chr': row[0],
-                        'Start': insertion_start,
-                        'Stop':  insertion_start + border_dict[key][1] - border_dict[key][0], #dict values depend on each other, so difference between them is actual length
-                        'Read':  row[3]
-                    }
-                    )
-        elif len(border_dict[key]) > 2:
-            for index,row in bed.iterrows():
-                if row[3].split("_")[0] == key:
-                    if row[3].split("_")[1] == "Insertion": #for the pasted sequences
-                        starts = [row[1] + num for num in border_dict[key][0::2]] #different new start coordinates for each insertion in the read
-                        ranges = [y - x for x, y in zip(border_dict[key], border_dict[key][1:])] #substracts the previous element from the following
-                        del ranges[1::2] #drops every second element starting from the second, since otherwise we articfically include insertions between the insertions
-                        for n,coordinate in enumerate(starts):
-                            newbed.append(
-                            {
-                                'Chr': row[0],
-                                'Start': coordinate,
-                                'Stop':  coordinate + 1,
-                                'Read':  row[3]
-                            }
-                            )
-                            fullcoordinatesbed.append(
-                            {
-                                'Chr': row[0],
-                                'Start': coordinate,
-                                'Stop':  coordinate + ranges[n],
-                                'Read':  row[3]
-                            }
-                            )
-                    else: #for the separated sequences
-                        read_number = int(row[3].split("_")[1])    
-                        newbed.append(
-                        {
-                            'Chr': row[0],
-                            'Start': border_dict[key][read_number + read_number], #this is always the start position
-                            'Stop':  border_dict[key][read_number + read_number] + 1,
-                            'Read':  row[3]
-                        }
-                        )
-                        fullcoordinatesbed.append(
-                        {
-                            'Chr': row[0],
-                            'Start': border_dict[key][read_number + read_number],
-                            'Stop':  border_dict[key][read_number + read_number] + border_dict[key][read_number + read_number + 1] - border_dict[key][read_number + read_number],
-                            'Read':  row[3]
-                        }
-                        )
-    out1=pd.DataFrame(newbed)
-    out2=pd.DataFrame(fullcoordinatesbed)
-    out1.to_csv(outfile, sep='\t', index=False, header=False)
-    out2.to_csv(outfile2, sep='\t', index=False, header=False)
 
 def exact_insertion_coordinates2(border_dict, bed, outfile, outfile2):
     """
@@ -755,22 +661,28 @@ def add_annotation_column_bed(bed1, bed2, outfile):
     bed1 = bed1.merge(bed2, on=["Chr","start","end","seq"])
     bed1.to_csv(outfile, sep='\t', index=False, header=True)
 
-def plot_modification_per_vectorlength(meanmodbed, window_size, outfile):
+def plot_modification_per_vectorlength(meanmodbed, window_size, outpath):
     """
-    PLots how many bases are modified for the length of the inserted sequence
+    PLots how many bases are modified for the length of the sequence
     """
+    print(outpath)
     mod = pd.read_csv(meanmodbed, sep='\t')
     mod["ID"] = mod["Chr"] + "_" + mod["Insertion"]
     mod = mod.drop(columns=['Chr', 'start','end','seq', 'Insertion_point', 'Insertion'])
     mod = pd.melt(mod, id_vars=['ID'])
-    #print(mod.head())
-    plt.figure(figsize=(16, 9))
-    sns.lineplot(data=mod, x="variable", y="value", hue="ID", alpha=0.7, linewidth=4)
-    plt.xticks(rotation=90)
-    plt.xlabel("Length of the insertion")
-    plt.ylabel('%C modified')
-    plt.title('')
-    plt.savefig(outfile, bbox_inches="tight")
+    print(mod["ID"].unique())
+    for i in mod["ID"].unique():
+        print(i)
+        print(mod["ID"])
+        modx = mod[mod["ID"] == i]
+        plt.figure(figsize=(16, 9))
+        sns.lineplot(data=modx, x="variable", y="value", hue="ID", alpha=0.7, linewidth=4)
+        plt.xticks(rotation=90)
+        plt.xlabel("Read")
+        plt.ylabel('%C modified')
+        plt.title('')
+        name = f'ReadInsertion_{i}_Modifications.png'
+        plt.savefig(outpath +"/"+name, bbox_inches="tight")
 
 def variant_bed_to_fasta(bed, outfasta):
     """
@@ -901,3 +813,14 @@ def orf_reshape(orf_fasta, filename):
                     output_file.write(str(read_id)+"\t"+str(orf_stop)+"\t"+str(orf_start)+"\t"+"-"+"\t"+str(orf_seq)+"\t"+str(orf_number)+"\n")
                 else:
                     output_file.write(str(read_id)+"\t"+str(orf_start)+"\t"+str(orf_stop)+"\t"+"+"+"\t"+str(orf_seq)+"\t"+str(orf_number)+"\n") 
+
+def full_coordinates_bed(border_dict, global_bed, outbed):
+    """
+    Uses the global bed file and the coordinates from the insertion dictionary and combined its content
+    """
+    bed = pd.read_csv(global_bed, sep='\t', header=None, usecols=[0,1,2,3])
+    border_dict = json.load(open(border_dict))
+    keys_to_filter = list(border_dict.keys())
+    filtered_bed = bed[bed[3].str.split("_", expand=True)[0].isin(keys_to_filter)]
+    filtered_bed['CleavageSites'] = filtered_bed[3].str.split("_", expand=True)[0].map(border_dict)
+    filtered_bed.to_csv(outbed, sep='\t', index=False, header=False)

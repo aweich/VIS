@@ -156,7 +156,8 @@ for (i in 1:nrow(bed_data)) {
   
   
   #TF
-  TF_track <- AnnotationTrack(TF, name="TF", stacking="pack",featureAnnotation = "id",fontcolor.item="black", cex=0.5,just.group="above") 
+  TF_track <- AnnotationTrack(TF, name="TF Clusters", stacking="squish", featureAnnotation = "id",fontcolor.item="red",
+                            cex=0.5, fill="white", lty=0)
   print(TF_track)
   #2: Load BAM Coverage
   altrack <- AlignmentsTrack(bampath, isPaired = FALSE, type = c("coverage")) #bampath, isPaired = FALSE
@@ -170,7 +171,7 @@ for (i in 1:nrow(bed_data)) {
   pdf(file=paste(outputpath,filename, sep="/"), width=10, height=10)
   plotTracks(c(itrack,gtrack,gtfTrack,altrack,coord,H3K4Me1_track,H3K4Me3_track,H3K27Ac_track,TF_track),
              chromosome =chromosome, from = start_coord,
-             to = end_coord, transcriptAnnotation="symbol", col="black",background.title = "red4",col.main="red", innerMargin=10, sizes = c(0.25,0.25,0.25,1,0.25,0.25,0.25,0.25,2)) 
+             to = end_coord, transcriptAnnotation="symbol", col="black",background.title = "red4",col.main="red", outerMargin=0, innerMargin=5, sizes = c(0.25,0.25,0.25,0.5,0.25,0.25,0.25,0.25,5)) 
   #plotTracks(list(itrack,gtrack,biomTrack,altrack,coord,H3K4Me1_track,H3K4Me3_track,H3K27Ac_track,DNaseH), chromosome =chromosome, from = start_coord, to = end_coord, background.title = "lightblue", sizes = c(0.25,0.25,1,1,0.25,0.25,0.25,0.25,0.25), #red2,red4,royalblue2
   #col.main="red", innerMargin=10) 
   dev.off()
