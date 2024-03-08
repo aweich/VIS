@@ -216,7 +216,7 @@ def insertion_proximity(bedfile, binsize, outfile):
     """
     Takes a list of insertion sites (BED file) and adds a user-defined number of bp to each site (start and end). Returns new BED file.
     """
-    df = pd.read_csv(bedfile, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "read"])
+    df = pd.read_csv(bedfile, sep='\t', lineterminator='\n', usecols=[0,1,2,3,4,5], names = ["Chr","start","end", "read","CleavageSites","strand"])
     df_modified = df.copy()
     df_modified['start'] = df['start'] - binsize
     df_modified['end'] = df['end'] + binsize
@@ -226,7 +226,7 @@ def add_sequence_column(bed_file_path, fasta_file_path, output_bed_path):
     """
     Adds the fasta sequence to the respective bed gaps. This makes the counting of Cytosines easier for a later step.
     """
-    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2], names=['Chromosome', 'Start', 'End'])
+    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2,3,4,5], names=['Chromosome', 'Start', 'End','Read',"CleavageSites",'strand'])
     fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
     # Add a new column to the DataFrame with the corresponding sequence from the FASTA file
     bed_df['Sequence'] = [fasta_sequences[i].seq for i,n in enumerate(fasta_sequences)]
@@ -237,7 +237,7 @@ def add_insertion_sequence(bed_file_path, fasta_file_path, output_bed_path):
     """
     Adds the fasta sequence to the insertion itself. This makes the counting of Cytosines easier for a later step.
     """
-    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2,3,4], names=['Chromosome', 'Start', 'End', 'Read','CleavageSites'])
+    bed_df = pd.read_csv(bed_file_path, sep='\t', header=None, usecols=[0,1,2,3,4,5], names=['Chromosome', 'Start', 'End', 'Read','CleavageSites','strand'])
     fasta_sequences = list(SeqIO.parse(fasta_file_path, "fasta"))
     # Add a new column to the DataFrame with the corresponding sequence from the FASTA file
     seqs=[]
@@ -249,7 +249,7 @@ def add_insertion_sequence(bed_file_path, fasta_file_path, output_bed_path):
                 seqs.append(fasta_sequences[i].seq)
     
     bed_df["Sequence"] = seqs
-    bed_df = bed_df[['Chromosome', 'Start', 'End', 'Sequence', 'Read','CleavageSites']]
+    bed_df = bed_df[['Chromosome', 'Start', 'End', 'Sequence', 'Read','CleavageSites','strand']]
     bed_df.to_csv(output_bed_path, sep='\t', header=False, index=False)
 
 ####all below are just for the mean methylation in the equal sized bin in proximity of the read with the insertion
@@ -307,9 +307,12 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
     For each entry in insertion bed, a interval of window_size will be scanned for occurring Cytosines (=N total Cs) up to max_distance in positive and negative direction.
     For each of these intervals, the meth_bed file is scanned for entries contained within the genomic ranges (=N modified Cs). 
     The modification ratio in % for each interval is calculated and a dataframe is returned.
+    window_size !=0  and max_distance =0: Modification ratio over FASTA and BED cooridnates
+    wind_size !=0 and max_distance != 0: Modification ratio over FASTA and proximity/max_distance +/- BED coordinates.
+
     """
     # Read the genomic coordinates BED file
-    insertion_bed = pd.read_csv(insertion_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3], names = ["Chr","start","end", "seq"])
+    insertion_bed = pd.read_csv(insertion_bed, sep='\t', lineterminator='\n', usecols=[0,1,2,3,4,5], names=['Chromosome', 'Start', 'End', 'Read','CleavageSites','strand'])
     print("This will take a while...")
 
     # Read the target BED file
@@ -318,23 +321,24 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
     meth_bed = collapse_equal_entries(with_duplicates)
     #output BED
     final_bed = insertion_bed.copy()
+    print(insertion_bed.head())
     #percent_dict={} #collection for the insertions
     # Iterate through each genomic coordinate
     for index, row in insertion_bed.iterrows():
         chromosome = row.iloc[0]
-        start = int(row.iloc[1]) + max_distance #to end up with the original coordinates again
+        start = int(row.iloc[1]) + max_distance #to end up with the original coordinates again; only relevant in case of buffer
         end = int(row.iloc[2]) - max_distance
-        intervalsize = end - start
+        intervalsize = end - start #FASTA length
         orig_insertion= str(start)+"_"+str(end)
         final_bed.loc[index, "Insertion"] = str(orig_insertion)
         
-        #methylation at insertion itself: Good overview of basic principle
-        modifications = bed_intersect_count(chromosome, start, end, meth_bed)
-        bases = C_in_range(row.iloc[3], max_distance, len(row.iloc[3])+1 - max_distance) #the proximity bed file with fasta has the structure: max_dist-start-stop-max_dist
-        final_bed.loc[index, str("Insertion_point")] = (modifications/bases) *100 #puts key (0)-value(methylation-ratio) pair into dataframe in the respective line (index)
+        #methylation on insertion read itself: Good overview of basic principle
+        #modifications = bed_intersect_count(chromosome, start, end, meth_bed)
+        #bases = C_in_range(row.iloc[3], max_distance, len(row.iloc[3])+1 - max_distance) #the proximity bed file with fasta has the structure: max_dist-start-stop-max_dist/ for max_distance =0, the whole FASTA is used
+        #final_bed.loc[index, str("Mean_Mod_Percentage")] = (modifications/bases) *100 #puts key (0)-value(methylation-ratio) pair into dataframe in the respective line (index)
         #methylation in 3' direction in window-size steps up to max_distance
     
-        #settings for the proximity
+        #settings for the proximity option (= not rad-level only)
         if max_distance != 0:
             i=0
             while i < max_distance+1: #3' direction
@@ -361,16 +365,17 @@ def methylation_in_insertion_proximity(meth_bed, insertion_bed, window_size, max
             final_bed.to_csv(outfile, sep='\t', header=True, index=False)    
         
     #settings for the insertion itself:
-        #percent=[]
+    #this is - and + dependent! if the FASTA mapped on the - strand, then the C numbers must be caluculated from FASTA back to front 
         for n,i in enumerate(range(start, end, window_size)):
-            #c in range
-            #print(row.iloc[3])
+            
+            if row[4] == '-':
+                reversed_seq = row.iloc[3][::-1]    
+                bases = C_in_range(reversed_seq, n*window_size, (n+1)*window_size)
+                modifications = bed_intersect_count(chromosome, i, i+window_size, meth_bed)
+                final_bed.loc[index, (n+1)*window_size] = (modifications/bases) *100
+            
             bases = C_in_range(row.iloc[3], n*window_size, (n+1)*window_size)
             modifications = bed_intersect_count(chromosome, i, i+window_size, meth_bed)
-            #print(chromosome, i, i+window_size)
-            #print(i,i+window_size, chromosome, modifications, bases)
-            #percent.append((modifications/bases) *100)
-            #percent_dict[row.iloc[3]] = [percent]
             final_bed.loc[index, (n+1)*window_size] = (modifications/bases) *100
     
     #final_bed['Modification'] = final_bed['seq'].map(percent_dict)
@@ -406,7 +411,7 @@ def plot_modification_proximity(bedfile,window_size, max_distance, outfile): #ne
     df["Read with insertion"] = df["Chr"] + "_" + df["Insertion"]
     df = df.set_index('Read with insertion')
     df = df.drop(columns=["Chr","start","end","seq","Insertion"])
-    df['Insertion_point'] = 100 #replace insertion site values with max to create a border
+    df['Mean_Mod_Percentage'] = 100 #replace insertion site values with max to create a border
     
     #ID column
     ID=df["ID"]
@@ -416,7 +421,7 @@ def plot_modification_proximity(bedfile,window_size, max_distance, outfile): #ne
     #for x axis
     pos=list(range(0, max_distance+1, window_size))
     pos = [f'+{num}' if num > 0 else num for num in pos]
-    column_order = flatten_comprehension([list(range(-max_distance, 0, window_size)),["Insertion_point"], pos]) #["Insertion_point"], before pos
+    column_order = flatten_comprehension([list(range(-max_distance, 0, window_size)),["Mean_Mod_Percentage"], pos]) #["Mean_Mod_Percentage"], before pos
     column_order.remove('0')
     # Reorder the DataFrame columns
     df_reordered = df[column_order]
@@ -668,9 +673,8 @@ def plot_modification_per_vectorlength(meanmodbed, window_size, outpath):
     print(outpath)
     mod = pd.read_csv(meanmodbed, sep='\t')
     mod["ID"] = mod["Chr"] + "_" + mod["Insertion"]
-    mod = mod.drop(columns=['Chr', 'start','end','seq', 'Insertion_point', 'Insertion'])
+    mod = mod.drop(columns=['Chr', 'start','end','seq', 'Insertion','strand'])
     mod = pd.melt(mod, id_vars=['ID'])
-    print(mod["ID"].unique())
     for i in mod["ID"].unique():
         print(i)
         print(mod["ID"])

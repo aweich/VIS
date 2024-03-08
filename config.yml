@@ -15,7 +15,7 @@ samples:
     #S4r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240115_1540_MN40944_FAW84844_01854254/S4_sup_dorado_ref.bam"
     #S3r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240122_1254_MN37858_FAX66721_25279206/S3_sup_dorado_ref.bam"
     #S4_ADS: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/ADS_S4/ADS_S4_sup_dorado_ref.bam"
-    #S3_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S3.bam"
+    S3_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S3.bam"
     S4_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S4.bam"
     MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
     #Dummy: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
@@ -31,7 +31,7 @@ fragment_size: 100 #input for custom function
 MinLength: 1
 MinInsertionLength: 1600 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
 ref_genome_ctrl: "/home/lischecr/permanent/Src/hg38/genome/hg38.fa"
-#ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta"
+#ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta" #might still contain empty last row!
 ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
 #ucsc_repeats: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_RepeatMasker_02_24"
 ucsc_H3K4Me1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me1_02_24"

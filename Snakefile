@@ -31,8 +31,8 @@ rule all:
 		##expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
 		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		##PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		##PROCESS+"LOCALIZATION/Insertion_length.png",
+		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		#PROCESS+"LOCALIZATION/Insertion_length.png",
 		#deeper
 		##expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		##expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
@@ -52,10 +52,11 @@ rule all:
 		#MODULES
 		#maybe with dmr but nor sure if its worth the hassle
 		#rules from epigenetics file
-		#expand(PROCESS+"METHYLATION/Heatmap_MeanMods_Proximity_{sample}.png", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/Insertion_Read_Coordinates_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/StatsMethyl_{sample}.txt", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Postcut_Methyl_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
 
 		
 
