@@ -23,6 +23,9 @@ include: SRC+"/epigenetics.smk"
 rule all:
 	input: 
 		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES),
+		expand(PROCESS+"FASTA/Postcut_Reads_with_Insertion_{sample}_Vector.fasta", sample=SAMPLES),
+		expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
+		expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa", sample=SAMPLES), #for phred
 		#Visuals
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
 		##expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
@@ -36,6 +39,7 @@ rule all:
 		#deeper
 		##expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		##expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
+		expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed",sample=SAMPLES),
 		#expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		##expand(PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf", sample=SAMPLES),
 		#pooling
@@ -48,12 +52,14 @@ rule all:
 		##expand(PROCESS+"QC/ReadLevel_MappingQuality_{sample}.txt", sample=SAMPLES),
 		##expand(PROCESS+"QC/cigar_{sample}_postcut.txt", sample=SAMPLES),
 		##expand(PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa", sample=SAMPLES),
-		##expand(PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES)
+		expand(PROCESS+"BLASTN/Cigar/Reads_cigar1000_VectorMatches_{sample}.fasta", sample=SAMPLES),
+		expand(PROCESS+"CIGAR/Cigar_selected_reads_with_Insertions_{sample}.fastq", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#MODULES
 		#maybe with dmr but nor sure if its worth the hassle
 		#rules from epigenetics file
-		#expand(PROCESS+"METHYLATION/StatsMethyl_{sample}.txt", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Postcut_Methyl_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed.gz", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
@@ -76,7 +82,7 @@ print(PROCESS)
 ###### Insertion BAM: Convert to FASTA 
 ######
 ######
-#bam with insertions
+#bam pooling
 '''
 rule prepare_BAM: #sorts, index, and removes supllementary and secondary alignments
 	input:
@@ -106,16 +112,15 @@ rule minimap_index:
 		index=PROCESS+"MAPPING/ref_genome_index.mmi"
 	shell:
 		"minimap2 -d {output.index} {input.ref}"
-''' 
+
 rule make_FASTA_with_tags: #needed for precut path
 	input:
 		fq=get_input_names
-		#fq=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
 	output:
 		fasta=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa"
 	run: 
 		shell("samtools bam2fq -T '*' {input} > {output}") 
-'''
+
 rule make_FASTA_without_tags: #fasta of raw data no trimming whatsoever
 	input:
 		fq=get_input_names
@@ -174,7 +179,7 @@ rule BAM_to_BED:
 		shell("bedtools bamtobed -i {input.precut} > {output.precut}")
 		shell("bedtools bamtobed -i {input.postcut} > {output.postcut}")  
 
-rule reads_with_BLASTn_matches:
+rule reads_with_BLASTn_matches: #not exclusive but definitely inclusive
 	input:
 		refbed=PROCESS+"MAPPING/Postcut_{sample}.bed",
 	output:
@@ -187,7 +192,7 @@ rule reads_with_BLASTn_matches:
 ######
 ######
 
-rule get_cleavage_sites_for_fasta:
+rule get_cleavage_sites_for_fasta: #filters and combines matches
 	input:
 		#PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
@@ -213,15 +218,47 @@ rule split_fasta:
 	run:
 		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.vector)
 
-rule reads_with_insertion:
+rule reads_with_insertion: #just checks if read id is in the cleavage sites file
 	input:
-		fasta=PROCESS+"FASTA/Full_{sample}.fa",
+		fasta1=PROCESS+"FASTA/Full_{sample}.fa",
+		fasta2=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
 		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
-		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
+		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta",
+		PROCESS+"FASTA/Postcut_Reads_with_Insertion_{sample}_Vector.fasta"
 	run:
-		vhf.orf_prediction(input.fasta, input.breakpoints, output[0])
+		vhf.reads_with_insertions(input.fasta1, input.breakpoints, output[0])
+		vhf.reads_with_insertions(input.fasta2, input.breakpoints, output[1])
 
+rule summary_reads_with_insertion: #just checks if read id is in the cleavage sites file
+	input:
+		fullvector=config["vector_fasta"],
+		insertedvector=PROCESS+"FASTA/Insertion_{sample}_Vector.fa",
+		precut_reads=PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta",
+		postcut_reads=PROCESS+"FASTA/Postcut_Reads_with_Insertion_{sample}_Vector.fasta",
+		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		directory(PROCESS+"FASTA/InsertionReads/{sample}/")
+	run:
+		shell("mkdir {output}")
+		vhf.summary_reads_with_insertions(input.fullvector, input.insertedvector, input.precut_reads, input.postcut_reads, input.breakpoints, output[0])
+
+rule clustal_omega:
+	input:
+		PROCESS+"FASTA/InsertionReads/{sample}/"
+	params:
+		clustalo='clustalo' #depends on how it is stored in the bashrc
+	output:
+		directory(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/")
+	shell:
+		"""
+		mkdir {output}
+		for file in {input}/*; do
+  		echo $file
+  		clustalo -i $file -o "{output}/$(basename "${{file}}")_clustalo.fasta"
+		done
+		"""
+		
 rule orf_prediction:
 	input:
 		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
@@ -394,6 +431,27 @@ rule cigar_hardcode_blast_header:
 		PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	run:	
 		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input} > {output}")	
+		
+rule cigar_reads_and_blast_insertion: #just checks if read id is in the cleavage sites file
+	input:
+		fasta1=PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa",
+		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		PROCESS+"BLASTN/Cigar/Reads_cigar1000_VectorMatches_{sample}.fasta",
+	run:
+		vhf.reads_with_insertions(input.fasta1, input.breakpoints, output[0])		
+
+rule fasta_to_fastq: #first line extracts the fastq entries, second line separates them to make the input for fastaqc easier
+	input:
+		fastq=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa",
+		fasta=PROCESS+"BLASTN/Cigar/Reads_cigar1000_VectorMatches_{sample}.fasta"
+	output:
+		full=PROCESS+"CIGAR/Cigar_selected_reads_with_Insertions_{sample}.fastq"
+	shell:
+		'''
+		grep '>' {input.fasta} | cut -c 2- | seqkit grep -f - {input.fastq} -o {output.full}
+		csplit -z {output.full} $(awk '/^@/ {{print NR }}' {output.full}) '/^@/' {{*}} --prefix={output.full}
+		'''
 			
 #### read-level stats
 rule read_level_stats:
@@ -593,10 +651,10 @@ rule svim_variants:
 
 rule nanoVar:
 	input:
-		ref=config["ref_genome_ctrl"],
+		ref=config["ref_genome"],
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
 	output:
-		PROCESS+"VARIANTS/NanoVar_{sample}/{sample}_sorted.nanovar.pass.vcf"
+		PROCESS+"VARIANTS/NanoVar_{sample}/Precut_{sample}_sorted.nanovar.pass.vcf"
 	params:
 		outdir=PROCESS+"VARIANTS/NanoVar_{sample}/"
 	shell:
@@ -608,18 +666,18 @@ rule nanoVar:
 #reshapes the variants in a more usable format for downstream analysis
 rule reshape_variants:
 	input:
-		#nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/{sample}_sorted.nanovar.pass.vcf",
-		svim=PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf", 
-		sniffles=PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
+		nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Precut_{sample}_sorted.nanovar.pass.vcf",
+		#svim=PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf", 
+		#sniffles=PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
 	output:
-		#nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.bed",
-		svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.bed", 
-		sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.bed"
+		nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed",
+		#svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.bed", 
+		#sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.bed"
 	run:
-		#shell("convert2bed --input=vcf  < {input.nanovar} | grep 'INS' > {output.nanovar}") #--insertions does not wqork for some reason
-		#shell("vcf2bed --do-not-sort < {input.nanovar} | grep 'INS' > {output.nanovar}") #do not sort is important to generate the file but results in error downstream :/
-		shell("convert2bed --input=vcf --insertions < {input.sniffles} > {output.sniffles}")
-		shell("convert2bed --input=vcf --insertions < {input.svim} > {output.svim}")
+		#shell("convert2bed --input=vcf  < {input.nanovar} > {output.nanovar}")
+		shell("vcf2bed --do-not-sort < {input.nanovar} > {output.nanovar}") #do not sort is important to generate the file but results in error downstream :/
+		#shell("convert2bed --input=vcf --insertions < {input.sniffles} > {output.sniffles}")
+		#shell("convert2bed --input=vcf --insertions < {input.svim} > {output.svim}")
 		
 
 #extraction of reads with BLAS matches from the variant callers

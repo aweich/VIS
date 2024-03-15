@@ -18,6 +18,7 @@ import seaborn as sns
 from pybedtools import BedTool
 import json
 import subprocess
+from Bio.Align.Applications import ClustalOmegaCommandline
    
 def chunks(lst, n):
     """
@@ -787,15 +788,42 @@ def reshape_functional_tables(input_bed, output_bed):
     pivoted = bed_df.pivot(index=["entry","chrom","start","end","read"], columns="distance", values="symbol")
     pivoted.to_csv(output_bed, sep='\t')
 
-def orf_prediction(infasta,border_dict,outfasta):
+def reads_with_insertions(infasta,border_dict,outfasta):
+    '''
+    Opens fasta and returns a fasta with only those reads that have an id that matches the border dict keys
+    '''
     border_dict = json.load(open(border_dict))
     with open(outfasta, 'w') as output_file: #append mode, if it does not work, just store the orfs in list an then paste into file
         # opening given fasta file using the file path
         with open(infasta, 'r') as fasta_file:
             # extracting multiple data in single fasta file using biopython
             for record in SeqIO.parse(fasta_file, 'fasta'):  # (file handle, file format)
-                if record.id in border_dict:
+                if record.id.split("_")[0] in border_dict:
                     output_file.write(">"+str(record.id)+"\n"+str(record.seq) + "\n")
+
+def summary_reads_with_insertions(fullvectorsequence, vector, precutfasta, postcutfasta, border_dict, outpath):
+    '''
+    Opens vector fasta, precut fasta, and postcut fasta and combines read-sepcific the contents into single files, that can be used as an input for clustal omega 
+    '''
+    with open(fullvectorsequence, 'r') as vectorseq:
+        for record in SeqIO.parse(vectorseq, 'fasta'):
+            border_dict = json.load(open(border_dict))
+            inputfiles = [vector, precutfasta, postcutfasta]
+            processed = []
+            for i in inputfiles:
+                i = SeqIO.to_dict(SeqIO.parse(i, "fasta"))
+                i = {k.split("_")[0]: v for k, v in i.items()} #dict comprehension
+                keyfiltered= {key: i[key] for key in border_dict.keys()}
+                processed.append(keyfiltered)
+            
+            for k in border_dict.keys():
+                outfasta = outpath + "/" + str(k) +".fasta"  
+                with open(outfasta, 'w') as output_file: #append mode, if it does not work, just store the orfs in list an then paste into file
+                    output_file.write(">"+str(record.id)+"\n"+str(record.seq) + "\n")
+                    output_file.write(">"+str(processed[0][k].id)+"\n"+str(processed[0][k].seq) + "\n")
+                    output_file.write(">"+str(processed[1][k].id)+"\n"+str(processed[1][k].seq) + "\n")
+                    output_file.write(">"+str(processed[2][k].id)+"\n"+str(processed[2][k].seq) + "\n")
+
 
 def orf_reshape(orf_fasta, filename):
     """

@@ -1,14 +1,5 @@
-PROXIMITY = 10000 
+PROXIMITY = 50000 
 STEPS = 500
-rule modkit_pileup_post:
-	input:
-		bam=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
-	output:
-		file=PROCESS+"METHYLATION/Postcut_Methyl_{sample}.bed",
-	shell:
-		"""
-		modkit pileup {input.bam} --filter-threshold C:0.8 {output.file}
-		"""
 rule modkit_pileup_pre:
 	input:
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
@@ -17,6 +8,17 @@ rule modkit_pileup_pre:
 	shell:
 		"""
 		modkit pileup {input.bam} --filter-threshold C:0.8 {output.file}
+		"""
+		
+rule zip_and_index:
+	input:
+		PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed"
+	output:
+		PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed.gz"
+	shell:
+		"""
+		bgzip -k {input} 
+		tabix -p bed {output}
 		"""
 rule modkit_summary:
 	input:
@@ -35,7 +37,7 @@ rule insertion_proximity:
 	params: 
 		PROXIMITY
 	output:
-		temp(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed")
+		PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed"
 	run:
 		vhf.insertion_proximity(input[0], params[0], output[0])
 
