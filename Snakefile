@@ -5,7 +5,7 @@ from time import sleep
 
 
 configfile: "config.yml"
-SRC="./Src"
+SRC=config["source_dir"]
 SAMPLES = expand(config["samples"]) 
 PROCESS = os.path.join(config["processing_dir"],str(config["experiment"]+"/")) #intermediate and results files are stored here
 FRAG=config["fragment_size"]
@@ -17,7 +17,8 @@ sys.path.append(rootpath)
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 
 #inmport rules
-include: SRC+"/epigenetics.smk"
+include: config["epigenetics"]
+include: config["variants"]
 
 #target rule		
 rule all:
@@ -56,13 +57,13 @@ rule all:
 		expand(PROCESS+"CIGAR/Cigar_selected_reads_with_Insertions_{sample}.fastq", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#MODULES
-		#maybe with dmr but nor sure if its worth the hassle
-		#rules from epigenetics file
+		#rules to generate variant output
+		expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
+		#rules to generate epigenetics output
 		expand(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed.gz", sample=SAMPLES),
 		expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"LOCALIZATION/Insertion_fasta_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
+		expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
 
 		
 
@@ -259,7 +260,7 @@ rule clustal_omega:
 		done
 		"""
 		
-rule orf_prediction:
+rule orf_prediction: #to do: add to bashrc
 	input:
 		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
 	output:
@@ -620,120 +621,6 @@ rule insertion_length_plot:
 		PROCESS+"LOCALIZATION/Insertion_length.png"
 	run:
 		vhf.plot_insertion_length(input, output[0])
-######
-######
-###### Variant callers and overlap check of Insertions with BLAST matches
-######
-######
-
-rule variant_sniffles:
-	input:
-		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-		genome=config["ref_genome_ctrl"]
-	output:
-		PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
-	shell:
-		"sniffles -i {input.bam} --reference {input.genome} --output-rnames -v {output}"
-
-rule svim_variants:
-	input:
-		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-		genome=config["ref_genome_ctrl"]
-	output:
-		PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf", 
-	params:
-		outdir=PROCESS+"VARIANTS/SVIM_{sample}/"
-	shell:
-		"""
-		svim alignment {params.outdir} {input.bam} {input.genome} --types INS
-		touch {output}
-		"""
-
-rule nanoVar:
-	input:
-		ref=config["ref_genome"],
-		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
-	output:
-		PROCESS+"VARIANTS/NanoVar_{sample}/Precut_{sample}_sorted.nanovar.pass.vcf"
-	params:
-		outdir=PROCESS+"VARIANTS/NanoVar_{sample}/"
-	shell:
-		"""
-		nanovar -f hg38 {input.bam} {input.ref} {params.outdir}
-		touch {output}
-		"""
-
-#reshapes the variants in a more usable format for downstream analysis
-rule reshape_variants:
-	input:
-		nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Precut_{sample}_sorted.nanovar.pass.vcf",
-		#svim=PROCESS+"VARIANTS/SVIM_{sample}/variants.vcf", 
-		#sniffles=PROCESS+"VARIANTS/SNIFFLES/Variant_{sample}.vcf"
-	output:
-		nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed",
-		#svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.bed", 
-		#sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.bed"
-	run:
-		#shell("convert2bed --input=vcf  < {input.nanovar} > {output.nanovar}")
-		shell("vcf2bed --do-not-sort < {input.nanovar} > {output.nanovar}") #do not sort is important to generate the file but results in error downstream :/
-		#shell("convert2bed --input=vcf --insertions < {input.sniffles} > {output.sniffles}")
-		#shell("convert2bed --input=vcf --insertions < {input.svim} > {output.svim}")
-		
-
-#extraction of reads with BLAS matches from the variant callers
-
-rule reads_with_BLAST_from_callers:
-	input:
-		#nanovar=PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_INS_Variant_{sample}.bed",
-		svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.bed",
-		sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.bed",
-		#matches=PROCESS+"BLASTN/Reads_with_VectorMatches_{sample}.blastn"
-		matches=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
-	output:
-		#nanovar=PROCESS+"VARIANTS/Reads_with_BLAST_Nanovar_INS_Variant_{sample}.bed",
-		svim=PROCESS+"VARIANTS/Reads_with_BLAST_SVIM_INS_Variant_{sample}.bed",
-		sniffles=PROCESS+"VARIANTS/Reads_with_BLAST_SNIFFLES_INS_Variant_{sample}.bed"
-	run:
-		#shell("bedtools intersect -a {input.matches} -b {input.nanovar} > {output.nanovar}")
-		shell("bedtools intersect -a {input.matches} -b {input.svim} > {output.svim}")
-		shell("bedtools intersect -a {input.matches} -b {input.sniffles} > {output.sniffles}")
-
-rule variants_with_sequences_fasta:
-	input:
-		svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.bed", 
-		sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.bed"
-	output:
-		svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.fasta", 
-		sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.fasta"
-	run: 
-		vhf.variant_bed_to_fasta(input.svim, output.svim)
-		vhf.variant_bed_to_fasta(input.sniffles, output.sniffles)
-
-rule blast_vector_against_insertions:
-	input:
-		svim=PROCESS+"VARIANTS/SVIM_{sample}/SVIM_INS_Variant_{sample}.fasta", 
-		sniffles=PROCESS+"VARIANTS/SNIFFLES/SNIFFLES_INS_Variant_{sample}.fasta",
-		dummy=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa.ndb" #provokes the building of the database first!
-	params:
-		vector=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
-	output:
-		svim=PROCESS+"VARIANTS/BLASTN/SVIM_INS_Variant_{sample}.blastn", 
-		sniffles=PROCESS+"VARIANTS/BLASTN/SNIFFLES_INS_Variant_{sample}.blastn"
-	run:
-		shell("blastn -query {input.svim} -db {params.vector} -out {output.svim} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'")
-		shell("blastn -query {input.sniffles} -db {params.vector} -out {output.sniffles} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs'")
-
-rule variants_hardcode_blast_header:		
-	input: 
-		svim=PROCESS+"VARIANTS/BLASTN/SVIM_INS_Variant_{sample}.blastn", 
-		sniffles=PROCESS+"VARIANTS/BLASTN/SNIFFLES_INS_Variant_{sample}.blastn"
-	output:
-		svim=PROCESS+"VARIANTS/BLASTN/Annotated_SVIM_INS_Variant_{sample}.blastn", 
-		sniffles=PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn"
-	run:	
-		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input.svim} > {output.svim}")
-		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input.sniffles} > {output.sniffles}")
-		
 
 ######
 ######
@@ -854,13 +741,4 @@ rule reshape_functional_tables:
 	run:
 		vhf.reshape_functional_tables(input.TF, output.TF)
 		vhf.reshape_functional_tables(input.Genes, output.Genes) 	
-'''
-#Modules
-module epigenetics:
-    snakefile:
-        SRC+"Snakefile_epigenetics"
-    config: SRC+config["config_epigenetics"]
-    prefix: "epigenetics"
 
-use rule * from epigenetics as epigenetics_*
-'''

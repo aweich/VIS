@@ -1,5 +1,6 @@
 PROXIMITY = 50000 
 STEPS = 500
+
 rule modkit_pileup_pre:
 	input:
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",

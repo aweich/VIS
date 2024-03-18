@@ -12,7 +12,6 @@ from Bio import SeqIO
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib_venn import venn3
 import collections
 import seaborn as sns
 from pybedtools import BedTool
@@ -163,20 +162,6 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath):
     plt.savefig(outfile, bbox_inches='tight')
     plt.close()
 
-#fragmentation_read_match_distribution(sys.argv[1])
-#under construction: Not callable from snakemake so far 
-def group_read_venn(data1, data2, data3):
-    """
-    Manual use (not pipeline optimized yet: Creates Venn diagram showing the chromosome-specific density across the samples
-    """
-    set1 = set(pd.read_table(data1, header =None).iloc[:,0].tolist()) #for just the reads, header=None needs to be removed
-    set2 = set(pd.read_table(data2, header=None).iloc[:,0].tolist())
-    set3 = set(pd.read_table(data3, header=None).iloc[:,0].tolist())
-    venn3([set1, set2, set3], ('ADS', 'CD123+', 'UTD'))
-    plt.title('Chromosomal overlap in matches between samples')
-    plt.savefig("Venn_100_reads_chromosome.png")
-
-#group_read_venn(sys.argv[1], sys.argv[2], sys.argv[3])
 
 def plot_bed_files_as_heatmap(bed_files, outfile):
     """
