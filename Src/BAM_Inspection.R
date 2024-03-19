@@ -37,7 +37,7 @@ parser$add_argument('--buffer', '-buffer', help= 'Number of bases that are added
 
 xargs<- parser$parse_args()
 
-#options(ucscChromosomeNames=FALSE)
+options(ucscChromosomeNames=FALSE)
 
 #or use manual data and parameters
 bedpath <- xargs$input_bed #"~/Data/VIS_data/GenmoicLocation_100_full_ads.bed"

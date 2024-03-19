@@ -17,6 +17,8 @@ sys.path.append(rootpath)
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 
 #inmport rules
+include: config["functional_genomics"]
+include: config["quality_control"]
 include: config["epigenetics"]
 include: config["variants"]
 
@@ -24,49 +26,32 @@ include: config["variants"]
 rule all:
 	input: 
 		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", sample=SAMPLES),
-		expand(PROCESS+"FASTA/Postcut_Reads_with_Insertion_{sample}_Vector.fasta", sample=SAMPLES),
-		expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
-		expand(PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa", sample=SAMPLES), #for phred
-		#Visuals
-		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
-		##expand(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		##expand(PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		##expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		##expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES), 
-		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		##expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		#PROCESS+"LOCALIZATION/Insertion_length.png",
-		#deeper
-		##expand(PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
-		##expand(PROCESS+"VARIANTS/BLASTN/Annotated_SNIFFLES_INS_Variant_{sample}.blastn", sample=SAMPLES),
-		expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed",sample=SAMPLES),
-		#expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		##expand(PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf", sample=SAMPLES),
+		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
+		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		PROCESS+"LOCALIZATION/Insertion_length.png",
 		#pooling
 		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
-		#orfs
-		##expand(PROCESS+"FASTA/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
-		##expand(PROCESS+"FASTA/BED_{sample}_Vector.orf", sample=SAMPLES),
-		#CIGAR
-		##expand(PROCESS+"QC/ReadLevel_MappingQuality_{sample}.txt", sample=SAMPLES),
-		##expand(PROCESS+"QC/cigar_{sample}_postcut.txt", sample=SAMPLES),
-		##expand(PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/Cigar/Reads_cigar1000_VectorMatches_{sample}.fasta", sample=SAMPLES),
-		expand(PROCESS+"CIGAR/Cigar_selected_reads_with_Insertions_{sample}.fastq", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn", sample=SAMPLES),
 		#MODULES
-		#rules to generate variant output
-		expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
-		#rules to generate epigenetics output
-		expand(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed.gz", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
+		###rules to generate functional genomics output
+		expand(PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
+		###rules to generate qc output
+		expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
+		expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
+		#cigar output (as part of qc)
+		expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
+		###rules to generate variant output
+		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
+		###rules to generate epigenetics output
+		#expand(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
 
 		
-
 #actual filenames
 def get_input_names(wildcards):
     return config["samples"][wildcards.sample]
@@ -114,14 +99,6 @@ rule minimap_index:
 	shell:
 		"minimap2 -d {output.index} {input.ref}"
 
-rule make_FASTA_with_tags: #needed for precut path
-	input:
-		fq=get_input_names
-	output:
-		fasta=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa"
-	run: 
-		shell("samtools bam2fq -T '*' {input} > {output}") 
-
 rule make_FASTA_without_tags: #fasta of raw data no trimming whatsoever
 	input:
 		fq=get_input_names
@@ -160,7 +137,6 @@ rule insertion_mapping: #conserves tags!
 		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
 		samtools index {output}
 		"""
-
 
 ######
 ######
@@ -260,48 +236,6 @@ rule clustal_omega:
 		done
 		"""
 		
-rule orf_prediction: #to do: add to bashrc
-	input:
-		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
-	output:
-		proteinorf=PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf",
-		fastaorf=PROCESS+"FASTA/FASTA_Insertion_{sample}_Vector.orf"
-	shell: #-n = ignore nested ORFs: Should give us only the biggest right=
-		"""
-		./Src/ORFfinder -s 0 -in {input} -outfmt 0 -out {output.proteinorf}
-		./Src/ORFfinder -s 0 -n true -in {input} -outfmt 1 -out {output.fastaorf}
-		"""
-
-rule orf_reshape: #start and stop for - strand is eínterchanged to make them plottable
-	input:
-		orfs=PROCESS+"FASTA/FASTA_Insertion_{sample}_Vector.orf"
-	output:
-		bed=PROCESS+"FASTA/BED_{sample}_Vector.orf"
-	run:
-		vhf.orf_reshape(input.orfs, output.bed)
-
-###### ORF to protein BLAST
-rule protein_blast:
-	input:
-		PROCESS+"FASTA/Protein_Insertion_{sample}_Vector.orf"
-	params: 
-		db=config["proteindb"]
-	output:
-		temp(PROCESS+"FASTA/PROTEINBLAST/Protein_Insertion_NoHeaderBlast_{sample}.temp")
-	shell:
-		"blastp -query {input} -db {params.db} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs evalue bitscore' -taxids 9606"
-		
-				
-rule protein_blast_header:		
-	input: 
-		PROCESS+"FASTA/PROTEINBLAST/Protein_Insertion_NoHeaderBlast_{sample}.temp"
-	output:
-		PROCESS+"FASTA/PROTEINBLAST/ORFs_{sample}.proteinblast"
-	shell:	
-		"echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tEvalue\tBitscore' | cat - {input} > {output}"
-
-
-
 ######
 ######
 ###### Vector preparation: Fragmentation 
@@ -325,147 +259,6 @@ rule vector_fragmentation:
 		fasta=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	run:
 		vhf.fragmentation_fasta(input[0], params[0], output[0])
-
-######
-######
-###### Quality control and normalization
-######
-######
-rule nanoplot:
-	input:
-		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
-	output:
-		PROCESS+"QC/{sample}/Non_weightedHistogramReadlength.png"
-	params:
-		outdir=PROCESS+"QC/{sample}/"
-	shell: 
-		"""
-		NanoPlot --bam {input} -o {params.outdir}
-		touch {output}
-		"""
-
-rule mapping_qc:
-	input:
-		PROCESS+"MAPPING/Precut_{sample}_sorted.bam" #before cut out, but after removal of secondary and supplementary alignments
-	output:
-		short=PROCESS+"QC/short_{sample}.qc",
-		long=PROCESS+"QC/long_{sample}.qc"
-	shell:
-		"""
-		samtools flagstats {input} > {output.short}
-		samtools stats {input} > {output.long}    
-		"""
-		
-rule nReads_for_insertion_count:
-	input:
-		get_input_names
-	output:
-		temp(PROCESS+"QC/Number_of_Bases_{sample}.normalisation")
-	shell:
-		"gatk CountBases -I {input} > {output}"				
-
-rule normalisation_for_insertion_count:
-	input:
-		insertions=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
-		number_of_bases=PROCESS+"QC/Number_of_Bases_{sample}.normalisation",
-		fasta=PROCESS+"FASTA/Full_{sample}.fa" #for N50
-	params:
-		scale=3000000000 #IPM #IPG
-	output:
-		PROCESS+"QC/Normalisation_IPG_{sample}.txt"
-	run:
-		vhf.insertion_normalisation(input.insertions, input.number_of_bases, params[0], input.fasta, output[0])
-
-rule mapping_for_cigar:
-	input:
-		bam=get_input_names,
-		ref=config["ref_genome_ctrl"]
-	output:
-		PROCESS+"QC/HealthyRef_cigar_{sample}_sorted.bam"
-	shell:
-		"""
-		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.ref} - | samtools sort |  samtools view -F 2304 -o {output}
-		samtools index {output}
-		"""
-
-rule cigar_strings:
-	input:
-		pre=PROCESS+"QC/HealthyRef_cigar_{sample}_sorted.bam", #PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-		post=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
-		matches=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
-	output:
-		pre=PROCESS+"QC/cigar_{sample}_precut.txt",
-		names=PROCESS+"QC/cigar_{sample}_precut_names.txt",
-		post=PROCESS+"QC/cigar_{sample}_postcut.txt",
-	shell:
-		"""
-		samtools view {input.pre} | cut -f 1,3,4,6 | grep '[0-9]\{{4\}}I' > {output.pre}
-		samtools view {input.pre} | cut -f 1,3,4,6 | grep '[0-9]\{{4\}}I' | cut -f 1 > {output.names}
-		samtools view {input.post} | grep -f {input.matches} | cut -f 1,3,4,6 > {output.post}
-		"""
-		
-rule cigar_fasta:
-	input:
-		fasta=PROCESS+"FASTA/Full_{sample}.fa",
-		matches=PROCESS+"QC/cigar_{sample}_precut_names.txt",
-	output:
-		PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa",
-	run: 
-		shell("seqkit grep -r -f {input.matches} {input.fasta} -o {output}")
-
-rule cigar_fasta_blast:
-	input:
-		fasta=PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa",
-		dummy=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa.ndb" #provokes the building of the database first!
-	params:
-		#vector=config["blastn_db"] #vector db
-		vector=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
-	output:
-		PROCESS+"BLASTN/Cigar/cigar"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:
-		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'") 
-
-rule cigar_hardcode_blast_header:		
-	input: 
-		PROCESS+"BLASTN/Cigar/cigar"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"BLASTN/Cigar/cigar_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:	
-		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input} > {output}")	
-		
-rule cigar_reads_and_blast_insertion: #just checks if read id is in the cleavage sites file
-	input:
-		fasta1=PROCESS+"QC/1000I_cigar_FASTA_{sample}.fa",
-		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"BLASTN/Cigar/Reads_cigar1000_VectorMatches_{sample}.fasta",
-	run:
-		vhf.reads_with_insertions(input.fasta1, input.breakpoints, output[0])		
-
-rule fasta_to_fastq: #first line extracts the fastq entries, second line separates them to make the input for fastaqc easier
-	input:
-		fastq=PROCESS+"FASTA/Conservedtags_WithTags_Full_{sample}.fa",
-		fasta=PROCESS+"BLASTN/Cigar/Reads_cigar1000_VectorMatches_{sample}.fasta"
-	output:
-		full=PROCESS+"CIGAR/Cigar_selected_reads_with_Insertions_{sample}.fastq"
-	shell:
-		'''
-		grep '>' {input.fasta} | cut -c 2- | seqkit grep -f - {input.fastq} -o {output.full}
-		csplit -z {output.full} $(awk '/^@/ {{print NR }}' {output.full}) '/^@/' {{*}} --prefix={output.full}
-		'''
-			
-#### read-level stats
-rule read_level_stats:
-	input:
-		bam=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
-		matches=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt", 
-	output:
-		PROCESS+"QC/ReadLevel_MappingQuality_{sample}.txt"
-	shell:
-		"""
-		samtools view -h {input.bam} | grep -e '^@' -f {input.matches} | samtools stats | grep '^SN' | cut -f 2- > {output}
-		"""
-
 
 ######
 ######
@@ -542,6 +335,7 @@ rule blast_to_gff:
 ###### Visualisations of intermediate results
 ######
 ###### the follwoing 2 rules are needed to remove the pseudo-alignment of the reads to the modified ref genome s this would otherwise break the plotting function
+'''
 rule get_reads_of_supplementary_matches:
 	input:
 		post=PROCESS+"MAPPING/Postcut_{sample}.bed",
@@ -569,25 +363,7 @@ rule remove_vector_alignments:
 		samtools view -h {input.prebam} | grep -v 'CAR' | samtools view -bS -o {output.pre} -
 		samtools index {output.pre}
 		"""
-
-rule chromosome_read_plots: 
-	input:
-		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
-		bam=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam",
-		H3K4Me1=config["ucsc_H3K4Me1"],
-		H3K4Me3=config["ucsc_H3K4Me3"],
-		H3K27Ac=config["ucsc_H3K27Ac"],
-		gtf=config["ucsc_Genes_gtf"],
-		TF=config["ucsc_TF"]#PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed",		
-	output:
-		outpath=directory(PROCESS+"LOCALIZATION/PLOTS/" + str(FRAG)+"_{sample}")
-	params:
-		buffer=50000
-	shell: 
-		r"""
-		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
-		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -iH3K4Me1 {input.H3K4Me1} -iH3K4Me3 {input.H3K4Me3} -iH3K27Ac {input.H3K27Ac} -igtf {input.gtf} -iTF {input.TF} -buffer {params.buffer} -o {output.outpath}   
-		"""	
+'''
 rule fragmentation_distribution_plots:
 	input:
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
@@ -631,12 +407,12 @@ rule insertion_length_plot:
 
 rule exact_insertion_coordinates:
 	input:
-		#bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
-		bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", 
+		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
+		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", 
 		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" #some entries with cleavage site won't be in the output, if they were not mapped to the genome in the postcut sample; but a insertion withput genomic coordinates does not help us anyway
 	output:
 		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
-		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed" #only to get FASTA sequence
+		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed" #only to get FASTA sequence
 	run:
 		vhf.exact_insertion_coordinates2(input.borders, input.bed, output.out, output.out2)
 
@@ -654,6 +430,7 @@ rule extract_by_length:
 		shell("awk -F'\t' '$11>={params.threshold}' {input.blast} > {output.blast}")
 		shell("awk -F'\t' '$11>={params.threshold}' {input.humanref} > {output.humanref}") 
 
+'''
 #Control of the workflow: How do the genomic coordinates of my two BAMs differ for the insertion vectors! # CUrrently it looks like all the insertion reads do not really differ pre and post cut -> either the cut out is not sensitive ennough (try with split reads) or the vector doesn't really alter the alignment!
 rule check_mapping_pre_and_postcut:
 	input:
@@ -700,45 +477,4 @@ rule pre_post_cut_and_check_FASTA_changes:
 	run: 
 		shell("seqkit grep -r -f {input.matches} {input.postcut} -o {output.readsnotinpostcut}")
 		shell("seqkit grep -r -f {input.matches} {input.precut} -o {output.readsnotinprecut}")
-
-rule proximity_generator:
-	input:
-		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
-	params:
-		offsets=[0,1000,5000,10000,500000]
-	output:
-		out=PROCESS+"LOCALIZATION/Proximity_to_ExactInsertions_{sample}.bed"
-	run:
-		vhf.proximity_generator_for_bed_file(input.bed, output.out, params.offsets)
-
-rule TF_binding: 
-	input:
-		bed=PROCESS+"LOCALIZATION/Proximity_to_ExactInsertions_{sample}.bed",
-		TF=config["ucsc_TF"]
-		
-	output:
-		PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed"
-	shell: 
-		"bedtools intersect -wa -a {input.bed} -wb -b {input.TF} | cut -f1,2,3,4,5,9 | sort -k6 > {output}"
-		
-rule Genes_in_prox: 
-	input:
-		bed=PROCESS+"LOCALIZATION/Proximity_to_ExactInsertions_{sample}.bed",
-		TF=config["ucsc_Genes"]
-		
-	output:
-		PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed"
-	shell: 
-		"bedtools intersect -wa -a {input.bed} -wb -b {input.TF} | cut -f1,2,3,4,5,9 | sort -k6 > {output}"	
-
-rule reshape_functional_tables:
-	input:
-		TF=PROCESS+"FUNCTIONALGENOMICS/TF_" + str(FRAG)+"_{sample}.bed",
-		Genes=PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed"
-	output:
-		TF=PROCESS+"FUNCTIONALGENOMICS/Formatted_TF_" + str(FRAG)+"_{sample}.bed",
-		Genes=PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed"
-	run:
-		vhf.reshape_functional_tables(input.TF, output.TF)
-		vhf.reshape_functional_tables(input.Genes, output.Genes) 	
-
+'''

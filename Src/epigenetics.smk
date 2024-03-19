@@ -103,7 +103,7 @@ rule insertion_read_coordinates:
 	
 rule fasta_to_insertion: #this rule must return a bed file with the cooridnates of the mapped FASTA and the FASTA itself
     input:
-        #ins = PROCESS+"LOCALIZATION/ExactInsertions_{sample}_full_coordinates_for_methylation.bed", #exact coordinates
+        #ins = PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", #exact coordinates
         ins=PROCESS+"METHYLATION/Insertion_Read_Coordinates_{sample}.bed",
         fasta = PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
     output:
