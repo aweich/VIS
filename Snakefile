@@ -148,21 +148,14 @@ rule BAM_to_BED:
 	input:
 		#get_input_names
 		precut=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-		postcut=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam" #Reads that contained an insertion before, are now marked with "_Insertion"
+		postcut=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam" #Reads that contained an insertion before, are now marked with "_Buffer/Insertion/0,1,2..."
 	output:
 		postcut=PROCESS+"MAPPING/Postcut_{sample}.bed",
 		precut=PROCESS+"MAPPING/Precut_{sample}.bed"
 	run:
 		shell("bedtools bamtobed -i {input.precut} > {output.precut}")
 		shell("bedtools bamtobed -i {input.postcut} > {output.postcut}")  
-
-rule reads_with_BLASTn_matches: #not exclusive but definitely inclusive
-	input:
-		refbed=PROCESS+"MAPPING/Postcut_{sample}.bed",
-	output:
-		loc=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed" 
-	shell:
-		"grep '_' {input.refbed} > {output.loc}"  
+ 
 ######
 ######
 ###### FASTA preparation: Cut out of blast-detected vector fragments and create new "cut-out" FASTA 
@@ -234,8 +227,7 @@ rule clustal_omega:
   		echo $file
   		clustalo -i $file -o "{output}/$(basename "${{file}}")_clustalo.fasta"
 		done
-		"""
-		
+		"""		
 ######
 ######
 ###### Vector preparation: Fragmentation 
@@ -408,7 +400,6 @@ rule insertion_length_plot:
 rule exact_insertion_coordinates:
 	input:
 		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
-		#bed=PROCESS+"LOCALIZATION/GenomicLocation_"+str(FRAG)+"_{sample}.bed", 
 		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" #some entries with cleavage site won't be in the output, if they were not mapped to the genome in the postcut sample; but a insertion withput genomic coordinates does not help us anyway
 	output:
 		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
