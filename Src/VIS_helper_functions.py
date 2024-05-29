@@ -46,31 +46,42 @@ def fragmentation_fasta(fasta, equal_fragments, outfilename):
                     record_id_chunk = str(record_id) + '_%i' % (i)
                     output_file.write(">"+str(record_id_chunk)+"\n"+str(chunk) + "\n")            
 
-def insertion_normalisation(insertions,bases, n, fasta, outpath):
+def insertion_normalisation(insertions, n, fasta, outpath):
     """
-    Uses the number of aligned bases, number of insertions, and scaling factor n for normalisation.
+    Uses the number of aligned bases, number of insertions, and scaling factor n for normalization.
     Results in insertions per n aligned bases. 
     E.g. A Normalised count of 3 with the scaling factor 10000 means that there were on average 3 insertions detected for each 1kb aligned bases. 
     """
-    N50=get_N50(fasta)
-    n_insertions = sum(1 for _ in open(insertions)) #bed entries are by definition 1 per line
+    N50 = get_N50(fasta)
+    
+    n_insertions = sum(1 for _ in open(insertions))  # bed entries are by definition 1 per line
     print(n_insertions)
-    with open(bases, 'r') as file:
-        # Read the second line of the file
-        next(file)
-        second_line = file.readline()
-        # Convert the content to an integer
-        n_bases = int(second_line.strip())
-    if n_bases != 0:    
-        normalised = (n/n_bases) * n_insertions
+    
+	# Calculate the total number of bases in the FASTA file
+    n_bases = 0
+    read_lengths = []
+    with open(fasta, 'r') as fasta_file:
+        for line in fasta_file:
+            if not line.startswith('>'):
+                n_bases += len(line.strip())
+                read_lengths.append(len(line.strip()))
+
+    mean_read_length = sum(read_lengths) / len(read_lengths) if read_lengths else 0
+
+    
+    if n_bases != 0:
+        normalised = (n / n_bases) * n_insertions
         with open(outpath, 'w') as output_file:
             output_file.write("N50: " + str(N50) + "\n")
+            output_file.write("Mean Read Length: " + str(mean_read_length) + "\n")
             output_file.write("Number of Bases: " + str(n_bases) + "\n") 
             output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
             output_file.write("Normalisation factor: " + str(n) + "\n")
             output_file.write("Insertions per " + str(n) + " Bases: " + str(normalised))
     else:
-         with open(outpath, 'w') as output_file:
+        with open(outpath, 'w') as output_file:
+            output_file.write("N50: " + str(N50) + "\n")
+            output_file.write("Mean Read Length: 0\n")
             output_file.write("Number of Bases: " + str(n_bases) + "\n") 
             output_file.write("Number of Insertions: " + str(n_insertions) + "\n")
             output_file.write("Normalisation factor: " + str(n) + "\n")

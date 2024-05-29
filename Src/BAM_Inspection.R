@@ -1,18 +1,33 @@
 #!/usr/bin/env Rscript
 gc()
 getwd()
+# Create personal library folder if it doesn't exist
+dir.create(Sys.getenv("R_LIBS_USER"), recursive = TRUE)
+
+# Add the personal library folder to the library path
+.libPaths(Sys.getenv("R_LIBS_USER"))
+
+# Function to install packages if missing
+install_if_missing <- function(packages, bio = FALSE) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+      if (bio) {
+        invisible(BiocManager::install(pkg, quiet = TRUE))
+      } else {
+        install.packages(pkg, repos = "https://cloud.r-project.org/", quiet = TRUE)
+      }
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+# Define package lists
 cran_packages <- c("stringi", "BiocManager", "argparse")
-bio_packages <- c("GenomicFeatures", "Gviz", "Rsamtools","biomaRt", "GenomicRanges", "rtracklayer","Homo.sapiens")
-for (i in cran_packages) {
-  if (!require(i, character.only = TRUE))
-    install.packages(i, repos="https://cloud.r-project.org/", quiet = TRUE) #point to the CRAN mirror
-}
-for (i in bio_packages) {
-  if (!require(i, quietly = TRUE, character.only = TRUE))
-    invisible(BiocManager::install(i)) 
-}
+bio_packages <- c("GenomicFeatures", "Gviz", "Rsamtools", "biomaRt", "GenomicRanges", "rtracklayer", "Homo.sapiens")
 
-
+# Install and load packages
+install_if_missing(cran_packages)
+install_if_missing(bio_packages, bio = TRUE)
 library(Gviz)
 library(GenomicRanges)
 library(GenomicFeatures)

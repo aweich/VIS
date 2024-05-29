@@ -41,6 +41,9 @@ rule protein_blast_header:
 		"echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tEvalue\tBitscore' | cat - {input} > {output}"
 
 #Localization
+#this ensures that a writable R lib exists where the needed packages will be installed to!
+shell.prefix('export R_LIBS_USER=~/R/x86_64-pc-linux-gnu-library/4.0 && ')
+        
 rule chromosome_read_plots: 
 	input:
 		bed=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
@@ -50,7 +53,7 @@ rule chromosome_read_plots:
 		H3K4Me3=config["ucsc_H3K4Me3"],
 		H3K27Ac=config["ucsc_H3K27Ac"],
 		gtf=config["ucsc_Genes_gtf"],
-		TF=config["ucsc_TF"]	
+		TF=config["ucsc_TF"],	
 	output:
 		outpath=directory(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}")
 	params:

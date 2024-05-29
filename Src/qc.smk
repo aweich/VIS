@@ -42,26 +42,16 @@ rule mapping_qc:
 		samtools stats {input} > {output.long}    
 		"""
 		
-rule nReads_for_insertion_count:
-	input:
-		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
-		#get_input_names
-	output:
-		temp(PROCESS+"QC/Number_of_Bases_{sample}.normalisation")
-	shell:
-		"gatk CountBases -I {input} > {output}"				
-
 rule normalisation_for_insertion_count:
 	input:
 		insertions=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
-		number_of_bases=PROCESS+"QC/Number_of_Bases_{sample}.normalisation",
 		fasta=PROCESS+"FASTA/Full_{sample}.fa" #for N50
 	params:
 		scale=3000000000 #IPM #IPG
 	output:
 		PROCESS+"QC/Normalisation_IPG_{sample}.txt"
 	run:
-		vhf.insertion_normalisation(input.insertions, input.number_of_bases, params[0], input.fasta, output[0])
+		vhf.insertion_normalisation(input.insertions, params[0], input.fasta, output[0])
 			
 #### read-level stats
 rule read_level_stats:
@@ -111,7 +101,7 @@ rule cigar_fasta:
 		fasta=PROCESS+"FASTA/Full_{sample}.fa",
 		matches=PROCESS+"QC/CIGAR/cigar_{sample}_precut_names.txt",
 	output:
-		temp(PROCESS+"QC/CIGAR/1000I_cigar_FASTA_{sample}.fa",)
+		PROCESS+"QC/CIGAR/1000I_cigar_FASTA_{sample}.fa"
 	run: 
 		shell("seqkit grep -r -f {input.matches} {input.fasta} -o {output}")
 
@@ -151,6 +141,12 @@ rule fasta_to_fastq: #first line extracts the fastq entries, second line separat
 		full=PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq"
 	shell:
 		'''
-		grep '>' {input.fasta} | cut -c 2- | seqkit grep -f - {input.fastq} -o {output.full}
-		csplit -z {output.full} $(awk '/^@/ {{print NR }}' {output.full}) '/^@/' {{*}} --prefix={output.full}
+		# Check if the input fasta file is empty
+        	if [ ! -s {input.fasta} ]; then
+            		echo "No CIGAR - BLAST matches. Creating an empty output file."
+            		touch {output.full}
+            	else
+			grep '>' {input.fasta} | cut -c 2- | seqkit grep -f - {input.fastq} -o {output.full}
+			csplit -z {output.full} $(awk '/^@/ {{print NR }}' {output.full}) '/^@/' {{*}} --prefix={output.full}
+		fi
 		'''
