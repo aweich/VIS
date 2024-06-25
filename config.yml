@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "Barcoded_BBz" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "All_barcoded_28z" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
@@ -19,21 +19,28 @@ samples:
     #S4_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S4.bam"
     #MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
     #Dummy: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
-    #MK014_28z: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode03.bam"
-    #MK025_28z: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode07.bam"
-    #MK028_28z: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode11.bam"
+    MK014_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode03.bam"
+    MK025_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode07.bam"
+    MK028_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode11.bam"
+    MK014_28z_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode01/combined.bam"
+    MK025_28z_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode03/combined.bam"
+    MK028_28z_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode05/combined.bam"
     #MK014_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode02.bam"
     #MK025_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode06.bam"
     #MK028_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode10.bam"
-    MK014_BBz: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode03.bam"
-    MK025_BBz: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode07.bam"
-    MK028_BBz: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode11.bam"
+    #MK014_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode04.bam"
+    #MK025_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode08.bam"
+    #MK028_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode12.bam"
+    #MK014_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode02/combined.bam"
+    #MK025_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode04/combined.bam"
+    #MK028_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode06/combined.bam"
+
 processing_dir: "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results"
 source_dir: "Src/"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/DummyVector.fa"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/CD123/cd123_car_ref.fa"
 #vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"
-vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/pSLCAR-CD19-BBz/pSLCAR-CD19-BBz.fa"
+vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/pSLCAR-CD19-28z/pSLCAR-CD19-28z.fa"
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 proteindb: "/home/weichan/swissprot/swissprot"
@@ -43,7 +50,7 @@ MinInsertionLength: 500 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 120
 ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa"
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta" #might still contain empty last row!
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
-ref_genome: "/home/weichan/permanent/Projects/VIS/dev/pSLCAR-CD19-BBz/hg38_CD19_BBz.fa"
+ref_genome: "/home/weichan/permanent/Projects/VIS/dev/pSLCAR-CD19-28z/hg38_CD19_28z.fa"
 #ucsc_repeats: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_RepeatMasker_02_24"
 ucsc_H3K4Me1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me1_02_24"
 ucsc_H3K27Ac: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K27Ac_02_24"
