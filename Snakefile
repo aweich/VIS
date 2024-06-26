@@ -13,7 +13,7 @@ FRAG=config["fragment_size"]
 #local functions - path to helper fucntions needs to be added to the sys path, otherwise import won't find the file
 rootpath = os.path.join(SRC)
 sys.path.append(rootpath)
-#print(rootpath)	
+#print(rootpath)    
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 
 #inmport rules
@@ -22,7 +22,7 @@ include: config["quality_control"]
 include: config["epigenetics"]
 include: config["variants"]
 
-#target rule		
+#target rule        
 rule all:
 	input: 
 		#main output
@@ -56,7 +56,7 @@ rule all:
 		
 #actual filenames
 def get_input_names(wildcards):
-    return config["samples"][wildcards.sample]
+	return config["samples"][wildcards.sample]
 
 #BAM Operations:
 #Add rule to remove supplementary and secondary alignments
@@ -98,6 +98,8 @@ rule minimap_index:
 		ref=config["ref_genome"] #cut _index
 	output:
 		index=PROCESS+"MAPPING/ref_genome_index.mmi"
+	resources:
+		mem_mb=5000
 	shell:
 		"minimap2 -d {output.index} {input.ref}"
 
@@ -121,6 +123,8 @@ rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 		genome=config["ref_genome"] #_ctrl, if we still use the modified reference genome, we will detect the reads that have no matches with blast but are still assigned to reference! -> should be zero, but lets see
 	output:
 		PROCESS+"MAPPING/Postcut_{sample}_sorted.bam"
+	resources:
+		mem_mb=5000
 	shell: #added N=0 instead of default N=1
 		"""
 		minimap2 -y -ax map-ont --score-N 0 {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
@@ -134,6 +138,8 @@ rule insertion_mapping: #conserves tags!
 		ref=config["ref_genome"]
 	output:
 		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+	resources:
+		mem_mb=5000
 	shell:
 		"""
 		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
@@ -226,10 +232,10 @@ rule clustal_omega:
 		"""
 		mkdir {output}
 		for file in {input}/*; do
-  		echo $file
-  		clustalo -i $file -o "{output}/$(basename "${{file}}")_clustalo.fasta"
+		echo $file
+		clustalo -i $file -o "{output}/$(basename "${{file}}")_clustalo.fasta"
 		done
-		"""		
+		"""     
 ######
 ######
 ###### Vector preparation: Fragmentation 
@@ -265,14 +271,14 @@ rule make_BLASTN_DB:
 		vector_fragmented = PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	output:
 		multiext(PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa",
-            ".ndb",
-            ".nhr",
-            ".nin",
-            ".not",
-            ".nsq",
-            ".ntf",
-            ".nto"
-        )
+			".ndb",
+			".nhr",
+			".nin",
+			".not",
+			".nsq",
+			".ntf",
+			".nto"
+		)
 	run:
 		shell("makeblastdb -in {input.vector_fragmented} -dbtype nucl -blastdb_version 5")
 
@@ -288,12 +294,12 @@ rule find_vector_BLASTn:
 	run:
 		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'") 
 
-rule hardcode_blast_header:		
+rule hardcode_blast_header:     
 	input: 
 		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:	
+	run:    
 		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input} > {output}")
 		
 #BLASTN vector against human genome: Which vector parts are close to human sequences so that they might raise a false positivite BLAST match
@@ -306,12 +312,12 @@ rule find_vector_BLASTn_in_humanRef:
 		temp(PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:
 		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'")
-rule hardcode_blast_header_humanRef:		
+rule hardcode_blast_header_humanRef:        
 	input: 
 		PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:	
+	run:    
 		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevaöue\tbitscore' | cat - {input} > {output}")
 
 rule blast_to_gff:
@@ -320,10 +326,10 @@ rule blast_to_gff:
 		vector=PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		vector=PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff",
-		ref=PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.gff"	
+		ref=PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.gff"  
 	run:
 		vhf.blast2gff(input.ref, output.ref)
-		vhf.blast2gff(input.vector, output.vector)	
+		vhf.blast2gff(input.vector, output.vector)  
 ######
 ######
 ###### Visualisations of intermediate results
@@ -434,16 +440,16 @@ rule check_mapping_pre_and_postcut:
 		notinprecut=PROCESS+"MAPPING/Not_in_precut_{sample}.bed"
 	shell:
 		"""
-        	bedtools intersect -v -a {input.precutbed} -b {input.postcutbed} > {output.notinpostcut}
-        	bedtools intersect -v -a {input.postcutbed} -b {input.precutbed} > {output.notinprecut}
-        	"""
+			bedtools intersect -v -a {input.precutbed} -b {input.postcutbed} > {output.notinpostcut}
+			bedtools intersect -v -a {input.postcutbed} -b {input.precutbed} > {output.notinprecut}
+			"""
 rule reads_with_matches:
 	input:
 		readswithmatches=PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		PROCESS+"BLASTN/Reads_with_VectorMatches_{sample}.blastn"
 	shell:
-		"cat {input.readswithmatches} | cut -f 1 > {output}"	
+		"cat {input.readswithmatches} | cut -f 1 > {output}"    
 
 rule pre_post_cut_and_reads_with_matches:
 	input:
