@@ -44,9 +44,11 @@ rule all:
 		###rules to generate qc output
 		expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
 		expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
+		expand(PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed", sample=SAMPLES),
 		#cigar output (as part of qc)
 		expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
 		###rules to generate variant output
+		#expand(PROCESS+"VARIANTS/BCFTOOLS/Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
 		###rules to generate epigenetics output
 		#expand(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),

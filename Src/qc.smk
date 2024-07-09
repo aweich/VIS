@@ -150,3 +150,11 @@ rule fasta_to_fastq: #first line extracts the fastq entries, second line separat
 			csplit -z {output.full} $(awk '/^@/ {{print NR }}' {output.full}) '/^@/' {{*}} --prefix={output.full}
 		fi
 		'''
+#not tested
+rule bam_coverage: 
+	input:
+		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+	output:
+		covbed=PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed"
+	run: 
+		shell("bedtools genomecov -ibam {input} -bga > {output}")

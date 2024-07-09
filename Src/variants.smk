@@ -3,7 +3,15 @@
 ###### Variant callers and overlap check of Insertions with BLAST matches
 ######
 ######
-
+rule variants_bcftools:
+	input:
+		ref=config["ref_genome_ctrl"],
+		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+	output:
+		vcf=PROCESS+"VARIANTS/BCFTOOLS/Variant_{sample}.vcf"
+	shell:
+		"bcftools mpileup -f {input.ref} {input.bam} | bcftools call -mv -Oz -o {output.vcf}"
+'''
 rule variant_sniffles:
 	input:
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
@@ -114,5 +122,5 @@ rule variants_hardcode_blast_header:
 	run:	
 		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input.svim} > {output.svim}")
 		shell("echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov' | cat - {input.sniffles} > {output.sniffles}")
-		
+'''		
 

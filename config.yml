@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "All_barcoded_BBz" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "Phasing_test_MK025" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
@@ -17,7 +17,7 @@ samples:
     #S4_ADS: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/ADS_S4/ADS_S4_sup_dorado_ref.bam"
     #S3_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S3.bam"
     #S4_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S4.bam"
-    #MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
+    MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
     #Dummy: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
     #MK014_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode03.bam"
     #MK025_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode07.bam"
@@ -28,12 +28,12 @@ samples:
     #MK014_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode02.bam"
     #MK025_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode06.bam"
     #MK028_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode10.bam"
-    MK014_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode04.bam"
-    MK025_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode08.bam"
-    MK028_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode12.bam"
-    MK014_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode02/combined.bam"
-    MK025_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode04/combined.bam"
-    MK028_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode06/combined.bam"
+    #MK014_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode04.bam"
+    #MK025_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode08.bam"
+    #MK028_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode12.bam"
+    #MK014_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode02/combined.bam"
+    #MK025_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode04/combined.bam"
+    #MK028_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/Barcoded/fast_fq/barcode06/combined.bam"
 
 processing_dir: "/home/weichan/temporary/Projects/VIS_out"
 source_dir: "Src/"
