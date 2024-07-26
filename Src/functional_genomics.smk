@@ -63,6 +63,48 @@ rule chromosome_read_plots:
 		mkdir {output.outpath}	#required, otherwise snakemake doesn't find the output folder and reports missing output
 		Src/BAM_Inspection.R -ibam {input.bam} -ibed {input.bed} -iH3K4Me1 {input.H3K4Me1} -iH3K4Me3 {input.H3K4Me3} -iH3K27Ac {input.H3K27Ac} -igtf {input.gtf} -iTF {input.TF} -buffer {params.buffer} -o {output.outpath}   
 		"""	
+#Genes and TF new
+rule distance_to_elements:
+	input:
+		insertions=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
+		genes=config["ucsc_Genes"],
+		tf=config["ucsc_TF"],
+		cd4=config["sedb_cd4"],
+		cd8=config["sedb_cd8"]
+	params:
+		distances=[0,1000,5000,10000,50000]
+	output:
+		genes=PROCESS+"FUNCTIONALGENOMICS/Distance_to_Genes_" + str(FRAG)+"_{sample}.bed",
+		tf=PROCESS+"FUNCTIONALGENOMICS/Distance_to_TF_" + str(FRAG)+"_{sample}.bed",
+		cd4=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.bed",
+		cd8=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.bed"
+	run:
+		vhf.calc_distance_to_element(input.insertions, input.genes, params.distances, output.genes)
+		vhf.calc_distance_to_element(input.insertions, input.tf, params.distances, output.tf)
+		vhf.calc_distance_to_element(input.insertions, input.cd4, params.distances, output.cd4)
+		vhf.calc_distance_to_element(input.insertions, input.cd8, params.distances, output.cd8)
+
+rule plot_distance_to_elements:
+	input:
+		genes=PROCESS+"FUNCTIONALGENOMICS/Distance_to_Genes_" + str(FRAG)+"_{sample}.bed",
+		tf=PROCESS+"FUNCTIONALGENOMICS/Distance_to_TF_" + str(FRAG)+"_{sample}.bed",
+		cd4=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.bed",
+		cd8=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.bed"
+	params:
+		distances=[0,1000,5000,10000,50000]
+	output:
+		genes=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png",
+		tf=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_TF_" + str(FRAG)+"_{sample}.png",
+		cd4=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.png",
+		cd8=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.png"
+	run:
+		vhf.plot_element_distance(input.genes, params.distances, output.genes)
+		vhf.plot_element_distance(input.tf, params.distances, output.tf)
+		vhf.plot_element_distance(input.cd4, params.distances, output.cd4)
+		vhf.plot_element_distance(input.cd8, params.distances, output.cd8)
+	
+'''
+will be removed if not needed again by 14.08.2024
 #Genes and TF
 rule proximity_generator:
 	input:
@@ -92,7 +134,8 @@ rule Genes_in_prox:
 	output:
 		PROCESS+"FUNCTIONALGENOMICS/Genes_" + str(FRAG)+"_{sample}.bed"
 	shell: 
-		"bedtools intersect -wa -a {input.bed} -wb -b {input.TF} | cut -f1,2,3,4,5,9 | sort -k6 > {output}"	
+		"bedtools intersect -wa -a {input.bed} -wb -b {input.TF} > {output}"	
+		#"bedtools intersect -wa -a {input.bed} -wb -b {input.TF} | cut -f1,2,3,4,5,9 | sort -k6 > {output}"	
 
 rule reshape_functional_tables:
 	input:
@@ -104,4 +147,4 @@ rule reshape_functional_tables:
 	run:
 		vhf.reshape_functional_tables(input.TF, output.TF)
 		vhf.reshape_functional_tables(input.Genes, output.Genes) 	
-
+'''

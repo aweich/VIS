@@ -29,24 +29,24 @@ rule all:
 		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES),
 		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		PROCESS+"LOCALIZATION/Insertion_length.png",
+		expand(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
-		expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#pooling
 		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
 		#MODULES
 		###rules to generate functional genomics output
-		expand(PROCESS+"FUNCTIONALGENOMICS/Formatted_Genes_" + str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
+		#expand(PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
 		###rules to generate qc output
-		expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
-		expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
-		expand(PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
+		#expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
+		#expand(PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed", sample=SAMPLES),
 		#cigar output (as part of qc)
-		expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
+		#expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
 		###rules to generate variant output
 		#expand(PROCESS+"VARIANTS/BCFTOOLS/Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
@@ -99,7 +99,7 @@ rule minimap_index:
 	input:
 		ref=config["ref_genome"] #cut _index
 	output:
-		index=PROCESS+"MAPPING/ref_genome_index.mmi"
+		index=temp(PROCESS+"MAPPING/ref_genome_index.mmi")
 	resources:
 		mem_mb=5000
 	shell:
@@ -191,7 +191,7 @@ rule split_fasta:
 		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		fasta=PROCESS+"FASTA/Full_{sample}.fa"
 	params:
-		mode="Buffer" #if each split FASTA substring should be used individually, use "Separated" Join, New mode: Buffer
+		mode=config["splitmode"] #if each split FASTA substring should be used individually, use "Separated" Join, New mode: Buffer
 	output:
 		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
 		vector=PROCESS+"FASTA/Insertion_{sample}_Vector.fa"
@@ -398,7 +398,19 @@ rule insertion_length_plot:
 	output:
 		PROCESS+"LOCALIZATION/Insertion_length.png"
 	run:
+
 		vhf.plot_insertion_length(input, output[0])
+
+rule detailed_insertion_length_plot:
+	input:
+		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+	params: 
+		buffer=3*FRAG
+	output:
+		outpath=directory(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}/")
+	run:
+		shell("mkdir {output.outpath}")
+		vhf.find_and_plot_longest_blast_interval(input[0], params[0], output[0])
 
 ######
 ######
