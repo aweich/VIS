@@ -1,12 +1,12 @@
 # Long-read data
-experiment: "pooled_CD123" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "cd123_test_newref_rerun" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
 samples:
-    full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
+    #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/gfp_pos_ads.fq.gz"
     #UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
     #UTD: "/home/weichan/permanent/Projects/VIS/dev/CD123/UTD_sup_dorado_ref.bam"
-    #GFP+_CD123_pooled: "/home/weichan/permanent/Projects/VIS/dev/CD123/Pooled_CD123_GFP+.bam"
+    CD123_pooled: "/home/weichan/permanent/Projects/VIS/dev/CD123/Pooled_CD123_GFP+.bam"
     #dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
     #S1: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/S1_sup_dorado_ref.bam" #CD19
     #S2: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/S2_sup_dorado_ref.bam"
@@ -57,12 +57,12 @@ vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/CD123/cd123_car_ref.fa"
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 proteindb: "/home/weichan/swissprot/swissprot"
-splitmode: "Buffer" #"Buffer", "Join", "Separated"
+splitmode: "Join" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
 MinLength: 1
 MinInsertionLength: 500 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
-ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa"
-ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta" #might still contain empty last row!
+ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/OnlyUppercase_hg38.fa"
+#ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta" #might still contain empty last row!
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/pSLCAR-CD19-28z/hg38_CD19_28z.fa"
 #ucsc_repeats: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_RepeatMasker_02_24"

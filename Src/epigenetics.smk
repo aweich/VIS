@@ -47,7 +47,7 @@ rule insertion_proximity:
 rule insertion_methylation_proximity:
     input:
         prox = PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed",
-        fasta = config["ref_genome"] #healhy genome here, since the one with the vector throws error; but i need the one with the vector otherwise the modkit stuff does not match!
+        fasta = PROCESS+"MAPPING/vector_ref_genome.fa"
     output:
         temp(PROCESS+"METHYLATION/Insertion_methylation_proximity_{sample}.fa")
     shell:

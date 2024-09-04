@@ -28,22 +28,23 @@ rule all:
 		#main output
 		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES),
 		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		PROCESS+"LOCALIZATION/Insertion_length.png",
+		##PROCESS+"LOCALIZATION/Insertion_length.png",
+		##expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
 		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
+		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#pooling
 		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
 		#MODULES
 		###rules to generate functional genomics output
-		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
+		##expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
 		#expand(PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
 		###rules to generate qc output
 		#expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
-		#expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
+		##expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed", sample=SAMPLES),
 		#cigar output (as part of qc)
 		#expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
@@ -95,9 +96,20 @@ rule pool_BAM:
 		samtools merge -o {output} {input}
 		"""
 '''
+
+rule build_insertion_reference:
+	input:
+		ref=config["ref_genome_ctrl"],
+		vector=config["vector_fasta"]
+	output:
+		PROCESS+"MAPPING/vector_ref_genome.fa"
+	shell:
+		"cat {input.ref} {input.vector} > {output}"
+		
+
 rule minimap_index:
 	input:
-		ref=config["ref_genome"] #cut _index
+		ref=PROCESS+"MAPPING/vector_ref_genome.fa"
 	output:
 		index=temp(PROCESS+"MAPPING/ref_genome_index.mmi")
 	resources:
@@ -122,7 +134,7 @@ rule make_FASTA_without_tags: #fasta of raw data no trimming whatsoever
 rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 	input:
 		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
-		genome=config["ref_genome"] #_ctrl, if we still use the modified reference genome, we will detect the reads that have no matches with blast but are still assigned to reference! -> should be zero, but lets see
+		genome=PROCESS+"MAPPING/vector_ref_genome.fa" #_ctrl, if we still use the modified reference genome, we will detect the reads that have no matches with blast but are still assigned to reference
 	output:
 		PROCESS+"MAPPING/Postcut_{sample}_sorted.bam"
 	resources:
@@ -137,7 +149,7 @@ rule insertion_mapping: #conserves tags!
 	input:
 		bam=get_input_names,
 		minimapref=PROCESS+"MAPPING/ref_genome_index.mmi",
-		ref=config["ref_genome"]
+		ref=PROCESS+"MAPPING/vector_ref_genome.fa"
 	output:
 		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
 	resources:

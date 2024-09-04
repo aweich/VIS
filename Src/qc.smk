@@ -3,7 +3,7 @@
 ###### Quality control and normalization
 ######
 ######
-
+FRAG=100
 #actual filenames
 def get_input_names(wildcards):
     return config["samples"][wildcards.sample]

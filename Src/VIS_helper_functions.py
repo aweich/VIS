@@ -921,8 +921,8 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
 	plt.figure(figsize=(16, 2))
 	# Plot the underlying sequence as a line
 	interval=longest_end - longest_start
-	plt.plot([0, interval], [0, 0], color='red', linewidth=2, label=matches[0]['query_id'])
-	plt.scatter(interval + interval*0.005 ,0,marker=">", s=100, color='red')
+	plt.plot([0, interval], [0, 0], color='#E9967A', linewidth=2, label=matches[0]['query_id'])
+	#plt.scatter(interval + interval*0.005 ,0,marker=">", s=100, color='red')
 	# Plot the subject IDs as markers along the line
 	for match in matches:
 		if longest_start <= match['query_start'] <= longest_end:
@@ -949,7 +949,7 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
 	plt.ylabel('Matches')
 	plt.legend(loc='upper right')
 	plt.tight_layout()
-	plt.savefig(outfile, dpi=300)
+	plt.savefig(outfile, dpi=600)
 	plt.show()
 
 def find_and_plot_longest_blast_interval(blastn, buffer, output_dir):
