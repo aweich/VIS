@@ -26,13 +26,13 @@ include: config["variants"]
 rule all:
 	input: 
 		#main output
-		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES),
-		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		##PROCESS+"LOCALIZATION/Insertion_length.png",
-		##expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES),
+		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		#PROCESS+"LOCALIZATION/Insertion_length.png",
+		#expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
-		##expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
 		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#pooling
@@ -40,7 +40,7 @@ rule all:
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
 		#MODULES
 		###rules to generate functional genomics output
-		##expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
+		#expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
 		#expand(PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
 		###rules to generate qc output
 		#expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
@@ -48,6 +48,12 @@ rule all:
 		#expand(PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed", sample=SAMPLES),
 		#cigar output (as part of qc)
 		#expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
+		#mosdepth
+		#expand(PROCESS+"QC/Coverage/{sample}.mosdepth.global.dist.txt", sample=SAMPLES),
+		#PROCESS+"QC/fastqc/multiqc_report.html",
+		#expand(PROCESS + "QC/readlevel_{sample}/", sample=SAMPLES),
+		PROCESS+"QC/Insertion_Reads_multiqc_report.html",
+		expand(PROCESS + "QC/{sample}_precut_mapping_quality.txt", sample=SAMPLES), 
 		###rules to generate variant output
 		#expand(PROCESS+"VARIANTS/BCFTOOLS/Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
@@ -55,6 +61,9 @@ rule all:
 		#expand(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
 		##expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
+		#malignancy score
+		expand(PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed", sample=SAMPLES),
+		#expand(PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.png", sample=SAMPLES)
 
 		
 #actual filenames
