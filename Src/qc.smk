@@ -3,6 +3,12 @@
 ###### Quality control and normalization
 ######
 ######
+#Nanoplot for general information about the sequencing yield of each sample
+#MultiQC for quality of the sequencing yield
+#MappingQuality?
+#Mosdepth for genome-wide coverage
+#CIGAR tools for the identification of high confidence insertions
+ 
 FRAG=100
 #actual filenames
 def get_input_names(wildcards):
@@ -30,18 +36,17 @@ rule nanoplot:
 		touch {output}
 		"""
 
-rule mapping_qc:
+rule quality_of_mapping_qc:
 	input:
 		PROCESS+"MAPPING/Precut_{sample}_sorted.bam" #before cut out, but after removal of secondary and supplementary alignments
 	output:
-		short=PROCESS+"QC/short_{sample}.qc",
-		long=PROCESS+"QC/long_{sample}.qc"
+		#short=PROCESS+"QC/readlevel_{sample}/short_{sample}.qc",
+		long=PROCESS+"QC/mapping_qc_{sample}/{sample}.flagstats"
 	shell:
 		"""
-		samtools flagstats {input} > {output.short}
 		samtools stats {input} > {output.long}    
 		"""
-		
+		#samtools flagstats {input} > {output.short}
 rule normalisation_for_insertion_count:
 	input:
 		insertions=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
@@ -82,7 +87,7 @@ rule mapping_for_cigar:
 
 rule cigar_strings:
 	input:
-		pre=PROCESS+"QC/CIGAR/HealthyRef_cigar_{sample}_sorted.bam", #PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
+		pre=PROCESS+"MAPPING/Precut_{sample}_sorted.bam", #PROCESS+"QC/CIGAR/HealthyRef_cigar_{sample}_sorted.bam"
 		post=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
 		matches=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
 	output:
@@ -133,7 +138,7 @@ rule cigar_reads_and_blast_insertion: #just checks if read id is in the cleavage
 	run:
 		vhf.reads_with_insertions(input.fasta1, input.breakpoints, output[0])		
 
-rule fasta_to_fastq: #first line extracts the fastq entries, second line separates them to make the input for fastaqc easier
+rule fasta_to_fastq: #first line extracts the fastq entries, second line separates them to make the input for fastaqc easier #this is basically the perfect setup as a multifastqc input
 	input:
 		fastq=PROCESS+"FASTA/Conserved_WithTags_Full_{sample}.fa",
 		fasta=PROCESS+"QC/CIGAR/BLASTN/Reads_cigar1000_VectorMatches_{sample}.fasta"
@@ -150,7 +155,7 @@ rule fasta_to_fastq: #first line extracts the fastq entries, second line separat
 			csplit -z {output.full} $(awk '/^@/ {{print NR }}' {output.full}) '/^@/' {{*}} --prefix={output.full}
 		fi
 		'''
-#not tested
+
 rule bam_coverage: 
 	input:
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
@@ -158,3 +163,85 @@ rule bam_coverage:
 		covbed=PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed"
 	run: 
 		shell("bedtools genomecov -ibam {input} -bga > {output}")
+
+### Read level fastqc analysis
+
+rule extract_fastq_insertions:
+    input:
+    	bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
+        readnames=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
+    params:
+        tempdir="temp_{sample}"  # Temporary directory for intermediate files
+    output:
+        fastq=PROCESS + "QC/{sample}_filtered.fastq"
+    shell:
+        '''
+        mkdir -p {params.tempdir}
+
+        # Extract header from BAM or generate it from reference genome
+        samtools view -H {input.bam} > {params.tempdir}/header.sam
+
+        samtools view -N {input.readnames} {input.bam} > {params.tempdir}/filtered_reads.sam
+        
+        # Concatenate all filtered reads and add header
+        cat {params.tempdir}/header.sam {params.tempdir}/filtered_reads.sam | samtools view -b > {params.tempdir}/filtered_withheader.bam
+        # Convert to FASTQ
+        samtools fastq {params.tempdir}/filtered_withheader.bam > {output.fastq}
+
+        # Clean up temporary files
+        rm -r {params.tempdir}
+        '''
+
+rule read_level_fastqc:
+    input:
+        PROCESS+"QC/{sample}_filtered.fastq"
+    params:
+        prefix=PROCESS + "QC/readlevel_{sample}/{sample}_read_"
+    output:
+        directory(PROCESS + "QC/readlevel_{sample}/")
+    shell:
+        """
+        mkdir -p {output}
+
+        # Split the FASTQ file into individual entries
+        csplit -z -f {params.prefix} {input} '/^@/' '{{*}}'
+
+        # Run FastQC on each split FASTQ file
+        for seq in {params.prefix}*; do
+            fastqc -f fastq --noextract -o {output} "$seq"
+        done
+        """
+
+rule multiqc:
+    input: 
+        fastqc=expand(PROCESS + "QC/readlevel_{sample}/", sample=SAMPLES)
+    output: 
+        PROCESS+"QC/Insertion_Reads_multiqc_report.html"
+    wrapper: "0.31.1/bio/multiqc"
+
+### Read level overview of mapping quality before and after the cut out of the insertions
+rule extract_mapping_quality:
+    input:
+        bam=PROCESS + "MAPPING/Precut_{sample}_sorted.bam",
+        bam2=PROCESS + "MAPPING/Postcut_{sample}_sorted.bam",
+        readnames=PROCESS + "BLASTN/Readnames_" + str(FRAG) + "_VectorMatches_{sample}.txt"
+    params:
+        tempdir="temp_{sample}"
+    output:
+        quality_scores=PROCESS + "QC/{sample}_precut_mapping_quality.txt",
+        quality_scores2=PROCESS + "QC/{sample}_postcut_mapping_quality.txt"
+    shell:
+        '''
+        mkdir -p {params.tempdir}
+
+        # Extract reads of interest
+        samtools view {input.bam} | grep -F -f {input.readnames} > {params.tempdir}/temp_precut_reads.sam
+        samtools view {input.bam2} | grep -F -f {input.readnames} > {params.tempdir}/temp_postcut_reads.sam
+
+        # Extract mapping quality column (5th field) and read name
+        awk '{{print $1, $5}}' {params.tempdir}/temp_precut_reads.sam > {output.quality_scores}
+        awk '{{print $1, $5}}' {params.tempdir}/temp_postcut_reads.sam > {output.quality_scores2}
+
+        # Clean up
+        rm -r {params.tempdir}
+        '''

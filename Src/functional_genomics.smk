@@ -75,33 +75,33 @@ rule distance_to_elements:
 		distances=[0,1000,5000,10000,50000]
 	output:
 		genes=PROCESS+"FUNCTIONALGENOMICS/Distance_to_Genes_" + str(FRAG)+"_{sample}.bed",
-		tf=PROCESS+"FUNCTIONALGENOMICS/Distance_to_TF_" + str(FRAG)+"_{sample}.bed",
-		cd4=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.bed",
-		cd8=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.bed"
+		#tf=PROCESS+"FUNCTIONALGENOMICS/Distance_to_TF_" + str(FRAG)+"_{sample}.bed",
+		#cd4=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.bed",
+		#cd8=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.bed"
 	run:
 		vhf.calc_distance_to_element(input.insertions, input.genes, params.distances, output.genes)
-		vhf.calc_distance_to_element(input.insertions, input.tf, params.distances, output.tf)
-		vhf.calc_distance_to_element(input.insertions, input.cd4, params.distances, output.cd4)
-		vhf.calc_distance_to_element(input.insertions, input.cd8, params.distances, output.cd8)
+		#vhf.calc_distance_to_element(input.insertions, input.tf, params.distances, output.tf)
+		#vhf.calc_distance_to_element(input.insertions, input.cd4, params.distances, output.cd4)
+		#vhf.calc_distance_to_element(input.insertions, input.cd8, params.distances, output.cd8)
 
 rule plot_distance_to_elements:
 	input:
 		genes=PROCESS+"FUNCTIONALGENOMICS/Distance_to_Genes_" + str(FRAG)+"_{sample}.bed",
-		tf=PROCESS+"FUNCTIONALGENOMICS/Distance_to_TF_" + str(FRAG)+"_{sample}.bed",
-		cd4=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.bed",
-		cd8=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.bed"
+		#tf=PROCESS+"FUNCTIONALGENOMICS/Distance_to_TF_" + str(FRAG)+"_{sample}.bed",
+		#cd4=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.bed",
+		#cd8=PROCESS+"FUNCTIONALGENOMICS/Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.bed"
 	params:
 		distances=[0,1000,5000,10000,50000]
 	output:
 		genes=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png",
-		tf=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_TF_" + str(FRAG)+"_{sample}.png",
-		cd4=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.png",
-		cd8=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.png"
+		#tf=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_TF_" + str(FRAG)+"_{sample}.png",
+		#cd4=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_CD4_SE_" + str(FRAG)+"_{sample}.png",
+		#cd8=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_CD8_SE_" + str(FRAG)+"_{sample}.png"
 	run:
 		vhf.plot_element_distance(input.genes, params.distances, output.genes)
-		vhf.plot_element_distance(input.tf, params.distances, output.tf)
-		vhf.plot_element_distance(input.cd4, params.distances, output.cd4)
-		vhf.plot_element_distance(input.cd8, params.distances, output.cd8)
+		#vhf.plot_element_distance(input.tf, params.distances, output.tf)
+		#vhf.plot_element_distance(input.cd4, params.distances, output.cd4)
+		#vhf.plot_element_distance(input.cd8, params.distances, output.cd8)
 	
 '''
 will be removed if not needed again by 14.08.2024
@@ -148,3 +148,34 @@ rule reshape_functional_tables:
 		vhf.reshape_functional_tables(input.TF, output.TF)
 		vhf.reshape_functional_tables(input.Genes, output.Genes) 	
 '''
+
+### Distance of VIS to genes, TSS, miRNAs, and TF
+rule sort_insertion_file:
+	input:
+		PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
+	output:
+		PROCESS+"LOCALIZATION/Sorted_ExactInsertions_{sample}.bed"
+	run:
+		shell("sort -k1,1 -k2,2n {input} > {output}")
+
+rule distance_to_regulation:
+	input:
+		insertions=PROCESS+"LOCALIZATION/Sorted_ExactInsertions_{sample}.bed",
+		ref=config["ref_genome_ctrl"]
+	params:
+		genes=config["ucsc_Genes"],
+		tf=config["ucsc_TF"],
+		tss=config["ucsc_tss"], 
+		mirna=config["ucsc_mirna"]
+	output:
+		PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed"
+	run:
+		shell("bedtools closest -a {input.insertions} -b {params.genes} {params.tf} {params.tss} {params.mirna} -names genes tf tss mirna -D a > {output}")
+
+rule plot_all_regulation:
+	input:
+		PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed"
+	output:
+		PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.png"
+	run:
+		vhf.plot_all_elements_by_distance(input[0], output[0])

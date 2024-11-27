@@ -994,7 +994,7 @@ def calc_distance_to_element(bed_insertion, bed_elements, distances, outbed):
 	'''
 	insertions = pd.read_csv(bed_insertion, sep='\t', header=None, names=["chr","start","stop","read","interval","strand"])
 	#genes, tf, ...
-	elements = pd.read_csv(bed_elements, sep='\t', header=None, skiprows=1, names=["chrom","txStart","txEnd","name2"])
+	elements = pd.read_csv(bed_elements, sep='\t', header=None, names=["chrom","txStart","txEnd","name2"])
 	print(elements.head())
 	results=[]
 		
@@ -1092,3 +1092,30 @@ def plot_element_distance(bed, distances, output_path):
 	plt.savefig(output_path, dpi=300)
 	plt.close()
 	print(f"Plot saved to {output_path}")
+
+def plot_all_elements_by_distance(bed, output_path):
+	"""
+	plot output from bed closest
+	"""
+	#hardcoded columns
+	columns = ['chrom1', 'pos1', 'pos2', 'entry_id', 'range', 'strand', 'feature_type', 
+           'chrom2', 'start', 'end', 'name', 'distance', 'other']
+	data = pd.read_csv(bed, sep="\t", header=None, names=columns)
+	print(data.head())
+
+	# Count occurrences of each feature type for each entry_id
+	summary = data.groupby(['entry_id', 'feature_type']).size().unstack(fill_value=0)
+	print(summary.head())
+	
+	#plot
+	sns.violinplot(data=data, x='feature_type', y='distance')
+	plt.title('Distance Distribution of Features')
+	plt.xlabel('Feature Type')
+	plt.ylabel('Distance to Entry')
+	plt.savefig(output_path, dpi=300)
+	plt.tight_layout()
+	plt.close()
+	print(f"Plot saved to {output_path}")
+		
+		
+		
