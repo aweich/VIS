@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "Test_QC_Malignancy" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "28z_QC_Malignancy" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
@@ -19,8 +19,8 @@ samples:
     #S4_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S4.bam"
     #MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
     #Dummy: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
-    test_MK014_28z_1: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_3/VIS_MPX_3_combined_MK025_28z.bam"
-    test_2: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_3/VIS_MPX_3_combined_MK014_28z.bam"
+    #test_MK014_28z_1: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_3/VIS_MPX_3_combined_MK025_28z.bam"
+    #test_2: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_3/VIS_MPX_3_combined_MK014_28z.bam"
     #MK025_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode07.bam"
     #MK028_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode11.bam"
     #MK014_28z_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/20240625_1137_MC-115946_FAY23515_980e3e52/Barcoded/SQK-RBK114-24_barcode01.bam"
@@ -44,8 +44,8 @@ samples:
     #MK014_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK014_BBz_pooled.bam"
     #MK025_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK025_BBz_pooled.bam"
     #MK028_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK028_BBz_pooled.bam"
-    #MK014_28z_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK014_28z_pooled.bam"
-    #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
+    MK014_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_28z_pooled.bam"
+    #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
     #MK028_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_28z_pooled.bam"
     #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MK025_28z_pooled/VIS_MK025_28z_pooled.bam"
     #Clone1: "/home/weichan/permanent/Projects/VIS/Data/CAR_clonality/combined_first_clone_sup.bam"
@@ -59,6 +59,7 @@ proteindb: "/home/weichan/swissprot/swissprot"
 splitmode: "Buffer" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
 MinLength: 1
+MAPQ: 10 #mapping quality filter after pseudo-read generation
 MinInsertionLength: 500 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
 ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg_withBasecalling/hg38.fa"
 #ref_genome_ctrl: "/home/weichan/permanent/Src/T2T_ref/chm13v2.0.fa"

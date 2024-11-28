@@ -29,19 +29,19 @@ rule all:
 		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES),
 		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		#PROCESS+"LOCALIZATION/Insertion_length.png",
-		#expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
 		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
-		#expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#pooling
 		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
 		#MODULES
 		###rules to generate functional genomics output
-		#expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
-		#expand(PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/ORFs_{sample}.proteinblast", sample=SAMPLES),
+		#expand(PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
 		###rules to generate qc output
 		#expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
 		##expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
@@ -62,8 +62,7 @@ rule all:
 		##expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
 		#malignancy score
-		expand(PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.png", sample=SAMPLES)
+
 
 		
 #actual filenames
@@ -143,9 +142,9 @@ rule make_FASTA_without_tags: #fasta of raw data no trimming whatsoever
 rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 	input:
 		fasta=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
-		genome=PROCESS+"MAPPING/vector_ref_genome.fa" #_ctrl, if we still use the modified reference genome, we will detect the reads that have no matches with blast but are still assigned to reference
+		genome=PROCESS+"MAPPING/vector_ref_genome.fa"
 	output:
-		PROCESS+"MAPPING/Postcut_{sample}_sorted.bam"
+		PROCESS+"MAPPING/Postcut_{sample}_unfiltered_sorted.bam"
 	resources:
 		mem_mb=5000
 	shell: #added N=0 instead of default N=1
@@ -166,6 +165,19 @@ rule insertion_mapping: #conserves tags!
 	shell:
 		"""
 		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
+		samtools index {output}
+		"""
+
+rule clean_postcut_by_maping_quality:
+	input:
+		PROCESS+"MAPPING/Postcut_{sample}_unfiltered_sorted.bam"
+	params:
+		mapq=config["MAPQ"]
+	output:
+		PROCESS+"MAPPING/Postcut_{sample}_sorted.bam"
+	shell:
+		"""
+		samtools view -h -q {params.mapq} {input} -o {output}
 		samtools index {output}
 		"""
 
@@ -310,13 +322,23 @@ rule find_vector_BLASTn:
 		fasta=PROCESS+"FASTA/Full_{sample}.fa",
 		dummy=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa.ndb" #provokes the building of the database first!
 	params:
-		#vector=config["blastn_db"] #vector db
+		tempdir=PROCESS+"temp_{sample}",
 		vector=PROCESS+"FASTA/Fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	output:
 		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:
-		shell("blastn -query {input.fasta} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'") 
+	shell:
+		"""
+		mkdir {params.tempdir}
+		
+        	blastn -query {input.fasta} -db {params.vector} -out {params.tempdir}/temp_output.blastn -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'
 
+        	# Filter results based on bitscore > 50
+        	awk '$16 > 50' {params.tempdir}/temp_output.blastn > {output}
+
+        	# Clean up temporary files
+        	rm -r {params.tempdir}
+        	"""
+        
 rule hardcode_blast_header:     
 	input: 
 		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
@@ -357,36 +379,7 @@ rule blast_to_gff:
 ######
 ###### Visualisations of intermediate results
 ######
-###### the follwoing 2 rules are needed to remove the pseudo-alignment of the reads to the modified ref genome s this would otherwise break the plotting function
-'''
-rule get_reads_of_supplementary_matches:
-	input:
-		post=PROCESS+"MAPPING/Postcut_{sample}.bed",
-		pre=PROCESS+"MAPPING/Precut_{sample}.bed"
-	output:
-		post=PROCESS+"MAPPING/Postcut_{sample}_lostvector.reads",
-		pre=PROCESS+"MAPPING/Precut_{sample}_lostvector.reads"
-	run:
-		shell("awk '$1 ~ /CAR/ {{print $4}}' {input.post} > {output.post}") #CD19 with CD/CAR, CD123 with V0. Uff that sucks
-		shell("awk '$1 ~ /CAR/ {{print $4}}' {input.pre} > {output.pre}")
 
-rule remove_vector_alignments:
-	input:
-		prebam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-		prelost=PROCESS+"MAPPING/Precut_{sample}_lostvector.reads",
-		postbam=PROCESS+"MAPPING/Postcut_{sample}_sorted.bam",
-		postlost=PROCESS+"MAPPING/Postcut_{sample}_lostvector.reads"
-	output:
-		pre=PROCESS+"MAPPING/NoVectorAlignments_Precut_{sample}_sorted.bam",
-		post=PROCESS+"MAPPING/NoVectorAlignments_Postcut_{sample}_sorted.bam"
-	shell: #V0 for CD123, CAR for CD19
-		"""
-		samtools view -h {input.postbam} | grep -v 'CAR' | samtools view -bS -o {output.post} -
-		samtools index {output.post}
-		samtools view -h {input.prebam} | grep -v 'CAR' | samtools view -bS -o {output.pre} -
-		samtools index {output.pre}
-		"""
-'''
 rule fragmentation_distribution_plots:
 	input:
 		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",

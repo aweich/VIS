@@ -97,7 +97,7 @@ H3K4Me3 <- makeGRangesFromDataFrame(H3K4Me3, seqnames.field=c("V1"), start.field
 #colnames(mcols(hm))
 
 #TF data
-TF <- read.table(TFpath, header = TRUE)
+TF <- read.table(TFpath, header = FALSE)
 colnames(TF) <- c("chromosome", "start","end", "id")
 print(head(TF))
 
@@ -163,17 +163,17 @@ for (i in 1:nrow(bed_data)) {
   #bed
   #1: Load BED of Insertions
   coord <- AnnotationTrack(bed, name = "Insertions")
-  
+
   #functional genomics
-  H3K4Me1_track <- DataTrack(H3K4Me1, name="H3K4Me1", type=("heatmap"), ylim = c(0,30))
-  H3K4Me3_track <- DataTrack(H3K4Me3, name="H3K4Me3", type=("heatmap"), ylim = c(0,30))
-  H3K27Ac_track <- DataTrack(H3K27Ac, name="H3K27Ac", type=("heatmap"), ylim = c(0,30))
+  #H3K4Me1_track <- DataTrack(H3K4Me1, name="H3K4Me1", type=("heatmap"), ylim = c(0,30))
+  #H3K4Me3_track <- DataTrack(H3K4Me3, name="H3K4Me3", type=("heatmap"), ylim = c(0,30))
+  #H3K27Ac_track <- DataTrack(H3K27Ac, name="H3K27Ac", type=("heatmap"), ylim = c(0,30))
   
   
   #TF
-  TF_track <- AnnotationTrack(TF, name="TF Clusters", stacking="squish", featureAnnotation = "id",fontcolor.item="red",
-                            cex=0.5, fill="white", lty=0)
-  print(TF_track)
+  #TF_track <- AnnotationTrack(TF, name="TF Clusters", stacking="squish", featureAnnotation = "id",fontcolor.item="red",
+  #                          cex=0.5, fill="white", lty=0)
+  #print(TF_track)
   #2: Load BAM Coverage
   altrack <- AlignmentsTrack(bampath, isPaired = FALSE, type = c("coverage")) #bampath, isPaired = FALSE
 	
@@ -184,9 +184,9 @@ for (i in 1:nrow(bed_data)) {
   #4: Plot all
   filename <- sprintf("%s_start%s_end%s.pdf",chromosome, start, stop) #itrack, altrack,, DNaseH
   pdf(file=paste(outputpath,filename, sep="/"), width=10, height=10)
-  plotTracks(c(itrack,gtrack,gtfTrack,altrack,coord,H3K4Me1_track,H3K4Me3_track,H3K27Ac_track,TF_track),
+  plotTracks(c(itrack,gtrack,gtfTrack,altrack,coord), #H3K4Me1_track,H3K4Me3_track,H3K27Ac_track,TF_track #,0.25,0.25,0.25,5
              chromosome =chromosome, from = start_coord,
-             to = end_coord, transcriptAnnotation="symbol", col="black",background.title = "red4",col.main="red", outerMargin=0, innerMargin=5, sizes = c(0.25,0.25,0.25,0.5,0.25,0.25,0.25,0.25,5)) 
+             to = end_coord, transcriptAnnotation="symbol", col="black",background.title = "red4",col.main="red", outerMargin=0, innerMargin=5, sizes = c(0.25,0.25,0.25,0.5,0.25)) 
   #plotTracks(list(itrack,gtrack,biomTrack,altrack,coord,H3K4Me1_track,H3K4Me3_track,H3K27Ac_track,DNaseH), chromosome =chromosome, from = start_coord, to = end_coord, background.title = "lightblue", sizes = c(0.25,0.25,1,1,0.25,0.25,0.25,0.25,0.25), #red2,red4,royalblue2
   #col.main="red", innerMargin=10) 
   dev.off()

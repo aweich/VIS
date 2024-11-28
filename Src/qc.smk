@@ -171,7 +171,7 @@ rule extract_fastq_insertions:
     	bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
         readnames=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
     params:
-        tempdir="temp_{sample}"  # Temporary directory for intermediate files
+        tempdir=PROCESS+"temp_{sample}"  # Temporary directory for intermediate files
     output:
         fastq=PROCESS + "QC/{sample}_filtered.fastq"
     shell:
@@ -224,12 +224,14 @@ rule extract_mapping_quality:
     input:
         bam=PROCESS + "MAPPING/Precut_{sample}_sorted.bam",
         bam2=PROCESS + "MAPPING/Postcut_{sample}_sorted.bam",
+        bam3=PROCESS+"MAPPING/Postcut_{sample}_unfiltered_sorted.bam",
         readnames=PROCESS + "BLASTN/Readnames_" + str(FRAG) + "_VectorMatches_{sample}.txt"
     params:
-        tempdir="temp_{sample}"
+        tempdir=PROCESS+"temp_{sample}"
     output:
         quality_scores=PROCESS + "QC/{sample}_precut_mapping_quality.txt",
-        quality_scores2=PROCESS + "QC/{sample}_postcut_mapping_quality.txt"
+        quality_scores2=PROCESS + "QC/{sample}_postcut_mapping_quality.txt",
+        quality_scores3=PROCESS + "QC/{sample}_postcut_unfiltered_mapping_quality.txt"
     shell:
         '''
         mkdir -p {params.tempdir}
@@ -237,10 +239,12 @@ rule extract_mapping_quality:
         # Extract reads of interest
         samtools view {input.bam} | grep -F -f {input.readnames} > {params.tempdir}/temp_precut_reads.sam
         samtools view {input.bam2} | grep -F -f {input.readnames} > {params.tempdir}/temp_postcut_reads.sam
+        samtools view {input.bam3} | grep -F -f {input.readnames} > {params.tempdir}/temp_postcut_unfiltered_reads.sam
 
         # Extract mapping quality column (5th field) and read name
-        awk '{{print $1, $5}}' {params.tempdir}/temp_precut_reads.sam > {output.quality_scores}
-        awk '{{print $1, $5}}' {params.tempdir}/temp_postcut_reads.sam > {output.quality_scores2}
+        awk '{{print $1,$3,$5}}' {params.tempdir}/temp_precut_reads.sam > {output.quality_scores}
+        awk '{{print $1,$3,$5}}' {params.tempdir}/temp_postcut_reads.sam > {output.quality_scores2}
+        awk '{{print $1,$3,$5}}' {params.tempdir}/temp_postcut_unfiltered_reads.sam > {output.quality_scores3}
 
         # Clean up
         rm -r {params.tempdir}

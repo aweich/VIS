@@ -1053,69 +1053,70 @@ def calc_distance_to_element(bed_insertion, bed_elements, distances, outbed):
 	results_df = pd.DataFrame(results)
 	results_df.to_csv(outbed, sep='\t', index=False, header=False)
 
-def plot_element_distance(bed, distances, output_path):
-	"""
-	Uses the bed file from the distance calculations and returns a plot to visualize the respective elements with their distance.
-	"""
-	df = pd.read_csv(bed, sep='\t', header=None, names=["chr", "start_insertion", "stop_insertion", "read", "element_name", "distance"])
-	
-	df["abs_distance"] = df["distance"].abs()
-	df = df.sort_values(by=['read', 'abs_distance']).drop_duplicates(subset='element_name', keep='first').reset_index()
-	
-	#plotting
-	plt.figure(figsize=(10, 20))
-	plt.ylim((-5, len(df["read"]) + 5))
-	plt.yticks(fontsize=8)
-	plt.xticks(sorted({x for n in distances for x in (n, -n)}), rotation=90)
-	plt.grid(True, axis='y', alpha=0.5, zorder=0)
-	sns.despine()
-	
-	# Draw horizontal lines for each element with distance=0
-	zero_distance_genes = df[df['distance'] == 0]['element_name'].tolist()
-	ax = plt.gca()
-	for gene in zero_distance_genes:
-		y_pos = df[df['element_name'] == gene].index[0]
-		ax.axhline(y=y_pos, color='black', linewidth=1.1, zorder=1)
-	
-	# Plot actual points
-	sns.scatterplot(data=df, x='distance', y='element_name', marker='o', hue='read', legend=None, s=100, zorder=3)
-	
-	# Add rug plot to the plot
-	bin_size = 100
-	df['distance_bin'] = (df['distance'] // bin_size) * bin_size
-	binned_counts = df.groupby('distance_bin').size().reset_index(name='count')
-	sns.rugplot(x=binned_counts['distance_bin'], color='black', linewidth=2)
-	
-	plt.xlabel("Distance (bp)")
-	plt.ylabel("")
-	plt.tight_layout()
-	plt.savefig(output_path, dpi=300)
-	plt.close()
-	print(f"Plot saved to {output_path}")
+def plot_element_distance(bed, distances, distance_threshold, output_path):
+    """
+    Uses the bed file from the distance calculations and returns a plot to visualize the respective elements with their distance.
+    Entries farther than the defined threshold are excluded.
+    
+    Parameters:
+        bed (str): Path to the input BED file.
+        distances (list): List of distances to define x-axis ticks.
+        output_path (str): Path to save the plot.
+        distance_threshold (int, optional): Maximum distance to include in the plot.
+    """
+    # Read the table
+    df = pd.read_csv(
+        bed,
+        sep='\t',
+        header=None,
+        names=["chr", "start_insertion", "stop_insertion", "read", "source", "element_name", "distance"],
+    )
+    
+    # Apply threshold filtering if provided
+    print(distance_threshold)
+    print(type(distance_threshold))
+    if distance_threshold is not None:
+        df = df[df['distance'].abs() <= int(distance_threshold)]
 
-def plot_all_elements_by_distance(bed, output_path):
-	"""
-	plot output from bed closest
-	"""
-	#hardcoded columns
-	columns = ['chrom1', 'pos1', 'pos2', 'entry_id', 'range', 'strand', 'feature_type', 
-           'chrom2', 'start', 'end', 'name', 'distance', 'other']
-	data = pd.read_csv(bed, sep="\t", header=None, names=columns)
-	print(data.head())
+    # Ensure absolute distance and sort by absolute distance within groups
+    df['abs_distance'] = df['distance'].abs()
+    df = df.sort_values(by=['read', 'abs_distance']).drop_duplicates(subset=['read', 'element_name'], keep='first').reset_index(drop=True)
+    
+    # Prepare data for plotting
+    plt.figure(figsize=(12, 6))
+    
+    # Create scatter plot
+    sns.scatterplot(
+        data=df,
+        x='distance',
+        y='element_name',
+        hue='read',
+        palette='tab10',
+        s=100,
+        style='source'
+    )
+    
+    # Highlight genes with zero distance
+    zero_distance_genes = df[df['distance'] == 0]['element_name']
+    for gene in zero_distance_genes:
+        plt.axhline(y=df[df['element_name'] == gene].index[0], color='gray', linestyle='--', linewidth=0.8)
+    
+    # Plot binned rugplot for distances
+    bin_size = 100  # Bin size for grouping distances
+    df['distance_bin'] = (df['distance'] // bin_size) * bin_size
+    sns.rugplot(x=df['distance_bin'], color='black', height=0.05, linewidth=1)
+    
+    # Configure plot aesthetics
+    plt.xticks(sorted({x for n in distances for x in (n, -n)}), rotation=45)
+    plt.xlabel("Distance (bp)")
+    plt.ylabel("Element Name")
+    plt.title("Distance Distribution to Elements")
+    sns.despine()
+    plt.legend(title="",  bbox_to_anchor=(0.5, -0.2),  loc='upper center', fontsize=8)
+    
+    # Save plot
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300)
+    plt.close()
+    print(f"Plot saved to {output_path}")
 
-	# Count occurrences of each feature type for each entry_id
-	summary = data.groupby(['entry_id', 'feature_type']).size().unstack(fill_value=0)
-	print(summary.head())
-	
-	#plot
-	sns.violinplot(data=data, x='feature_type', y='distance')
-	plt.title('Distance Distribution of Features')
-	plt.xlabel('Feature Type')
-	plt.ylabel('Distance to Entry')
-	plt.savefig(output_path, dpi=300)
-	plt.tight_layout()
-	plt.close()
-	print(f"Plot saved to {output_path}")
-		
-		
-		
