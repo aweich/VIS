@@ -7,7 +7,9 @@ from time import sleep
 configfile: "config.yml"
 SRC=config["source_dir"]
 SAMPLES = expand(config["samples"]) 
-PROCESS = os.path.join(config["processing_dir"],str(config["experiment"]+"/")) #intermediate and results files are stored here
+OUTDIR = os.path.join(config["processing_dir"],str(config["experiment"]+"/"))
+PROCESS = OUTDIR+"Intermediate/" #intermediate files are stored here
+FINAL = OUTDIR+"Final/" # final files are stored here
 FRAG=config["fragment_size"]
 
 #local functions - path to helper fucntions needs to be added to the sys path, otherwise import won't find the file
@@ -21,39 +23,39 @@ include: config["functional_genomics"]
 include: config["quality_control"]
 include: config["epigenetics"]
 include: config["variants"]
+include: config["development"]
 
 #target rule        
 rule all:
 	input: 
 		#main output
-		#expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES),
-		#PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png",
-		#PROCESS+"LOCALIZATION/Insertion_length.png",
+		OUTDIR+"config_settings.yml",
+		FINAL+"LOCALIZATION/Heatmap_Insertion_Chr.png",
+		FINAL+"LOCALIZATION/Insertion_length.png",
+		FINAL+"QC/multiqc_report.html",
+		expand(FINAL+"QC/Fragmentation/Insertions/insertions_" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(FINAL+"QC/Fragmentation/Longest_Interval/{sample}/", sample=SAMPLES),
 		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
 		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
-		expand(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		#pooling
 		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
 		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
 		#MODULES
 		###rules to generate functional genomics output
 		#expand(PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
+		#expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
 		###rules to generate qc output
-		#expand(PROCESS+"QC/Nanoplot/{sample}/Non_weightedHistogramReadlength.png", sample=SAMPLES),
+		#expand(PROCESS+"QC/Nanoplot/{sample}/NanoStats.txt", sample=SAMPLES),
 		##expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
 		#expand(PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed", sample=SAMPLES),
 		#cigar output (as part of qc)
 		#expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
-		#mosdepth
-		#expand(PROCESS+"QC/Coverage/{sample}.mosdepth.global.dist.txt", sample=SAMPLES),
 		#PROCESS+"QC/fastqc/multiqc_report.html",
 		#expand(PROCESS + "QC/readlevel_{sample}/", sample=SAMPLES),
-		PROCESS+"QC/Insertion_Reads_multiqc_report.html",
-		expand(PROCESS + "QC/{sample}_precut_mapping_quality.txt", sample=SAMPLES), 
+		#QC
+		expand(PROCESS+"QC/MAPQ/{sample}_mapq_heatmap_image.png", sample=SAMPLES),
 		###rules to generate variant output
 		#expand(PROCESS+"VARIANTS/BCFTOOLS/Variant_{sample}.vcf", sample=SAMPLES),
 		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
@@ -69,41 +71,23 @@ rule all:
 def get_input_names(wildcards):
 	return config["samples"][wildcards.sample]
 
-#BAM Operations:
-#Add rule to remove supplementary and secondary alignments
-#samtools view -F 2304 -bo filtered.bam original.bam (via picard: supplementary alignment, not primary alignment): Added to prepare BAM ruleF
 
-print("Results in ...")
-print(PROCESS)
+#print("Results in ...")
+#print(PROCESS)
 
 ######
 ######
 ###### Insertion BAM: Convert to FASTA 
 ######
 ######
-#bam pooling
-'''
-rule prepare_BAM: #sorts, index, and removes supllementary and secondary alignments
-	input:
-		get_input_names
-	output:
-		PROCESS+"MAPPING/POOLED/{sample}_sorted.bam"
-	shell:
-		"""
-		samtools sort {input} > {output} 
-		samtools index {output}
-		"""
 
-rule pool_BAM:
+rule copy_config_version:
 	input:
-		expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES)
+		config_file="config.yml"
 	output:
-		PROCESS+"MAPPING/POOLED/Pooled_S3.bam"
+		OUTDIR+"config_settings.yml" 
 	shell:
-		"""
-		samtools merge -o {output} {input}
-		"""
-'''
+		"cp {input.config_file} {output}"
 
 rule build_insertion_reference:
 	input:
@@ -231,52 +215,12 @@ rule split_fasta:
 	run:
 		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.vector)
 
-rule reads_with_insertion: #just checks if read id is in the cleavage sites file
-	input:
-		fasta1=PROCESS+"FASTA/Full_{sample}.fa",
-		fasta2=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
-		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta",
-		PROCESS+"FASTA/Postcut_Reads_with_Insertion_{sample}_Vector.fasta"
-	run:
-		vhf.reads_with_insertions(input.fasta1, input.breakpoints, output[0])
-		vhf.reads_with_insertions(input.fasta2, input.breakpoints, output[1])
-
-rule summary_reads_with_insertion: #just checks if read id is in the cleavage sites file
-	input:
-		fullvector=config["vector_fasta"],
-		insertedvector=PROCESS+"FASTA/Insertion_{sample}_Vector.fa",
-		precut_reads=PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta",
-		postcut_reads=PROCESS+"FASTA/Postcut_Reads_with_Insertion_{sample}_Vector.fasta",
-		breakpoints=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		directory(PROCESS+"FASTA/InsertionReads/{sample}/")
-	run:
-		shell("mkdir {output}")
-		vhf.summary_reads_with_insertions(input.fullvector, input.insertedvector, input.precut_reads, input.postcut_reads, input.breakpoints, output[0])
-
-rule clustal_omega:
-	input:
-		PROCESS+"FASTA/InsertionReads/{sample}/"
-	params:
-		clustalo='clustalo' #depends on how it is stored in the bashrc
-	output:
-		directory(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/")
-	shell:
-		"""
-		mkdir {output}
-		for file in {input}/*; do
-		echo $file
-		clustalo -i $file -o "{output}/$(basename "${{file}}")_clustalo.fasta"
-		done
-		"""     
 ######
 ######
 ###### Vector preparation: Fragmentation 
 ######
 ######
-rule reverse_vector:
+rule prepare_vector:
 	input:
 		config["vector_fasta"] #vector fasta sequence
 	output: 
@@ -338,14 +282,6 @@ rule find_vector_BLASTn:
         	# Clean up temporary files
         	rm -r {params.tempdir}
         	"""
-        
-rule hardcode_blast_header:     
-	input: 
-		PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:    
-		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input} > {output}")
 		
 #BLASTN vector against human genome: Which vector parts are close to human sequences so that they might raise a false positivite BLAST match
 rule find_vector_BLASTn_in_humanRef:
@@ -357,14 +293,20 @@ rule find_vector_BLASTn_in_humanRef:
 		temp(PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
 	run:
 		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'")
-rule hardcode_blast_header_humanRef:        
-	input: 
-		PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:    
-		shell("echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevaöue\tbitscore' | cat - {input} > {output}")
 
+rule hardcode_blast_header:        
+	input: 
+		vector=PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+		humanref=PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	output:
+		vector=PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+		humanref=PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	shell:    
+		"""
+		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.vector} > {output.vector}
+		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.humanref} > {output.humanref}
+		"""
+		
 rule blast_to_gff:
 	input: 
 		ref=PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
@@ -375,75 +317,8 @@ rule blast_to_gff:
 	run:
 		vhf.blast2gff(input.ref, output.ref)
 		vhf.blast2gff(input.vector, output.vector)  
-######
-######
-###### Visualisations of intermediate results
-######
 
-rule fragmentation_distribution_plots:
-	input:
-		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		PROCESS+"BLASTN/HUMANREF/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	params:
-		FRAG
-	output:
-		outpath=directory(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}"),
-		outpath2=directory(PROCESS+"BLASTN/HUMANREF/PLOTS/" + str(FRAG)+"_{sample}")
-	run:
-		shell("mkdir {output.outpath}")
-		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
-		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0])
-		shell("mkdir {output.outpath2}")
-		vhf.fragmentation_match_distribution(input[1], params[0], output[1])
-		vhf.fragmentation_read_match_distribution(input[1], params[0], output[1])
-
-rule insertion_heatmap:
-	input:
-		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES)
-	output:
-		PROCESS+"LOCALIZATION/Heatmap_Insertion_Chr.png"
-	run:
-		vhf.plot_bed_files_as_heatmap(input, output[0])
-
-
-rule insertion_length_plot:
-	input:
-		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES)
-	output:
-		PROCESS+"LOCALIZATION/Insertion_length.png"
-	run:
-
-		vhf.plot_insertion_length(input, output[0])
-
-rule detailed_insertion_length_plot:
-	input:
-		PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-	params: 
-		buffer=3*FRAG
-	output:
-		outpath=directory(PROCESS+"BLASTN/PLOTS/Longest_Interval_{sample}/")
-	run:
-		shell("mkdir {output.outpath}")
-		vhf.find_and_plot_longest_blast_interval(input[0], params[0], output[0])
-
-######
-######
-###### WIP rules
-######
-######
-#exact coordinates of the matching fragments
-
-rule exact_insertion_coordinates:
-	input:
-		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
-		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" #some entries with cleavage site won't be in the output, if they were not mapped to the genome in the postcut sample; but a insertion withput genomic coordinates does not help us anyway
-	output:
-		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
-		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed" #only to get FASTA sequence
-	run:
-		vhf.exact_insertion_coordinates2(input.borders, input.bed, output.out, output.out2)
-
-#filter for BLAST matches
+#filter BLAST matches by min length
 rule extract_by_length:
 	input:
 		blast=PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
@@ -457,51 +332,46 @@ rule extract_by_length:
 		shell("awk -F'\t' '$11>={params.threshold}' {input.blast} > {output.blast}")
 		shell("awk -F'\t' '$11>={params.threshold}' {input.humanref} > {output.humanref}") 
 
-'''
-#Control of the workflow: How do the genomic coordinates of my two BAMs differ for the insertion vectors! # CUrrently it looks like all the insertion reads do not really differ pre and post cut -> either the cut out is not sensitive ennough (try with split reads) or the vector doesn't really alter the alignment!
-rule check_mapping_pre_and_postcut:
-	input:
-		postcutbed=PROCESS+"MAPPING/Postcut_{sample}.bed",
-		precutbed=PROCESS+"MAPPING/Precut_{sample}.bed",
-	output:
-		notinpostcut=PROCESS+"MAPPING/Not_in_postcut_{sample}.bed",
-		notinprecut=PROCESS+"MAPPING/Not_in_precut_{sample}.bed"
-	shell:
-		"""
-			bedtools intersect -v -a {input.precutbed} -b {input.postcutbed} > {output.notinpostcut}
-			bedtools intersect -v -a {input.postcutbed} -b {input.precutbed} > {output.notinprecut}
-			"""
-rule reads_with_matches:
-	input:
-		readswithmatches=PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	output:
-		PROCESS+"BLASTN/Reads_with_VectorMatches_{sample}.blastn"
-	shell:
-		"cat {input.readswithmatches} | cut -f 1 > {output}"    
+######
+######
+###### Visualisation of insertions
+######
 
-rule pre_post_cut_and_reads_with_matches:
-	input:
-		#notinpostcut=PROCESS+"MAPPING/Not_in_postcut_{sample}.bed",
-		#notinprecut=PROCESS+"MAPPING/Not_in_precut_{sample}.bed",
-		notinpostcut=PROCESS+"MAPPING/Postcut_{sample}.bed",
-		notinprecut=PROCESS+"MAPPING/Precut_{sample}.bed",
-		matches=PROCESS+"BLASTN/Reads_with_VectorMatches_{sample}.blastn"
-	output:
-		readsnotinpostcut=PROCESS+"EVAL/Matches_different_in_postcut_{sample}.bed",
-		readsnotinprecut=PROCESS+"EVAL/Matches_different_in_precut_{sample}.bed"
-	run: 
-		shell("if ! grep -F -f {input.matches} {input.notinpostcut}; then echo not found; fi > {output.readsnotinpostcut}")
-		shell("if ! grep -F -f {input.matches} {input.notinprecut}; then echo not found; fi > {output.readsnotinprecut}")
 
-rule pre_post_cut_and_check_FASTA_changes:
+
+rule insertion_heatmap:
 	input:
-		postcut=PROCESS+"FASTA/Cleaved_{sample}_noVector.fa",
-		precut=PROCESS+"FASTA/Full_{sample}.fa",
-		matches=PROCESS+"BLASTN/Reads_with_VectorMatches_{sample}.blastn"
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES)
 	output:
-		readsnotinpostcut=PROCESS+"EVAL/Matches_different_in_postcut_FASTA_{sample}.fa",
-		readsnotinprecut=PROCESS+"EVAL/Matches_different_in_precut_FASTA_{sample}.fa"
-	run: 
-		shell("seqkit grep -r -f {input.matches} {input.postcut} -o {output.readsnotinpostcut}")
-		shell("seqkit grep -r -f {input.matches} {input.precut} -o {output.readsnotinprecut}")
-'''
+		FINAL+"LOCALIZATION/Heatmap_Insertion_Chr.png"
+	run:
+		vhf.plot_bed_files_as_heatmap(input, output[0])
+
+
+rule insertion_length_plot:
+	input:
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES)
+	output:
+		FINAL+"LOCALIZATION/Insertion_length.png"
+	run:
+
+		vhf.plot_insertion_length(input, output[0])
+
+######
+######
+###### Exact localization
+######
+######
+
+#exact coordinates of the matching fragments
+
+rule calculate_exact_insertion_coordinates:
+	input:
+		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
+		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" #some entries with cleavage site won't be in the output, if they were not mapped to the genome in the postcut sample; but a insertion withput genomic coordinates does not help us anyway
+	output:
+		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
+		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed" #only to get FASTA sequence
+	run:
+		vhf.exact_insertion_coordinates2(input.borders, input.bed, output.out, output.out2)
+

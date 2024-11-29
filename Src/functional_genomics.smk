@@ -1,44 +1,4 @@
 #Functional genomics rules for VIS
-#ORF rules
-rule orf_prediction: #to do: add to bashrc
-	input:
-		PROCESS+"FASTA/Reads_with_Insertion_{sample}_Vector.fasta"
-	output:
-		proteinorf=PROCESS+"FUNCTIONALGENOMICS/ORF/Protein_Insertion_{sample}_Vector.orf",
-		fastaorf=PROCESS+"FUNCTIONALGENOMICS/ORF/FASTA_Insertion_{sample}_Vector.orf"
-	shell: #-n = ignore nested ORFs: Should give us only the bigger ones
-		"""
-		ORFfinder -s 0 -in {input} -outfmt 0 -out {output.proteinorf}
-		ORFfinder -s 0 -n true -in {input} -outfmt 1 -out {output.fastaorf}
-		"""
-
-rule orf_reshape: #start and stop for - strand is interchanged to make them plottable
-	input:
-		orfs=PROCESS+"FUNCTIONALGENOMICS/ORF/FASTA_Insertion_{sample}_Vector.orf"
-	output:
-		bed=PROCESS+"FUNCTIONALGENOMICS/ORF/BED_{sample}_Vector.orf"
-	run:
-		vhf.orf_reshape(input.orfs, output.bed)
-
-###### ORF to protein BLAST
-rule protein_blast:
-	input:
-		PROCESS+"FUNCTIONALGENOMICS/ORF/Protein_Insertion_{sample}_Vector.orf"
-	params: 
-		db=config["proteindb"]
-	output:
-		temp(PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/Protein_Insertion_NoHeaderBlast_{sample}.temp")
-	shell:
-		"blastp -query {input} -db {params.db} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qlen slen qstart qend length mismatch pident qcovs evalue bitscore' -taxids 9606"
-		
-				
-rule protein_blast_header:		
-	input: 
-		PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/Protein_Insertion_NoHeaderBlast_{sample}.temp"
-	output:
-		PROCESS+"FUNCTIONALGENOMICS/ORF/PROTEINBLAST/ORFs_{sample}.proteinblast"
-	shell:	
-		"echo -e 'QueryID\tSubjectID\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tEvalue\tBitscore' | cat - {input} > {output}"
 
 #Localization
 #this ensures that a writable R lib exists where the needed packages will be installed to!
