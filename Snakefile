@@ -36,6 +36,7 @@ rule all:
 		expand(FINAL+"QC/Fragmentation/Insertions/insertions_" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(FINAL+"QC/Fragmentation/Longest_Interval/{sample}/", sample=SAMPLES),
 		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(FINAL+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
 		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
@@ -350,7 +351,7 @@ rule insertion_heatmap:
 
 rule insertion_length_plot:
 	input:
-		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed", sample=SAMPLES)
+		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES)
 	output:
 		FINAL+"LOCALIZATION/Insertion_length.png"
 	run:
@@ -367,11 +368,20 @@ rule insertion_length_plot:
 
 rule calculate_exact_insertion_coordinates:
 	input:
-		bed=PROCESS+"MAPPING/Postcut_{sample}.bed", #full bed, maybe a inbetween step can be replaced!
-		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn" #some entries with cleavage site won't be in the output, if they were not mapped to the genome in the postcut sample; but a insertion withput genomic coordinates does not help us anyway
+		bed=PROCESS+"MAPPING/Postcut_{sample}.bed",
+		borders=PROCESS+"BLASTN/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		out=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
-		out2=PROCESS+"LOCALIZATION/ExactInsertions_{sample}_estimated_full_coordinates.bed" #only to get FASTA sequence
 	run:
-		vhf.exact_insertion_coordinates2(input.borders, input.bed, output.out, output.out2)
+		vhf.exact_insertion_coordinates(input.borders, input.bed, output.out)
+
+rule collect_outputs:
+	input:
+		coordinates=PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed",
+	output:
+		coordinates=FINAL+"LOCALIZATION/ExactInsertions_{sample}.bed"
+	shell:
+		"""
+		cp {input.coordinates} {output.coordinates}
+		"""
 

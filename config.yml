@@ -82,13 +82,13 @@ sedb_cd8: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd8_closest_gene.b
 ucsc_tss: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TSS_peaks_processed_sorted.bed"
 #miRNA
 ucsc_mirna: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_miRNA_processed_sorted.bed"
-#epigenetics rule collection
-epigenetics: "./Src/epigenetics.smk"
-#variants rule collection
-variants: "./Src/variants.smk"
 #qc rule collection
 quality_control: "./Src/qc.smk"
 #functional genomics rule collection
 functional_genomics: "./Src/functional_genomics.smk"
-#rules that are still under development
+#rules that are still under development WIP
 development: "./Src/development.smk"
+#epigenetics rule collection WIP
+epigenetics: "./Src/epigenetics.smk"
+#variants rule collection WIP
+variants: "./Src/variants.smk"

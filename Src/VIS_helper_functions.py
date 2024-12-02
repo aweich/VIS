@@ -524,23 +524,11 @@ def splitting_borders(blast_file, filteroption, filtervalue,  overlap, outfile1,
         intervals = []
         for _, row in group.iterrows():
             start, end = row['QueryStart'], row['QueryEnd']
-            #filter rule
-            #if filteroption:
-             #   print("filtering...")
-             #   if end - start < filtervalue:
-             #       print("too small: ")
-             #       print(end, start)
-             #       continue
             intervals.append(start)
             intervals.append(end)
         # Store the intervals for each QueryID
         intervals_dict[query_id] = intervals
-    
-    #if nothing was found, return file anyway
-   # if len(intervals_dict.keys()) == 0:
-     #    with open(outfile, 'w') as output_file:
-     #        output_file.write("No matches")   
-    #
+
     #output if something is found
     result_dict = {key: merge_intervals(intervals, overlap, filteroption,filtervalue) for key, intervals in intervals_dict.items()}
     result_dict = {k: v for k, v in result_dict.items() if v is not None}
@@ -627,45 +615,83 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                         output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
 
-def exact_insertion_coordinates2(border_dict, bed, outfile, outfile2):
+def adjust_coordinates_for_strand(start, stop, strand, insertion_values):
     """
-    Uses the border_dict file and adds the first, third, fifth, ... nth number for each read and adds them to the start coordinate of the read in the BED.
-    Then stop will be +1 of start. Second output will give the full insertion size so that it can be used for the methylation potting on the other BAM.
-    This is error-prone and has not been tested for insertions that have breaks in the fasta! Especially full insertion site cannot be fully resolved since directionality info is lost!!!
+    Adjusts the insertion coordinates based on strand directionality.
+    
+    Parameters:
+        start (int): Start coordinate of the read from the BED file.
+        stop (int): Stop coordinate of the read from the BED file.
+        strand (str): Strand information ('+' or '-').
+        insertion_values (list): List of insertion coordinates from the border_dict.
+    
+    Returns:
+        list: Adjusted coordinates as a list of (new_start, new_stop) tuples.
     """
-    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0,1,2,3,5])
-    bed['BaseRead'] = bed[3].str.split("_").str[0] #bed[3].map(lambda x: str(x)[:-2])
-    border_dict = json.load(open(border_dict))
-    matching_entries = bed[bed["BaseRead"].isin(border_dict.keys())]
-    # Combine 'Start' and 'Stop' into a new 'Coordinates' column as a list of tuples
-    matching_entries['Coordinates'] = list(zip(matching_entries[1], matching_entries[2]))
-    grouped_entries = matching_entries.groupby(['BaseRead', 0,5])['Coordinates'].agg(sum).reset_index()
-    
-    # Sort the 'Coordinates' lists for each row in ascending order
-    grouped_entries['Coordinates'] = grouped_entries['Coordinates'].apply(lambda x: sorted(x))
-   
-    #grouped_entries['Start'] = grouped_entries['Coordinates'].apply(lambda x: [coord for coord in x[1::2]])
-    
-    # Create a new column 'Start' with different logic based on 'Coordinates' list length: If length <= 4: use the second element, if longer, use every second element
-    grouped_entries['Start'] = grouped_entries['Coordinates'].apply(lambda x: [coord[1] for coord in x[1::2]] if len(x) > 4 else [x[1]])
-     # Explode the DataFrame to duplicate rows based on the 'Start' list
-    exploded_df = grouped_entries.explode('Start').reset_index(drop=True)
-    exploded_df["Stop"] = exploded_df["Start"] #+1
-    # Reorder the columns
-    exploded_df = exploded_df[[0, 'Start', 'Stop', 'BaseRead', "Coordinates",5]]
-    #print(matching_entries)
-    exploded_df.to_csv(outfile, sep='\t', index=False, header=False)
-    
-    # exact coordinates
-    exact = pd.DataFrame(list(border_dict.items()), columns=['Key', 'Values'])
-    # Add a new column 'Differences' with the calculated differences
-    exact['Differences'] = exact['Values'].apply(lambda values: [b - a for a, b in zip(values[:-1], values[1:])])
-    merged_df = pd.merge(exploded_df, exact, left_on='BaseRead', right_on='Key', how='left').drop(columns=['Key'])
-    # Replace the 'Stop' column with a new one based on 'Start' + 'Differences'
-    merged_df['Stop'] = merged_df['Start'] + merged_df['Differences'].apply(lambda x: x[0]) #apply necessary because otherwise int + list
-    print(merged_df)
-    merged_df.to_csv(outfile2, sep='\t', index=False, header=False)
+    read_length = stop - start
+    adjusted_coords = []
 
+    if strand == "+":
+        # Use insertion values as-is for the + strand
+        for i in range(0, len(insertion_values), 2):
+            new_start = start + insertion_values[i]
+            new_stop = start + insertion_values[i + 1]
+            adjusted_coords.append((new_start, new_stop))
+    elif strand == "-":
+        # Reverse and flip insertion values for the - strand
+        for i in range(0, len(insertion_values), 2):
+            new_start = start + (read_length - insertion_values[i + 1])
+            new_stop = start + (read_length - insertion_values[i])
+            adjusted_coords.append((new_start, new_stop))
+
+    return adjusted_coords
+
+def exact_insertion_coordinates(border_dict, bed, outfile):
+    """
+    Updates BED file coordinates based on border_dict values.
+    Adjusts for strand directionality and creates new BED entries for each insertion.
+    """
+    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0, 1, 2, 3, 5])
+    bed['BaseRead'] = bed[3].str.split("_").str[0]  # Get the original read name
+
+    # Dict with nsertion intervals
+    border_dict = json.load(open(border_dict))
+
+    # Filter BED entries to only include those present in the border_dict
+    matching_entries = bed[bed["BaseRead"].isin(border_dict.keys())].copy()
+
+    # Check if there are matching entries
+    if matching_entries.empty:
+        print("No matching reads found in the BED file.")
+        return
+
+    # Process matching entries by updating cooridnates
+    results = []
+    for _, row in matching_entries.iterrows():
+        read_name = row["BaseRead"]
+        old_start = row[1]
+        old_stop = row[2]
+        strand = row[5]
+        chromosome = row[0]
+
+        # Get insertion coordinates from the dictionary
+        insertion_values = border_dict[read_name]
+
+        # Ensure insertion_values are in pairs (start, stop)
+        if len(insertion_values) % 2 != 0:
+            print(f"Error: Uneven number of coordinates for read {read_name}")
+            continue
+
+        # Adjust coordinates based on strand
+        adjusted_coords = adjust_coordinates_for_strand(old_start, old_stop, strand, insertion_values)
+        
+        old_coords = [old_start, old_stop]
+        for new_start, new_stop in adjusted_coords:
+            results.append([chromosome, new_start, new_stop, read_name, old_coords, strand])
+
+    updated_bed = pd.DataFrame(results, columns=[0, 1, 2, 3, 5, 6])
+    updated_bed.to_csv(outfile, sep='\t', index=False, header=False)
+    print(f"Insertion BED file saved to {outfile}")
 
 
 def combine_beds_add_ID(beds, outfile): #maybe at some point add to the heatmap plotting function
