@@ -45,8 +45,8 @@ samples:
     #MK025_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK025_BBz_pooled.bam"
     #MK028_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK028_BBz_pooled.bam"
     MK014_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_28z_pooled.bam"
-    #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
-    #MK028_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_28z_pooled.bam"
+    MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
+    MK028_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_28z_pooled.bam"
     #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MK025_28z_pooled/VIS_MK025_28z_pooled.bam"
     #Clone1: "/home/weichan/permanent/Projects/VIS/Data/CAR_clonality/combined_first_clone_sup.bam"
 
@@ -56,7 +56,7 @@ vector_fasta: "/home/weichan/permanent/Projects/VIS/Data/pSLCAR-CD19-28z/pSLCAR-
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 proteindb: "/home/weichan/swissprot/swissprot"
-splitmode: "Buffer" #"Buffer", "Join", "Separated"
+splitmode: "Separated" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
 MinLength: 1
 MAPQ: 10 #mapping quality filter after pseudo-read generation
@@ -82,6 +82,10 @@ sedb_cd8: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd8_closest_gene.b
 ucsc_tss: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TSS_peaks_processed_sorted.bed"
 #miRNA
 ucsc_mirna: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_miRNA_processed_sorted.bed"
+#cancer genes
+cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38/Cosmic_CancerGeneCensus_v101_GRCh38_extract_sorted_cleaned.bed"
+#hiC
+encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/minimal_merged_combined_sorted.bed"
 #qc rule collection
 quality_control: "./Src/qc.smk"
 #functional genomics rule collection

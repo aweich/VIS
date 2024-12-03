@@ -39,8 +39,8 @@ rule distance_to_regulation:
     params:
         genes=config["ucsc_Genes"],
         tf=config.get("ucsc_TF", ""),
-        tss=config.get("ucsc_tss", ""), 
-        mirna=config.get("ucsc_mirna", "")
+        tss=config.get("encode_hic", ""), 
+        mirna=config.get("cosmic_genes", "")
     output:
         PROCESS + "FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed"
     run:
@@ -54,16 +54,15 @@ rule distance_to_regulation:
             raise ValueError("No valid input files provided for bedtools closest. Keep in mind that at least 'UCSC_genes' needs to be provided for this kind of analysis.")
 
         shell(f"""
-        bedtools closest -a {input.insertions} -b {input_files} -D a -filenames |
-        cut -f 1,2,3,4,7,11,12 > {output}
+        bedtools closest -a {input.insertions} -b {input_files} -D a -filenames | cut -f 1,2,3,4,7,11,12 > {output}
         """)
 
 rule plot_distance_to_elements:
 	input:
 		distancetable=PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed"
 	params:
-		distances=list(range(-20000, 20001, 5000)),
-		threshold=20000
+		distances=list(range(-50000, 50001, 5000)),
+		threshold=50000
 	output:
 		genes=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png",
 	run:

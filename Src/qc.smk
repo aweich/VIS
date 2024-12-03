@@ -4,7 +4,7 @@
 ######
 ######
  
-FRAG=config["fragment_size"]
+#FRAG=config["fragment_size"]
 
 #full stats of input data		
 rule nanoplot:
@@ -20,6 +20,7 @@ rule nanoplot:
 		touch {output}
 		"""
 
+'''
 rule normalisation_for_insertion_count:
 	input:
 		insertions=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
@@ -30,7 +31,8 @@ rule normalisation_for_insertion_count:
 		PROCESS+"QC/Normalisation_IPG_{sample}.txt"
 	run:
 		vhf.insertion_normalisation(input.insertions, params[0], input.fasta, output[0])
-			
+'''			
+
 rule bam_coverage: 
 	input:
 		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"

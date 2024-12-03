@@ -21,6 +21,7 @@ import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 #inmport rules
 include: config["functional_genomics"]
 include: config["quality_control"]
+#development
 include: config["epigenetics"]
 include: config["variants"]
 include: config["development"]
@@ -37,6 +38,7 @@ rule all:
 		expand(FINAL+"QC/Fragmentation/Longest_Interval/{sample}/", sample=SAMPLES),
 		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(FINAL+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
 		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
 		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
