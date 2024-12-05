@@ -18,6 +18,7 @@ from pybedtools import BedTool
 import json
 import subprocess
 from Bio.Align.Applications import ClustalOmegaCommandline
+from matplotlib.patches import Patch
 
 #main   
 def chunks(lst, n):
@@ -548,12 +549,6 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     """
     Uses the bed file from the distance calculations and returns a plot to visualize the respective elements with their distance.
     Entries farther than the defined threshold are excluded.
-    
-    Parameters:
-        bed (str): Path to the input BED file.
-        distances (list): List of distances to define x-axis ticks.
-        output_path (str): Path to save the plot.
-        distance_threshold (int, optional): Maximum distance to include in the plot.
     """
     # Read the table
     df = pd.read_csv(
@@ -603,13 +598,122 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     plt.ylabel("Element Name")
     plt.title("Distance Distribution to Elements")
     sns.despine()
-    plt.legend(title="",  bbox_to_anchor=(0.5, -0.2),  loc='upper center', fontsize=8)
+    plt.legend(title="",  bbox_to_anchor=(0.5, -0.5),  loc='upper center', fontsize=8)
     
     # Save plot
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
     plt.close()
     print(f"Plot saved to {output_path}")
+
+def scoring_insertions(data, output_file):
+    """
+    Uses custom conditions to visualize the entries of the annotated insertion summary table.
+    """
+    colnames = ["chr", "start_insertion", "stop_insertion", "read", "source", "element_name", "distance"]
+    df = pd.read_csv(
+        data,
+        sep='\t',
+        header=None,
+        names=colnames,
+    )
+    
+    # Drop duplicate entries
+    df = df.drop_duplicates().reset_index(drop=True)
+
+    # Define conditions
+    conditions = [
+        ("COSMIC", 0), ("TF", 0), ("GENCODE", 0), ("HiC_Tcells", 0),
+        ("COSMIC", 10_000), ("TF", 10_000), ("GENCODE", 10_000), ("HiC_Tcells", 10_000),
+        ("COSMIC", 50_000), ("TF", 50_000), ("GENCODE", 50_000), ("HiC_Tcells", 50_000),
+        ("COSMIC", None), ("TF", None), ("GENCODE", None), ("HiC_Tcells", None),
+    ]
+
+    for source, distance in conditions:
+        if distance == 0:
+            df[f"{source}_0"] = df["source"].str.contains(source) & (df["distance"] == 0)
+        elif distance == 10_000:
+            df[f"{source}_10kb"] = df["source"].str.contains(source) & ((10_000 > abs(df["distance"])) & (abs(df["distance"]) > 0))
+        elif distance == 50_000:
+            df[f"{source}_50kb"] = df["source"].str.contains(source) & ((50_000 > abs(df["distance"])) & (abs(df["distance"]) > 10_000))
+        else:
+            df[f"{source}_Safe"] = df["source"].str.contains(source) & (abs(df["distance"]) > 50_000)
+
+    # Aggregate data
+    heatmap_data = df.groupby(["read", "chr", "start_insertion", "stop_insertion"]).agg("sum").reset_index()
+
+    # Select numeric columns
+    heatmap_matrix = heatmap_data.drop(columns=colnames)
+    heatmap_matrix.index = heatmap_data["chr"] + "_" + \
+                           heatmap_data["start_insertion"].astype(str) + "_" + \
+                           heatmap_data["stop_insertion"].astype(str)
+
+    # Calculate Final Score
+    def calculate_score(row):
+        if row["COSMIC_0"] > 0 or (row["TF_0"] + row["GENCODE_0"] > 1):
+            return "Very dangerous"
+        elif (row["TF_0"] <= 1 or row["GENCODE_0"] <= 1 or row["COSMIC_10kb"] > 0 or row["HiC_Tcells_10kb"] > 0):
+            return "Dangerous"
+        elif all(value > 0 for col, value in row.items() if "_Safe" in col) and row.sum() == row[[col for col in row.index if "_Safe" in col]].sum():
+            return "Safe"
+        else:
+            return "Intermediate"
+
+    heatmap_matrix["Risk"] = heatmap_matrix.apply(calculate_score, axis=1)
+
+    # Map scores to colors
+    score_colors = {
+        "Very dangerous": "red",
+        "Dangerous": "orange",
+        "Intermediate": "yellow",
+        "Safe": "green"
+    }
+    row_colors = heatmap_matrix["Risk"].map(score_colors)
+
+    # Prepare row color map
+    row_color_cmap = pd.DataFrame({
+        "Risk": row_colors
+    })
+
+    # Plot clustermap with annotated row colors and custom colormap
+    cluster_grid = sns.clustermap(
+        heatmap_matrix.drop(columns=["Risk"]),
+        cmap="Greys",
+        row_colors=row_colors,
+        figsize=(10, 5),
+        dendrogram_ratio=(0.1, 0.1),
+        linewidths=0.5,
+        linecolor="grey",
+        annot=True,
+        col_cluster=False,
+        row_cluster=False,
+        clip_on=False,
+        cbar_kws={
+            "label": "Counts",
+            "ticks": [0, 1, 2, 3, 4, 5],
+            "shrink": 0.3,
+            "orientation": "horizontal", 
+        },
+        vmin=0, vmax=5
+    )
+
+    # Add a custom legend
+    legend_handles = [Patch(color=color, label=label) for label, color in score_colors.items()]
+    cluster_grid.ax_heatmap.legend(
+        handles=legend_handles,
+        title="Risk Assessment",
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.2),  # Position the legend below the plot
+        ncol=4,  # Number of columns in the legend
+        frameon=True
+    )
+
+
+    # Save the plot
+    plt.savefig(output_file, bbox_inches="tight")
+
+    # Optionally, print the heatmap matrix with Final Scores
+    print(heatmap_matrix)
 
 # qc
 def join_read_mapq(file_list, prefixes, output_file):

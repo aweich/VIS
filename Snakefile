@@ -29,45 +29,23 @@ include: config["development"]
 #target rule        
 rule all:
 	input: 
-		#main output
-		OUTDIR+"config_settings.yml",
+		#Localization
+		expand(FINAL+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
 		FINAL+"LOCALIZATION/Heatmap_Insertion_Chr.png",
 		FINAL+"LOCALIZATION/Insertion_length.png",
-		FINAL+"QC/multiqc_report.html",
+		#Functional
+		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
+		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Scoring_{sample}.png", sample=SAMPLES),
+		#Quality
+		expand(PROCESS+"QC/MAPQ/{sample}_mapq_heatmap_image.png", sample=SAMPLES),
 		expand(FINAL+"QC/Fragmentation/Insertions/insertions_" + str(FRAG)+"_{sample}", sample=SAMPLES),
 		expand(FINAL+"QC/Fragmentation/Longest_Interval/{sample}/", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/LOCALIZATION/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		expand(FINAL+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES),
-		expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
-		#expand(PROCESS+"FASTA/InsertionReads/{sample}_Clustalo/", sample=SAMPLES), #multiple sequence alignment
-		#expand(PROCESS+"BLASTN/PLOTS/" + str(FRAG)+"_{sample}", sample=SAMPLES),
-		##expand(PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES),
-		#pooling
-		#expand(PROCESS+"MAPPING/POOLED/{sample}_sorted.bam", sample=SAMPLES),
-		#PROCESS+"MAPPING/POOLED/Pooled_S3.bam",
-		#MODULES
-		###rules to generate functional genomics output
-		#expand(PROCESS+"FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png", sample=SAMPLES),
-		###rules to generate qc output
-		#expand(PROCESS+"QC/Nanoplot/{sample}/NanoStats.txt", sample=SAMPLES),
-		##expand(PROCESS+"QC/Normalisation_IPG_{sample}.txt", sample=SAMPLES),
-		#expand(PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed", sample=SAMPLES),
-		#cigar output (as part of qc)
-		#expand(PROCESS+"QC/CIGAR/Reads_with_longInsertions_and_vector_{sample}.fastq", sample=SAMPLES),
-		#PROCESS+"QC/fastqc/multiqc_report.html",
-		#expand(PROCESS + "QC/readlevel_{sample}/", sample=SAMPLES),
-		#QC
-		expand(PROCESS+"QC/MAPQ/{sample}_mapq_heatmap_image.png", sample=SAMPLES),
-		###rules to generate variant output
-		#expand(PROCESS+"VARIANTS/BCFTOOLS/Variant_{sample}.vcf", sample=SAMPLES),
-		#expand(PROCESS+"VARIANTS/NanoVar_{sample}/Nanovar_Variant_{sample}.bed", sample=SAMPLES), #all three callers share this rule
-		###rules to generate epigenetics output
-		#expand(PROCESS+"METHYLATION/Proximity_ExactInsertions_"+str(FRAG)+"_{sample}.bed", sample=SAMPLES),
-		##expand(PROCESS+"METHYLATION/Precut_Methyl_{sample}.bed", sample=SAMPLES),
-		#expand(PROCESS+"METHYLATION/PLOTS/InsertionRead_{sample}/",sample=SAMPLES),
-		#malignancy score
-
+		FINAL+"QC/multiqc_report.html",
+		#Process
+		OUTDIR+"config_settings.yml",
+		#Other
+		expand(PROCESS+"LOCALIZATION/Unique_Sorted_ExactInsertions_{sample}.bed", sample=SAMPLES)
 
 		
 #actual filenames
@@ -138,7 +116,7 @@ rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 		"""
 		minimap2 -y -ax map-ont --score-N 0 {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
 		samtools index {output}
-		"""   
+		"""
 
 rule insertion_mapping: #conserves tags!
 	input:
@@ -185,7 +163,7 @@ rule BAM_to_BED:
 	run:
 		shell("bedtools bamtobed -i {input.precut} > {output.precut}")
 		shell("bedtools bamtobed -i {input.postcut} > {output.postcut}")  
- 
+
 ######
 ######
 ###### FASTA preparation: Cut out of blast-detected vector fragments and create new "cut-out" FASTA 
@@ -297,21 +275,21 @@ rule find_vector_BLASTn_in_humanRef:
 	run:
 		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'")
 
-rule hardcode_blast_header:        
+rule hardcode_blast_header:
 	input: 
 		vector=PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		humanref=PROCESS+"BLASTN/HUMANREF/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
 		vector=PROCESS+"BLASTN/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		humanref=PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	shell:    
+	shell:
 		"""
 		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.vector} > {output.vector}
 		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.humanref} > {output.humanref}
 		"""
 		
 rule blast_to_gff:
-	input: 
+	input:
 		ref=PROCESS+"BLASTN/HUMANREF/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		vector=PROCESS+"BLASTN/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	output:
@@ -346,7 +324,7 @@ rule insertion_heatmap:
 	input:
 		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES)
 	output:
-		FINAL+"LOCALIZATION/Heatmap_Insertion_Chr.png"
+		report(FINAL+"LOCALIZATION/Heatmap_Insertion_Chr.png")
 	run:
 		vhf.plot_bed_files_as_heatmap(input, output[0])
 
@@ -355,7 +333,7 @@ rule insertion_length_plot:
 	input:
 		expand(PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed", sample=SAMPLES)
 	output:
-		FINAL+"LOCALIZATION/Insertion_length.png"
+		report(FINAL+"LOCALIZATION/Insertion_length.png")
 	run:
 
 		vhf.plot_insertion_length(input, output[0])

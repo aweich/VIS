@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "28z_QC_Malignancy_Restructure" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "new_dir_structure" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
@@ -45,8 +45,8 @@ samples:
     #MK025_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK025_BBz_pooled.bam"
     #MK028_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK028_BBz_pooled.bam"
     MK014_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_28z_pooled.bam"
-    MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
-    MK028_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_28z_pooled.bam"
+    #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
+    #MK028_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_28z_pooled.bam"
     #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MK025_28z_pooled/VIS_MK025_28z_pooled.bam"
     #Clone1: "/home/weichan/permanent/Projects/VIS/Data/CAR_clonality/combined_first_clone_sup.bam"
 
@@ -56,7 +56,7 @@ vector_fasta: "/home/weichan/permanent/Projects/VIS/Data/pSLCAR-CD19-28z/pSLCAR-
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 proteindb: "/home/weichan/swissprot/swissprot"
-splitmode: "Separated" #"Buffer", "Join", "Separated"
+splitmode: "Buffer" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
 MinLength: 1
 MAPQ: 10 #mapping quality filter after pseudo-read generation
@@ -67,7 +67,7 @@ ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg_withBa
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/pSLCAR-CD19-28z/hg38_CD19_28z.fa"
 #ucsc_repeats: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_RepeatMasker_02_24"
-#all ucsc files need to be sorted and without the header
+#all bed files need to be sorted and without the header
 ucsc_H3K4Me1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me1_02_24"
 ucsc_H3K27Ac: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K27Ac_02_24"
 ucsc_H3K4Me3: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me3_02_24"

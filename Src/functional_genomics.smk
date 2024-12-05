@@ -1,5 +1,27 @@
 #Functional genomics rules for VIS
 
+#sort insertion file
+rule sort_insertion_file:
+	input:
+		PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
+	output:
+		PROCESS+"LOCALIZATION/Sorted_ExactInsertions_{sample}.bed"
+	run:
+		shell("sort -k1,1 -k2,2n {input} > {output}")
+
+#unique insertion
+rule unique_insertions:
+	input:
+		PROCESS+"LOCALIZATION/Sorted_ExactInsertions_{sample}.bed"
+	output:
+		PROCESS+"LOCALIZATION/Unique_Sorted_ExactInsertions_{sample}.bed"
+	params:
+		overlap=0.8
+	shell:
+		"""
+		bedtools intersect -a {input} -b {input} -f {params.overlap} -F {params.overlap} -s -wa -wb | bedtools merge -i stdin -s > {output}
+		"""
+
 #Localization
 #this ensures that a writable R lib exists where the needed packages will be installed to!
 shell.prefix('export R_LIBS_USER=~/R/x86_64-pc-linux-gnu-library/4.0 && ')      
@@ -24,14 +46,6 @@ rule chromosome_read_plots:
 		"""	
 
 ### Distance of VIS to genes, TSS, miRNAs, and TF
-rule sort_insertion_file:
-	input:
-		PROCESS+"LOCALIZATION/ExactInsertions_{sample}.bed"
-	output:
-		PROCESS+"LOCALIZATION/Sorted_ExactInsertions_{sample}.bed"
-	run:
-		shell("sort -k1,1 -k2,2n {input} > {output}")
-
 rule distance_to_regulation:
     input:
         insertions=PROCESS + "LOCALIZATION/Sorted_ExactInsertions_{sample}.bed",
@@ -64,6 +78,15 @@ rule plot_distance_to_elements:
 		distances=list(range(-50000, 50001, 5000)),
 		threshold=50000
 	output:
-		genes=PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png",
+		genes=report(PROCESS+"FUNCTIONALGENOMICS/Plot_Distance_to_Genes_" + str(FRAG)+"_{sample}.png"),
 	run:
 		vhf.plot_element_distance(input.distancetable, params.distances, params.threshold, output.genes)
+
+rule plot_scoring:
+    input:
+        PROCESS + "FUNCTIONALGENOMICS/Functional_distances_to_Insertions_{sample}.bed"
+    output:
+        plot=report(PROCESS + "FUNCTIONALGENOMICS/Plot_Scoring_{sample}.png")
+    run:
+        # Call your scoring function
+        vhf.scoring_insertions(input[0], output.plot)

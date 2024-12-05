@@ -65,9 +65,11 @@ TFpath <- xargs$input_TF
 outputpath <- xargs$outputpath #"~/Projects/VIS/PLOTS/"
 buffer <- xargs$buffer #50000
 
-bm <- useEnsembl(host = "https://grch37.ensembl.org", #should change hg37 to hg38
-                 biomart = "ENSEMBL_MART_ENSEMBL", 
-                 dataset = "hsapiens_gene_ensembl")
+bm <- useEnsembl(
+    biomart = "ENSEMBL_MART_ENSEMBL", 
+    dataset = "hsapiens_gene_ensembl", 
+    host = "https://www.ensembl.org"
+)
 
 # Create a TxDb object from the GTF file
 txdb <- makeTxDbFromGFF(gtfpath)
@@ -141,7 +143,7 @@ for (i in 1:nrow(bed_data)) {
   #                                    transcriptAnnotation="gene", fill="#fba247")
   #biomTrack <- BiomartGeneRegionTrack(genome = ref_genome, chromosome = chromosome, start = start_coord, end = end_coord, biomart = bm, stacking ="squish",stackHeight=0.5,transcriptAnnotation="symbol",fill = "salmon")
   
-  gtfTrack <- GeneRegionTrack(txdb, chromosome = chromosome, start=start_coord, end=end_coord, collapseTranscripts=TRUE, geneSymbol = TRUE, transcriptAnnotation = "symbol", fill="#fba247",stacking = "squish",just.group="above")
+  gtfTrack <- GeneRegionTrack(txdb, chromosome = chromosome, start=start_coord, end=end_coord, collapseTranscripts=FALSE, geneSymbol = TRUE, transcriptAnnotation = "symbol", fill="#fba247",stacking = "squish",just.group="above")
    z <- ranges(gtfTrack)
    z$gene <- sub("\\.\\d+", "", z$gene)
    print(z)

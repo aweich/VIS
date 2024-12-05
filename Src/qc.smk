@@ -13,7 +13,7 @@ rule nanoplot:
 	output:
 		PROCESS+"QC/Nanoplot/{sample}/NanoStats.txt"
 	params:
-		outdir=PROCESS+"QC/Nanoplot/{sample}/"
+		outdir=directory(PROCESS+"QC/Nanoplot/{sample}/"), 
 	shell: 
 		"""
 		NanoPlot --bam {input} -o {params.outdir}
@@ -106,7 +106,7 @@ rule multiqc:
         qc_report_location=FINAL+"QC/"
     output: 
         PROCESS + "QC/multiqc_report.html",
-        FINAL + "QC/multiqc_report.html"
+        report(FINAL + "QC/multiqc_report.html")
     shell:
         """
         multiqc {input.fastqc} --dirs {input.nanoplot} --force -o {params.qc_output_dir}
@@ -161,7 +161,7 @@ rule generate_mapq_heatmap:
     input:
         table=PROCESS+"QC/MAPQ/Insertions_{sample}_mapq.txt"
     output:
-        heatmap=PROCESS+"QC/MAPQ/{sample}_mapq_heatmap_image.png"
+        heatmap=report(PROCESS+"QC/MAPQ/{sample}_mapq_heatmap_image.png")
     run:
         vhf.plot_mapq_changes(input.table, output.heatmap)
 
@@ -184,7 +184,7 @@ rule fragmentation_distribution_plots:
 		vhf.fragmentation_match_distribution(input[1], params[0], output[1])
 		vhf.fragmentation_read_match_distribution(input[1], params[0], output[1])
 
-rule detailed_insertion_length_plot:
+rule detailed_fragmentation_length_plot:
     input:
         matches=PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
     params: 
