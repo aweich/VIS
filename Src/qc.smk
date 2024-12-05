@@ -9,11 +9,11 @@
 #full stats of input data		
 rule nanoplot:
 	input:
-		PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+		PROCESS+"mapping/Precut_{sample}_sorted.bam"
 	output:
-		PROCESS+"QC/Nanoplot/{sample}/NanoStats.txt"
+		PROCESS+"qc/nanoplot/{sample}/NanoStats.txt"
 	params:
-		outdir=directory(PROCESS+"QC/Nanoplot/{sample}/"), 
+		outdir=directory(PROCESS+"qc/nanoplot/{sample}/"), 
 	shell: 
 		"""
 		NanoPlot --bam {input} -o {params.outdir}
@@ -23,21 +23,21 @@ rule nanoplot:
 '''
 rule normalisation_for_insertion_count:
 	input:
-		insertions=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
+		insertions=PROCESS+"blastn/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
 		fasta=PROCESS+"FASTA/Full_{sample}.fa" #for N50
 	params:
 		scale=3000000000 #IPM #IPG
 	output:
-		PROCESS+"QC/Normalisation_IPG_{sample}.txt"
+		PROCESS+"qc/Normalisation_IPG_{sample}.txt"
 	run:
 		vhf.insertion_normalisation(input.insertions, params[0], input.fasta, output[0])
 '''			
 
 rule bam_coverage: 
 	input:
-		bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam"
+		bam=PROCESS+"mapping/Precut_{sample}_sorted.bam"
 	output:
-		covbed=PROCESS+"QC/Coverage/Genomecoverage_{sample}.bed"
+		covbed=PROCESS+"qc/Coverage/Genomecoverage_{sample}.bed"
 	run: 
 		shell("bedtools genomecov -ibam {input} -bga > {output}")
 
@@ -45,12 +45,12 @@ rule bam_coverage:
 
 rule extract_fastq_insertions:
     input:
-    	bam=PROCESS+"MAPPING/Precut_{sample}_sorted.bam",
-        readnames=PROCESS+"BLASTN/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
+    	bam=PROCESS+"mapping/Precut_{sample}_sorted.bam",
+        readnames=PROCESS+"blastn/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
     params:
         tempdir=PROCESS+"temp_fastq_{sample}"  # Temporary directory for intermediate files
     output:
-        fastq=PROCESS + "QC/FASTQC/{sample}_filtered.fastq"
+        fastq=PROCESS + "qc/fastqc/{sample}_filtered.fastq"
     shell:
         '''
         mkdir -p {params.tempdir}
@@ -71,11 +71,11 @@ rule extract_fastq_insertions:
 
 rule read_level_fastqc:
     input:
-        PROCESS + "QC/FASTQC/{sample}_filtered.fastq"
+        PROCESS + "qc/fastqc/{sample}_filtered.fastq"
     params:
-        prefix=PROCESS + "QC/FASTQC/readlevel_{sample}/{sample}_read_"
+        prefix=PROCESS + "qc/fastqc/readlevel_{sample}/{sample}_read_"
     output:
-        directory(PROCESS + "QC/FASTQC/readlevel_{sample}/")
+        directory(PROCESS + "qc/fastqc/readlevel_{sample}/")
     shell:
         """
         mkdir -p {output}
@@ -91,7 +91,7 @@ rule read_level_fastqc:
         }}
         {{ print > filename }}' {input}
 
-        # Run FastQC on each split FASTQ file
+        # Run Fastqc on each split FASTQ file
         for seq in {params.prefix}*; do
             fastqc -f fastq --noextract -o {output} "$seq"
         done
@@ -99,14 +99,14 @@ rule read_level_fastqc:
 
 rule multiqc:
     input: 
-        fastqc=expand(PROCESS+"QC/FASTQC/readlevel_{sample}/", sample=SAMPLES),
-        nanoplot=expand(PROCESS+"QC/Nanoplot/{sample}/NanoStats.txt", sample=SAMPLES)
+        fastqc=expand(PROCESS+"qc/fastqc/readlevel_{sample}/", sample=SAMPLES),
+        nanoplot=expand(PROCESS+"qc/nanoplot/{sample}/NanoStats.txt", sample=SAMPLES)
     params:
-        qc_output_dir=PROCESS+"QC/",
-        qc_report_location=FINAL+"QC/"
+        qc_output_dir=PROCESS+"qc/",
+        qc_report_location=FINAL+"qc/"
     output: 
-        PROCESS + "QC/multiqc_report.html",
-        report(FINAL + "QC/multiqc_report.html")
+        PROCESS + "qc/multiqc_report.html",
+        report(FINAL + "qc/multiqc_report.html")
     shell:
         """
         multiqc {input.fastqc} --dirs {input.nanoplot} --force -o {params.qc_output_dir}
@@ -118,16 +118,16 @@ rule multiqc:
 ### Read level overview of mapping quality before and after the cut out of the insertions
 rule extract_mapping_quality:
     input:
-        bam=PROCESS + "MAPPING/Precut_{sample}_sorted.bam",
-        bam2=PROCESS + "MAPPING/Postcut_{sample}_sorted.bam",
-        bam3=PROCESS+"MAPPING/Postcut_{sample}_unfiltered_sorted.bam",
-        readnames=PROCESS + "BLASTN/Readnames_" + str(FRAG) + "_VectorMatches_{sample}.txt"
+        bam=PROCESS + "mapping/Precut_{sample}_sorted.bam",
+        bam2=PROCESS + "mapping/Postcut_{sample}_sorted.bam",
+        bam3=PROCESS+"mapping/Postcut_{sample}_unfiltered_sorted.bam",
+        readnames=PROCESS + "blastn/Readnames_" + str(FRAG) + "_VectorMatches_{sample}.txt"
     params:
         tempdir=PROCESS+"temp_mapping_{sample}"
     output:
-        quality_scores=temp(PROCESS + "QC/{sample}_precut_mapping_quality.txt"),
-        quality_scores2=temp(PROCESS + "QC/{sample}_postcut_mapping_quality.txt"),
-        quality_scores3=temp(PROCESS + "QC/{sample}_postcut_unfiltered_mapping_quality.txt")
+        quality_scores=temp(PROCESS + "qc/{sample}_precut_mapping_quality.txt"),
+        quality_scores2=temp(PROCESS + "qc/{sample}_postcut_mapping_quality.txt"),
+        quality_scores3=temp(PROCESS + "qc/{sample}_postcut_unfiltered_mapping_quality.txt")
     shell:
         '''
         mkdir -p {params.tempdir}
@@ -147,21 +147,21 @@ rule extract_mapping_quality:
         '''
 rule finalize_mapping_quality:
     input:
-        quality_scores_pre=PROCESS + "QC/{sample}_precut_mapping_quality.txt",
-        quality_scores_filtered=PROCESS + "QC/{sample}_postcut_unfiltered_mapping_quality.txt",
-        quality_scores_post=PROCESS + "QC/{sample}_postcut_mapping_quality.txt"
+        quality_scores_pre=PROCESS + "qc/{sample}_precut_mapping_quality.txt",
+        quality_scores_filtered=PROCESS + "qc/{sample}_postcut_unfiltered_mapping_quality.txt",
+        quality_scores_post=PROCESS + "qc/{sample}_postcut_mapping_quality.txt"
     params:
         prefixes=["Precut", "Postcut", "Postcut_filtered"]
     output:
-        outfile=PROCESS + "QC/MAPQ/Insertions_{sample}_mapq.txt"
+        outfile=PROCESS + "qc/mapq/Insertions_{sample}_mapq.txt"
     run:
         vhf.join_read_mapq(input[0:3], params.prefixes, output.outfile)
 
 rule generate_mapq_heatmap:
     input:
-        table=PROCESS+"QC/MAPQ/Insertions_{sample}_mapq.txt"
+        table=PROCESS+"qc/mapq/Insertions_{sample}_mapq.txt"
     output:
-        heatmap=report(PROCESS+"QC/MAPQ/{sample}_mapq_heatmap_image.png")
+        heatmap=report(PROCESS+"qc/mapq/{sample}_mapq_heatmap_image.png")
     run:
         vhf.plot_mapq_changes(input.table, output.heatmap)
 
@@ -169,13 +169,13 @@ rule generate_mapq_heatmap:
 
 rule fragmentation_distribution_plots:
 	input:
-		PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		PROCESS+"BLASTN/HUMANREF/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+		PROCESS+"blastn/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
+		PROCESS+"blastn/humanref/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		FRAG
 	output:
-		outpath=directory(FINAL+"QC/Fragmentation/Insertions/insertions_" + str(FRAG)+"_{sample}"),
-		outpath2=directory(FINAL+"QC/Fragmentation/Reference/reference_" + str(FRAG)+"_{sample}")
+		outpath=directory(FINAL+"qc/Fragmentation/Insertions/insertions_" + str(FRAG)+"_{sample}"),
+		outpath2=directory(FINAL+"qc/Fragmentation/Reference/reference_" + str(FRAG)+"_{sample}")
 	run:
 		shell("mkdir {output.outpath}")
 		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
@@ -186,12 +186,12 @@ rule fragmentation_distribution_plots:
 
 rule detailed_fragmentation_length_plot:
     input:
-        matches=PROCESS+"BLASTN/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+        matches=PROCESS+"blastn/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
     params: 
         buffer=3*FRAG,
         threshold=config["MinInsertionLength"]
     output:
-        outpath=directory(FINAL+"QC/Fragmentation/Longest_Interval/{sample}/")
+        outpath=directory(FINAL+"qc/Fragmentation/Longest_Interval/{sample}/")
     run:
         shell("mkdir -p {output.outpath}")
         

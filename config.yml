@@ -72,9 +72,11 @@ ucsc_H3K4Me1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me1
 ucsc_H3K27Ac: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K27Ac_02_24"
 ucsc_H3K4Me3: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me3_02_24"
 #ucsc_DNaseH: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_DNaseClusters_02_24_cut"
-ucsc_TF: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TFClusters_02_24_cut_1000_sorted"
-ucsc_Genes: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_AllGENCODEV44_02_24_mod_NoHeader_sorted"
+ucsc_TF: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TFClusters_processed.bed"
+ucsc_Genes: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODEV44_processed.bed"
 ucsc_Genes_gtf: "/home/weichan/permanent/Projects/VIS/dev/UCSC/gencode.v44.annotation.gtf"
+#ucsc exons
+ucsc_exons: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Exons_processed.bed"
 #sedb
 sedb_cd4: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd4_closest_gene.bed"
 sedb_cd8: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd8_closest_gene.bed"
@@ -83,9 +85,9 @@ ucsc_tss: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TSS_peaks_processe
 #miRNA
 ucsc_mirna: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_miRNA_processed_sorted.bed"
 #cancer genes
-cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38/Cosmic_CancerGeneCensus_v101_GRCh38_extract_sorted_cleaned.bed"
+cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38/Cosmic_CancerGeneCensus_v101_GRCh38_processed.bed"
 #hiC
-encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/minimal_merged_combined_sorted.bed"
+encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/HiC_processed.bed"
 #qc rule collection
 quality_control: "./Src/qc.smk"
 #functional genomics rule collection

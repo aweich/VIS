@@ -46,7 +46,7 @@ parser$add_argument('--input_H3K4Me1', '-iH3K4Me1', help= 'input H3K4Me1 file')
 parser$add_argument('--input_H3K4Me3', '-iH3K4Me3', help= 'input H3K4Me3 file')
 parser$add_argument('--input_H3K27Ac', '-iH3K27Ac', help= 'input H3K27Ac file')
 parser$add_argument('--input_gtf', '-igtf', help= 'input gtf file')
-parser$add_argument('--input_TF', '-iTF', help= 'input TF')
+#parser$add_argument('--input_TF', '-iTF', help= 'input TF')
 parser$add_argument('--outputpath', '-o', help= 'output file', type= 'character')
 parser$add_argument('--buffer', '-buffer', help= 'Number of bases that are added to each end of the read window. Good for the format.', type= 'integer')
 
@@ -61,7 +61,7 @@ H3K4Me1path <- xargs$input_H3K4Me1 #"~/Data/VIS_data/GenmoicLocation_100_full_ad
 H3K4Me3path <- xargs$input_H3K4Me3 #"~/Data/VIS_data/GenmoicLocation_100_full_ads.bed"
 H3K27Acpath <- xargs$input_H3K27Ac #"~/Data/VIS_data/GenmoicLocation_100_full_ads.bed"
 gtfpath <- xargs$input_gtf
-TFpath <- xargs$input_TF
+#TFpath <- xargs$input_TF
 outputpath <- xargs$outputpath #"~/Projects/VIS/PLOTS/"
 buffer <- xargs$buffer #50000
 
@@ -99,9 +99,9 @@ H3K4Me3 <- makeGRangesFromDataFrame(H3K4Me3, seqnames.field=c("V1"), start.field
 #colnames(mcols(hm))
 
 #TF data
-TF <- read.table(TFpath, header = FALSE)
-colnames(TF) <- c("chromosome", "start","end", "id")
-print(head(TF))
+#TF <- read.table(TFpath, header = FALSE)
+#colnames(TF) <- c("chromosome", "start","end", "id")
+#print(head(TF))
 
 #data from bed file for the coordinates: ChatGPT create the following beauty to prevent my snakemake script from failing in case the BED is
 tryCatch({

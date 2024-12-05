@@ -559,8 +559,6 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     )
     
     # Apply threshold filtering if provided
-    print(distance_threshold)
-    print(type(distance_threshold))
     if distance_threshold is not None:
         df = df[df['distance'].abs() <= int(distance_threshold)]
 
@@ -569,7 +567,7 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     df = df.sort_values(by=['read', 'abs_distance']).drop_duplicates(subset=['read', 'element_name', "source"], keep='first').reset_index(drop=True)
     
     # Prepare data for plotting
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(20, 20))
     
     # Create scatter plot
     sns.scatterplot(
@@ -582,7 +580,7 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
         style='source'
     )
     
-    # Highlight genes with zero distance
+    # Highlight genes with zero distance #malfunctioning
     zero_distance_genes = df[df['distance'] == 0]['element_name']
     for gene in zero_distance_genes:
         plt.axhline(y=df[df['element_name'] == gene].index[0], color='gray', linestyle='--', linewidth=0.8)
@@ -601,7 +599,6 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     plt.legend(title="",  bbox_to_anchor=(0.5, -0.5),  loc='upper center', fontsize=8)
     
     # Save plot
-    plt.tight_layout()
     plt.savefig(output_path, dpi=300)
     plt.close()
     print(f"Plot saved to {output_path}")
@@ -623,10 +620,10 @@ def scoring_insertions(data, output_file):
 
     # Define conditions
     conditions = [
-        ("COSMIC", 0), ("TF", 0), ("GENCODE", 0), ("HiC_Tcells", 0),
-        ("COSMIC", 10_000), ("TF", 10_000), ("GENCODE", 10_000), ("HiC_Tcells", 10_000),
-        ("COSMIC", 50_000), ("TF", 50_000), ("GENCODE", 50_000), ("HiC_Tcells", 50_000),
-        ("COSMIC", None), ("TF", None), ("GENCODE", None), ("HiC_Tcells", None),
+        ("COSMIC", 0), ("TF", 0), ("GENCODEV44", 0), ("HiC_Tcells", 0), ("Exons", 0),
+        ("COSMIC", 10_000), ("TF", 10_000), ("GENCODEV44", 10_000), ("HiC_Tcells", 10_000),
+        ("COSMIC", 50_000), ("TF", 50_000), ("GENCODEV44", 50_000), ("HiC_Tcells", 50_000),
+        ("COSMIC", None), ("TF", None), ("GENCODEV44", None), ("HiC_Tcells", None),
     ]
 
     for source, distance in conditions:
@@ -650,10 +647,10 @@ def scoring_insertions(data, output_file):
 
     # Calculate Final Score
     def calculate_score(row):
-        if row["COSMIC_0"] > 0 or (row["TF_0"] + row["GENCODE_0"] > 1):
-            return "Very dangerous"
-        elif (row["TF_0"] <= 1 or row["GENCODE_0"] <= 1 or row["COSMIC_10kb"] > 0 or row["HiC_Tcells_10kb"] > 0):
+        if row["COSMIC_0"] > 0 or row["Exons_0"] > 0 or (row["TF_0"] + row["GENCODEV44_0"] > 1):
             return "Dangerous"
+        elif (row["TF_0"] <= 1 or row["GENCODEV44_0"] <= 1 or row["COSMIC_10kb"] > 0 or row["HiC_Tcells_10kb"] > 0):
+            return "Likely Dangerous"
         elif all(value > 0 for col, value in row.items() if "_Safe" in col) and row.sum() == row[[col for col in row.index if "_Safe" in col]].sum():
             return "Safe"
         else:
@@ -663,8 +660,8 @@ def scoring_insertions(data, output_file):
 
     # Map scores to colors
     score_colors = {
-        "Very dangerous": "red",
-        "Dangerous": "orange",
+        "Dangerous": "red",
+        "Likely Dangerous": "orange",
         "Intermediate": "yellow",
         "Safe": "green"
     }
