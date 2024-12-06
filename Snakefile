@@ -45,7 +45,7 @@ rule all:
 		#Process
 		OUTDIR+"config_settings.yml",
 		#Other
-
+		expand(PROCESS+"blastn/"+str(FRAG)+"_VectorMatches_{sample}.gff", sample=SAMPLES)
 		
 #actual filenames
 def get_input_names(wildcards):

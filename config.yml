@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "new_dir_structure" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "Clone1" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
 samples:
     #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
     #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
@@ -44,11 +44,11 @@ samples:
     #MK014_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK014_BBz_pooled.bam"
     #MK025_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK025_BBz_pooled.bam"
     #MK028_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK028_BBz_pooled.bam"
-    MK014_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_28z_pooled.bam"
+    #MK014_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_28z_pooled.bam"
     #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
     #MK028_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_28z_pooled.bam"
     #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MK025_28z_pooled/VIS_MK025_28z_pooled.bam"
-    #Clone1: "/home/weichan/permanent/Projects/VIS/Data/CAR_clonality/combined_first_clone_sup.bam"
+    Clone1: "/home/weichan/permanent/Projects/VIS/Data/CAR_clonality/combined_first_clone_sup.bam"
 
 processing_dir: "/home/weichan/temporary/Projects/VIS_out"
 source_dir: "Src/"

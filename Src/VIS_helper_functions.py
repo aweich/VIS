@@ -331,8 +331,10 @@ def adjust_coordinates_for_strand(start, stop, strand, insertion_values):
     elif strand == "-":
         # Reverse and flip insertion values for the - strand
         for i in range(0, len(insertion_values), 2):
-            new_start = start + (read_length - insertion_values[i + 1])
-            new_stop = start + (read_length - insertion_values[i])
+            reversed_stop = read_length - insertion_values[i]
+            reversed_start = read_length - insertion_values[i + 1]
+            new_stop = start + reversed_stop
+            new_start = start + reversed_start
             adjusted_coords.append((new_start, new_stop))
 
     return adjusted_coords
@@ -350,7 +352,8 @@ def exact_insertion_coordinates(border_dict, bed, outfile):
 
     # Filter BED entries to only include those present in the border_dict
     matching_entries = bed[bed["BaseRead"].isin(border_dict.keys())].copy()
-
+    print(matching_entries.head())
+    print(border_dict)
     # Check if there are matching entries
     if matching_entries.empty:
         print("No matching reads found in the BED file.")
@@ -367,6 +370,9 @@ def exact_insertion_coordinates(border_dict, bed, outfile):
 
         # Get insertion coordinates from the dictionary
         insertion_values = border_dict[read_name]
+        print(read_name)
+        print(insertion_values)
+
 
         # Ensure insertion_values are in pairs (start, stop)
         if len(insertion_values) % 2 != 0:
@@ -375,11 +381,12 @@ def exact_insertion_coordinates(border_dict, bed, outfile):
 
         # Adjust coordinates based on strand
         adjusted_coords = adjust_coordinates_for_strand(old_start, old_stop, strand, insertion_values)
-        
+        print(adjusted_coords)
         old_coords = [old_start, old_stop]
+        print(old_coords)
+
         for new_start, new_stop in adjusted_coords:
             results.append([chromosome, new_start, new_stop, read_name, old_coords, strand])
-
     updated_bed = pd.DataFrame(results, columns=[0, 1, 2, 3, 5, 6])
     updated_bed.to_csv(outfile, sep='\t', index=False, header=False)
     print(f"Insertion BED file saved to {outfile}")
@@ -561,13 +568,13 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     # Apply threshold filtering if provided
     if distance_threshold is not None:
         df = df[df['distance'].abs() <= int(distance_threshold)]
-
+  
     # Ensure absolute distance and sort by absolute distance within groups
     df['abs_distance'] = df['distance'].abs()
-    df = df.sort_values(by=['read', 'abs_distance']).drop_duplicates(subset=['read', 'element_name', "source"], keep='first').reset_index(drop=True)
+    df = df.sort_values(by=['read', 'abs_distance']).drop_duplicates(subset=['read', 'element_name', "source"], keep='first').reset_index()
     
     # Prepare data for plotting
-    plt.figure(figsize=(20, 20))
+    plt.figure(figsize=(max(16, len(df)/10), 9))
     
     # Create scatter plot
     sns.scatterplot(
@@ -580,11 +587,6 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
         style='source'
     )
     
-    # Highlight genes with zero distance #malfunctioning
-    zero_distance_genes = df[df['distance'] == 0]['element_name']
-    for gene in zero_distance_genes:
-        plt.axhline(y=df[df['element_name'] == gene].index[0], color='gray', linestyle='--', linewidth=0.8)
-    
     # Plot binned rugplot for distances
     bin_size = 100  # Bin size for grouping distances
     df['distance_bin'] = (df['distance'] // bin_size) * bin_size
@@ -596,7 +598,7 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     plt.ylabel("Element Name")
     plt.title("Distance Distribution to Elements")
     sns.despine()
-    plt.legend(title="",  bbox_to_anchor=(0.5, -0.5),  loc='upper center', fontsize=8)
+    plt.legend(title="",  bbox_to_anchor=(0.5, 0.5),  loc='upper center', fontsize=8)
     
     # Save plot
     plt.savefig(output_path, dpi=300)
