@@ -144,7 +144,6 @@ rule clean_postcut_by_maping_quality:
 		samtools view -h -q {params.mapq} {input} -o {output}
 		samtools index {output}
 		"""
-
 ######
 ######
 ###### Genomic Coordinates of Reads with and without matches
@@ -160,8 +159,8 @@ rule BAM_to_BED:
 		postcut=PROCESS+"mapping/Postcut_{sample}.bed",
 		precut=PROCESS+"mapping/Precut_{sample}.bed"
 	run:
-		shell("bedtools bamtobed -i {input.precut} > {output.precut}")
-		shell("bedtools bamtobed -i {input.postcut} > {output.postcut}")  
+		shell("bedtools bamtobed -cigar -i {input.precut} > {output.precut}")
+		shell("bedtools bamtobed -cigar -i {input.postcut} > {output.postcut}")  
 
 ######
 ######
@@ -171,17 +170,18 @@ rule BAM_to_BED:
 
 rule get_cleavage_sites_for_fasta: #filters and combines matches
 	input:
-		#PROCESS+"blastn/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 		PROCESS+"blastn/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		filteroption=True,
 		filtervalue=config["MinInsertionLength"], 
 		overlap=3*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
+	log:
+		log=PROCESS+"log/get_cleavage_sites_for_fasta/{sample}.log"
 	output:
 		cleavage=PROCESS+"blastn/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		reads=PROCESS+"blastn/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
 	run:
-		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output.cleavage, output.reads)
+		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output.cleavage, output.reads, log.log)
 
 rule split_fasta:
 	input:
@@ -189,11 +189,13 @@ rule split_fasta:
 		fasta=PROCESS+"fasta/Full_{sample}.fa"
 	params:
 		mode=config["splitmode"] #if each split fasta substring should be used individually, use "Separated" Join, New mode: Buffer
+	log:
+		log=PROCESS+"log/split_fasta_by_borders/{sample}.log"
 	output:
 		fasta=PROCESS+"fasta/Cleaved_{sample}_noVector.fa",
 		vector=PROCESS+"fasta/Insertion_{sample}_Vector.fa"
 	run:
-		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.vector)
+		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.vector, log.log)
 
 ######
 ######
@@ -203,21 +205,24 @@ rule split_fasta:
 rule prepare_vector:
 	input:
 		config["vector_fasta"] #vector fasta sequence
+	log:
+		log=PROCESS+"log/prepare_vector/out.log"
 	output: 
 		fasta=PROCESS+"fasta/fragments/Forward_Backward_Vector.fa"
 	run:
-		vhf.reversevector(input[0], output[0])
+		vhf.reversevector(input[0], output[0], log.log)
 		
 rule vector_fragmentation:
-	input: 
-		#config["vector_fasta"] #vector fasta sequence
+	input:
 		PROCESS+"fasta/fragments/Forward_Backward_Vector.fa" #does not change anything so it can be removed imo
 	params:
 		FRAG
+	log:
+		log=PROCESS+"log/vector_fragmentation/out.log"
 	output: 
 		fasta=PROCESS+"fasta/fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	run:
-		vhf.fragmentation_fasta(input[0], params[0], output[0])
+		vhf.fragmentation_fasta(input[0], params[0], output[0], log.log)
 
 ######
 ######
@@ -319,23 +324,18 @@ rule extract_by_length:
 
 
 
-rule insertion_heatmap:
+rule basic_insertion_plots:
 	input:
 		expand(PROCESS+"localization/ExactInsertions_{sample}.bed", sample=SAMPLES)
 	output:
-		report(FINAL+"localization/Heatmap_Insertion_Chr.png")
-	run:
-		vhf.plot_bed_files_as_heatmap(input, output[0])
-
-
-rule insertion_length_plot:
-	input:
-		expand(PROCESS+"localization/ExactInsertions_{sample}.bed", sample=SAMPLES)
-	output:
+		report(FINAL+"localization/Heatmap_Insertion_Chr.png"),
 		report(FINAL+"localization/Insertion_length.png")
+	log:
+		log1=PROCESS+"log/basic_insertion_plots/heat.log",
+		log2=PROCESS+"log/basic_insertion_plots/length.log"
 	run:
-
-		vhf.plot_insertion_length(input, output[0])
+		vhf.plot_bed_files_as_heatmap(input, output[0], log.log1)
+		vhf.plot_insertion_length(input, output[1], log.log2)
 
 ######
 ######
@@ -349,10 +349,14 @@ rule calculate_exact_insertion_coordinates:
 	input:
 		bed=PROCESS+"mapping/Postcut_{sample}.bed",
 		borders=PROCESS+"blastn/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	params:
+		mode=config["splitmode"]
+	log:
+		log=PROCESS+"log/calculate_exact_insertion_coordinates/{sample}.log"
 	output:
 		out=PROCESS+"localization/ExactInsertions_{sample}.bed",
 	run:
-		vhf.exact_insertion_coordinates(input.borders, input.bed, output.out)
+		vhf.reconstruct_coordinates(input.bed, input.borders, params.mode, output.out, log.log)
 
 rule collect_outputs:
 	input:

@@ -8,6 +8,7 @@ Created on Thu Oct 26 11:10:28 2023
 
 import sys
 import os
+import re
 from Bio import SeqIO
 import pandas as pd
 import numpy as np
@@ -19,6 +20,48 @@ import json
 import subprocess
 from Bio.Align.Applications import ClustalOmegaCommandline
 from matplotlib.patches import Patch
+#wrapper
+from functools import wraps
+import inspect
+
+#wrapper for logging
+def redirect_logging(logfile_param="logfile"):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Inspect the arguments of the function
+            func_signature = inspect.signature(func)
+            bound_args = func_signature.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            
+            # Get the logfile path from the function arguments
+            logfile = bound_args.arguments.get(logfile_param)
+            if not logfile:
+                raise ValueError(f"The parameter '{logfile_param}' must be provided with a valid file path.")
+            
+            # Ensure the directory for the logfile exists
+            os.makedirs(os.path.dirname(logfile), exist_ok=True)
+            
+            # Open the logfile for writing
+            with open(logfile, 'w') as log:
+                # Redirect stdout and stderr
+                original_stdout = sys.stdout
+                original_stderr = sys.stderr
+                sys.stdout = log
+                sys.stderr = log
+                
+                try:
+                    # Execute the wrapped function
+                    result = func(*args, **kwargs)
+                finally:
+                    # Restore stdout and stderr
+                    sys.stdout = original_stdout
+                    sys.stderr = original_stderr
+                
+                return result
+        return wrapper
+    return decorator
+
 
 #main   
 def chunks(lst, n):
@@ -30,7 +73,8 @@ def chunks(lst, n):
         collection.append(lst[i:i + n])
     return collection
 
-def fragmentation_fasta(fasta, equal_fragments, outfilename):
+@redirect_logging(logfile_param="logfile")
+def fragmentation_fasta(fasta, equal_fragments, outfilename, logfile):
     """
     Splits FASTA file into equal_sized fragments and stores it as a single FASTA file with numbered fragments as ids
     """
@@ -55,38 +99,39 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath):
     """
     blasted = pd.read_csv(data, sep="\t")
 
-    # Check if the data is empty
-    if blasted.empty:
+    try: 
+        if any(x.isupper() for x in blasted['QueryID'][0]): #to make sure the right column is used for plotting. Reads do not have any uppercase letters
+            blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
+            blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
+            freq = collections.Counter(blasted["Fragment"].sort_values())
+        else:
+            blasted[['Vector', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
+            blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
+            freq = collections.Counter(blasted["Fragment"].sort_values())
+        plt.bar(freq.keys(), freq.values(), color='black')
+        #print(blasted["Fragment"].sort_values())
+        if (10000/fragment_specifier) < 50:    
+            plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
+        else:
+            plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
+        
+        plt.ylabel('Alignment Frequency')
+        plt.xlabel("Vector Fragment")
+        plt.title(f'{fragment_specifier} bp fragment distribution')
+        outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
+        plt.savefig(outfile)
+        plt.close()
+    except:
         plt.figure()
-        plt.title('Empty Data')
+        plt.title('Empty Data.')
         plt.text(0.5, 0.5, 'No data available', ha='center', va='center', fontsize=12)
+        plt.xlabel("No BLAST matches or read names not all lowercase")
         plt.xticks([])
         plt.yticks([])
         outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
         plt.savefig(outfile)
         plt.close()
         return
-    
-    if any(x.isupper() for x in blasted['QueryID'][0]): #to make sure the right column is used for plotting. Reads do not have any uppercase letters
-        blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
-        blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
-        freq = collections.Counter(blasted["Fragment"].sort_values())
-    else:
-        blasted[['Vector', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
-        blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
-        freq = collections.Counter(blasted["Fragment"].sort_values())
-    plt.bar(freq.keys(), freq.values(), color='black')
-    #print(blasted["Fragment"].sort_values())
-    if (10000/fragment_specifier) < 50:    
-        plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
-    else:
-        plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
-    plt.ylabel('Alignment Frequency')
-    plt.xlabel("Vector Fragment")
-    plt.title(f'{fragment_specifier} bp fragment distribution')
-    outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-    plt.savefig(outfile)
-    plt.close()
 
 
 def fragmentation_read_match_distribution(data, fragment_specifier, outpath):
@@ -120,8 +165,8 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath):
     plt.savefig(outfile, bbox_inches='tight')
     plt.close()
 
-
-def plot_bed_files_as_heatmap(bed_files, outfile):
+@redirect_logging(logfile_param="logfile")
+def plot_bed_files_as_heatmap(bed_files, outfile, logfile):
     """
     Creates heatmap the chromosome-specific density of matches in BED across the samples
     """
@@ -164,7 +209,6 @@ def merge_intervals(intervals, overlap, filtering, filtervalue):
     print(intervals)
 
     merged_intervals = []
-    #the following part does not work yet: It needs to take our different list properties into account!
     
     #first coordinates
     merged_intervals.append(intervals[0]) #start that needs to be there always
@@ -193,8 +237,8 @@ def merge_intervals(intervals, overlap, filtering, filtervalue):
     
     return merged_intervals
 
-   
-def splitting_borders(blast_file, filteroption, filtervalue,  overlap, outfile1, outfile2):
+@redirect_logging(logfile_param="logfile")   
+def splitting_borders(blast_file, filteroption, filtervalue,  overlap, outfile1, outfile2, logfile):
     """
     This function takes in a BLASTn output file and returns a file with the reads and the respective borders for fasta splitting.
     Output format: Read_ID cut1, cut2, cutN 
@@ -258,8 +302,8 @@ def split_fasta_with_breakpoints(fasta_string, breakpoints):
     
     return sequences, vector
 
-
-def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
+@redirect_logging(logfile_param="logfile")
+def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector, logfile):
     """
     Uses previously created breakpoints in border dict to cut out insertions from fasta file
     """
@@ -279,26 +323,31 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                         for i,entry in enumerate(vector_list):
                             vector_seq_new = vector_list[i]
                             vector_id_new = str(record_id) + '_%i' % (i)
-                            print("Split " + str(record_id) + "into " + str(vector_id_new))
+                            print("Split " + str(record_id) + " into " + str(vector_id_new))
                             output_vector_file.write(">"+str(vector_id_new)+"\n"+str(vector_seq_new) + "\n")
                         # write out fasta without insertion        
-                        if mode == "Separated":
-                            print("The 'separated' mode is still under development. The exact insertion coordinates are not represented correctly in the bed files.")
-                            print("The 'separated' mode is good to check whether the insertion happens between two otherwise not neighboring genomic regions.")
+                        if mode == "Buffer":
+                            print("Buffer mode selected: Insertion sequences are replaced by N.")
+                            print("Insertion coordinates will be reported as global coordinates relative to the reference genome.")
+                            bufferlength =len(record) - len(''.join([str(n) for n in record_list]))
+                            buffer = bufferlength*'N'
+                            record_seq_new = buffer.join([str(n) for n in record_list])
+                            print(record_seq_new)
+                            record_id_new = str(record_id)+ '_Buffer'+str(len(buffer))+'Insertion'
+                            output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
+                        elif mode == "Separated":
+                            print("Separated mode selected: Insertion sequences are cut from the read and the read is split at the borders.")
+                            print("Insertion coordinates will be reported as surrounding read coordinates.")
                             #this part only if the non-insertion fragments should NOT be combined
                             for i,entry in enumerate(record_list):
                                 record_seq_new = record_list[i]
                                 record_id_new = str(record_id) + '_%i' % (i)
                                 print("Split " + str(record_id) + "into " + str(record_id_new))
                                 output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
-                        elif mode == "Buffer":
-                            n_buffer = 100
-                            buffer = n_buffer*'N'
-                            record_seq_new = buffer.join([str(n) for n in record_list])
-                            print(record_seq_new)
-                            record_id_new = str(record_id) + '_Buffer'+str(n_buffer)+'Insertion'
-                            output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
                         else: 
+                            print("No mode or unknown mode selected.")
+                            print("Default: Insertions are cut from respective reads and the loose ends are joined together.")
+                            print("Insertion coordinates will be reported as read coordinates")
                             record_seq_new = ''.join([str(n) for n in record_list])
                             record_id_new = str(record_id) + '_Insertion'
                             output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
@@ -306,6 +355,7 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector):
                         output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
 ### this part is to extract the exact cooridnates of the insertions
+'''
 def adjust_coordinates_for_strand(start, stop, strand, insertion_values):
     """
     Adjusts the insertion coordinates based on strand directionality.
@@ -390,6 +440,190 @@ def exact_insertion_coordinates(border_dict, bed, outfile):
     updated_bed = pd.DataFrame(results, columns=[0, 1, 2, 3, 5, 6])
     updated_bed.to_csv(outfile, sep='\t', index=False, header=False)
     print(f"Insertion BED file saved to {outfile}")
+'''
+#cigar for exact cooridinates
+def parse_cigar(cigar, start, strand):
+    """
+    Parses a CIGAR string to reconstruct the original FASTA from the alignment. 
+    Soft-clipping is used to "correct" the start coordinates based on the real read length and the optimal alignment.
+    This new adjusted_start can then be used to really localize the insertion in the reference genome on the base level. 
+    
+    Some addiitonal reasoning for the CIGAR caluclation: https://stackoverflow.com/questions/39710796/infer-the-length-of-a-sequence-using-the-cigar
+    Parameters:
+        cigar (str): The CIGAR string (e.g., "50M5I30M10S").
+        start (int): The genomic start position of the read (1-based).
+        strand (str): The strand orientation ('+' or '-').
+
+    Returns:
+        list: A list of (genomic_position, operation) tuples.
+        int: Adjusted genomic start position after considering soft clipping.
+    """
+    operations = re.findall(r"(\d+)([MIDNSHP=X])", cigar)  # Splits numbers and letters in CIGAR string
+    genomic_pos = start
+    positions = []
+
+    # Adjust for soft-clipping to compute true start position: Import for insertions a the beginning or end of reads!
+    left_soft_clip = 0
+    right_soft_clip = 0
+
+    if operations[0][1] == "S":  # Check for left soft-clipping
+        left_soft_clip = int(operations[0][0])
+    if operations[-1][1] == "S":  # Check for right soft-clipping
+        right_soft_clip = int(operations[-1][0])
+
+    adjusted_start = start - left_soft_clip
+
+    print(operations)
+
+    # Convert counts to integers and tally totals by operation type
+    operation_totals = {}
+    for length, operation in operations:
+        length = int(length)
+        if operation not in operation_totals:
+            operation_totals[operation] = 0
+        operation_totals[operation] += length
+
+    # Display the results
+    for op, total in operation_totals.items():
+        print(f"Total {op}: {total}")
+
+
+
+    for length, op in operations:
+        length = int(length)
+        if op in "M=X":  # Matches or alignment regions
+            for _ in range(length):
+                positions.append((genomic_pos, "M"))
+                genomic_pos += 1
+        elif op == "I":  # Insertions relative to the reference
+            for _ in range(length):
+                positions.append((None, "I"))  # No reference position
+        elif op == "N":  # Skipped regions (splice junctions)
+            for _ in range(length):
+                #skipped regions do not "consume" query
+                continue
+        elif op == "D":  # Deletions in the reference
+            for _ in range(length):
+                #deletions do not "consume" query
+                continue
+        elif op == "S":  # Soft clipping
+            for _ in range(length):
+                positions.append((None, "S"))  # Clipped bases
+        elif op == "H":  # Hard clipping
+            for _ in range(length):
+                #hard clipped should not exist in the FASTA 
+                print("The CIGAR contains hard-clipped information although this should not exist at this point.")
+                print("Make sure your FASTAs with the insertions can be reconstructed from their CIGARs after the alignment.")
+                continue
+
+    return positions, adjusted_start, start
+
+@redirect_logging(logfile_param="logfile")
+def reconstruct_coordinates(bed_with_cigar, fasta_coordinates, splitmode, output, logfile):
+    """
+    Reconstructs global coordinates of reads by translating FASTA-based positions using CIGAR strings.
+    If there was not "Buffer" mode chosen for the split fasta function, the coordinates can not be re-constructed on base level accuracy.
+    In case of "Separated", the coordinates of the split reads are reported.
+    In case of "Join", the coordinates of the combined read are reported. This is the least accurate representation and is only recommended for developmental puproses so far.   
+
+    Parameters:
+        bed_with_cigar (str): Path to the BED file with CIGAR strings (from `bamtobed -cigar`).
+        fasta_coordinates (dict): Dictionary of FASTA-based coordinates for reads.
+        splitmode (str): Either Buffer or default to reporting the read coordinates. 
+        output (str): Path to save the reconstructed BED file.
+
+    """
+    if logfile is None:
+        raise ValueError("Logfile must be provided to log output.")
+
+    bed = pd.read_csv(bed_with_cigar, sep='\t', header=None)
+    bed.columns = ['chrom', 'start', 'end', 'name', 'score', 'strand', 'cigar']
+
+    # Load FASTA coordinates
+    fasta_coordinates = json.load(open(fasta_coordinates))
+    insertionreads = set(fasta_coordinates.keys())
+    
+    # Normalize 'name' in BED to match the normalized FASTA keys
+    bed['normalized_name'] = bed['name'].str.split("_").str[0] 
+
+    # Subset BED to include only rows with matching normalized names
+    bed_subset = bed[bed['normalized_name'].isin(insertionreads)]
+
+    results=[]
+
+    if splitmode == "Buffer":
+        print("Reporting the coordinates of the insertions. Tracing the FASTA length from the CIGAR string...")
+        # add condition for the Separated and options
+        for _, row in bed_subset.iterrows():
+            read_name = row['normalized_name']
+            start = row['start']
+            stop = row['end']
+            strand = row['strand']
+            cigar = row['cigar']
+            chrom = row['chrom']
+            origcoord = [start, stop]
+
+
+            # Parse CIGAR string and adjust start position
+            positions, adjusted_start, orig_start = parse_cigar(cigar, start, strand)
+            # Map FASTA coordinates to BED coordinates
+            fasta_coords = fasta_coordinates[read_name]
+            fastalength = len(positions)
+            
+            for i in range(0, len(fasta_coords), 2):
+                fasta_start = fasta_coords[i]
+                fasta_end = fasta_coords[i + 1]
+
+                # Translate FASTA to BED using CIGAR-based mapping
+                if positions[0][1] == 'S':  # Handle soft-clipped regions
+                    if strand == "+":
+                        genomic_start = adjusted_start + fasta_start
+                    else:  # Reverse strand handling
+                        genomic_start = adjusted_start + fastalength - fasta_end
+                else:  # Aligned regions
+                    print("No soft clipping dected; No adjustment of start necessary")
+                    genomic_start = orig_start + fasta_start
+
+                if positions[0][1] == 'S':  # Handle soft-clipped regions
+                    if strand == "+":
+                        genomic_end = adjusted_start + fasta_end
+                    else:  # Reverse strand handling
+                        genomic_end = adjusted_start + fastalength - fasta_start
+                else:  # Aligned regions
+                    print("No soft clipping dected; No adjustment of end necessary")
+                    genomic_end = orig_start + fasta_end
+                
+                # Debugging information
+                print(f"Read: {read_name}, Strand: {strand}, Length: {fastalength}")
+                print(f"FASTA Start: {fasta_start}, FASTA End: {fasta_end}")
+                print(f"Genomic Start: {genomic_start}, Genomic End: {genomic_end}")
+                print(f"Original coordinates: {origcoord}")
+                results.append([chrom, genomic_start, genomic_end, read_name, origcoord, strand])
+
+    elif splitmode == "Separated":
+        print("Reporting surrounding-read coordinates.")
+        for _, row in bed_subset.iterrows():
+            read_name = row['normalized_name']
+            start = row['start']
+            stop = row['end']
+            strand = row['strand']
+            chrom = row['chrom']
+            results.append([chrom, start, stop, read_name, "coordinates_of_surrounding_read", strand])
+    else:
+        print("Reporting read coordinates...")
+        for _, row in bed_subset.iterrows():
+            read_name = row['normalized_name']
+            start = row['start']
+            stop = row['end']
+            strand = row['strand']
+            chrom = row['chrom']
+            results.append([chrom, start, stop, read_name, "coordinates_of_read_with_insertion", strand])
+    
+
+    # Save results to a new BED file
+    reconstructed_bed = pd.DataFrame(results)
+    reconstructed_bed.to_csv(output, sep='\t', index=False, header=False)
+
 
 def blast2gff(blast,outfile):
     """
@@ -401,7 +635,8 @@ def blast2gff(blast,outfile):
             sequence_id, subject_id, start, end = fields[0], fields[1], fields[8], fields[9]
             gff_file.write(f"{subject_id}\t{start}\t{end}\tBLAST\tfeature\t.\t.\t{sequence_id}\n")
 
-def reversevector(fastain, fastaout):
+@redirect_logging(logfile_param="logfile")
+def reversevector(fastain, fastaout, logfile):
     with open(fastaout, 'w') as output_file:
         # opening given fasta file using the file path
         with open(fastain, 'r') as fasta_file:
@@ -415,7 +650,8 @@ def reversevector(fastain, fastaout):
                 output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")
                 output_file.write(">"+str(record_id_reversed)+"\n"+str(reversed_record_seq) + "\n") 
 
-def plot_insertion_length(bed, outfile):
+@redirect_logging(logfile_param="logfile")
+def plot_insertion_length(bed, outfile, logfile):
     """
     Takes the full coordinates bed files and plots them by their length.
     """

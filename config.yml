@@ -1,58 +1,11 @@
 # Long-read data
-experiment: "Clone1" #"CD123_filter_eef1a_Vector_integration_site"Full_CD19_filter_cd247_Vector_integration_site"DummyExample"#change the threshhold fro CD19 and CD123 and location plos
+experiment: "SimData"
 samples:
-    #full_CD123+: "/home/weichan/permanent/Projects/VIS/dev/CD123/CD123_sup_dorado_ref.bam"
-    #full_ads: "/home/weichan/permanent/Projects/VIS/dev/CD123/ADS_sup_dorado_ref.bam" #bam from dorado with reference an mod bases option
-    #full_ads: "/home/weichan/permanent/Projects/VIS/dev/gfp_pos_ads.fq.gz"
-    #UTD: "/home/lischecr/temporary/NanoporeData/VIS/UTD/utd.native.fq.gz"
-    #UTD: "/home/weichan/permanent/Projects/VIS/dev/CD123/UTD_sup_dorado_ref.bam"
-    #CD123_pooled: "/home/weichan/permanent/Projects/VIS/dev/CD123/Pooled_CD123_GFP+.bam"
-    #dummy: "/home/weichan/permanent/Projects/VIS/dev/DummyData.fa"
-    #S1: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/S1_sup_dorado_ref.bam" #CD19
-    #S2: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/S2_sup_dorado_ref.bam"
-    #S3: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20231211_1304_MN35428_FAW87932_7d66ac35/S3_sup_dorado_ref.bam"
-    #S4: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20231211_1304_MN37858_FAX97335_cdcfc2d8/S4_sup_dorado_ref.bam"
-    #S4r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240115_1540_MN40944_FAW84844_01854254/S4_sup_dorado_ref.bam"
-    #S3r: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240122_1254_MN37858_FAX66721_25279206/S3_sup_dorado_ref.bam"
-    #S4_ADS: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/ADS_S4/ADS_S4_sup_dorado_ref.bam"
-    #S3_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S3.bam"
-    #S4_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/Pooled_S4.bam"
-    #MK025_GFP+: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref.bam"
-    #Dummy: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
-    #test_MK014_28z_1: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_3/VIS_MPX_3_combined_MK025_28z.bam"
-    #test_2: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_3/VIS_MPX_3_combined_MK014_28z.bam"
-    #MK025_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode07.bam"
-    #MK028_28z_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode11.bam"
-    #MK014_28z_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/20240625_1137_MC-115946_FAY23515_980e3e52/Barcoded/SQK-RBK114-24_barcode01.bam"
-    #MK025_28z_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/20240625_1137_MC-115946_FAY23515_980e3e52/Barcoded/SQK-RBK114-24_barcode03.bam"
-    #MK028_28z_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/20240625_1137_MC-115946_FAY23515_980e3e52/Barcoded/SQK-RBK114-24_barcode05.bam"
-    #MK014_28z_3: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_3/VIS_MPX_3_combined_MK014_28z.bam"
-    #MK025_28z_3: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_3/VIS_MPX_3_combined_MK025_28z.bam"
-    #MK028_28z_3: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_3/VIS_MPX_3_combined_MK028_28z.bam"
-    #MK014_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode02.bam"
-    #MK025_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode06.bam"
-    #MK028_UTC: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode10.bam"
-    #MK014_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode04.bam"
-    #MK025_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode08.bam"
-    #MK028_BBz_1: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_1/Barcoded/Demux/SQK-RBK114-24_barcode12.bam"
-    #MK014_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/20240625_1137_MC-115946_FAY23515_980e3e52/Barcoded/SQK-RBK114-24_barcode02.bam"
-    #MK025_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/20240625_1137_MC-115946_FAY23515_980e3e52/Barcoded/SQK-RBK114-24_barcode04.bam"
-    #MK028_BBz_2: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_2/20240625_1137_MC-115946_FAY23515_980e3e52/Barcoded/SQK-RBK114-24_barcode06.bam"
-    #MK014_BBz_3: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_3/VIS_MPX_3_combined_MK014_BBz.bam"
-    #MK025_BBz_3: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_3/VIS_MPX_3_combined_MK025_BBz.bam"
-    #MK028_BBz_3: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_3/VIS_MPX_3_combined_MK028_BBz.bam"
-    #MK014_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK014_BBz_pooled.bam"
-    #MK025_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK025_BBz_pooled.bam"
-    #MK028_BBz_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MPX_pooled/VIS_MPX_MK028_BBz_pooled.bam"
-    #MK014_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_28z_pooled.bam"
-    #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK025_28z_pooled.bam"
-    #MK028_28z_pooled: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_28z_pooled.bam"
-    #MK025_28z_pooled: "/home/weichan/permanent/Projects/VIS/dev/VIS_MK025_28z_pooled/VIS_MK025_28z_pooled.bam"
-    Clone1: "/home/weichan/permanent/Projects/VIS/Data/CAR_clonality/combined_first_clone_sup.bam"
+    Sim1: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
 
 processing_dir: "/home/weichan/temporary/Projects/VIS_out"
 source_dir: "Src/"
-vector_fasta: "/home/weichan/permanent/Projects/VIS/Data/pSLCAR-CD19-28z/pSLCAR-CD19-28z.fa"
+vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/vectorseq.fa"
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 proteindb: "/home/weichan/swissprot/swissprot"
@@ -61,7 +14,7 @@ fragment_size: 100 #input for custom function
 MinLength: 1
 MAPQ: 10 #mapping quality filter after pseudo-read generation
 MinInsertionLength: 500 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
-ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg_withBasecalling/hg38.fa"
+ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/chr1region.fa"
 #ref_genome_ctrl: "/home/weichan/permanent/Src/T2T_ref/chm13v2.0.fa"
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta" #might still contain empty last row!
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
