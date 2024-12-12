@@ -25,7 +25,7 @@ ucsc_H3K4Me1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me1
 ucsc_H3K27Ac: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K27Ac_02_24"
 ucsc_H3K4Me3: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me3_02_24"
 #ucsc_DNaseH: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_DNaseClusters_02_24_cut"
-ucsc_TF: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TFClusters_processed.bed"
+#ucsc_TF: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TFClusters_processed.bed"
 ucsc_Genes: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODEV44_processed.bed"
 ucsc_Genes_gtf: "/home/weichan/permanent/Projects/VIS/dev/UCSC/gencode.v44.annotation.gtf"
 #ucsc exons

@@ -12,34 +12,31 @@ rule nanoplot:
 		PROCESS+"mapping/Precut_{sample}_sorted.bam"
 	output:
 		PROCESS+"qc/nanoplot/{sample}/NanoStats.txt"
+	log:
+		log=PROCESS+"log/qc/nanoplot/{sample}.log"
 	params:
 		outdir=directory(PROCESS+"qc/nanoplot/{sample}/"), 
 	shell: 
 		"""
+		(
 		NanoPlot --bam {input} -o {params.outdir}
 		touch {output}
+		) > {log.log} 2>&1
 		"""
-
-'''
-rule normalisation_for_insertion_count:
-	input:
-		insertions=PROCESS+"blastn/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt",
-		fasta=PROCESS+"FASTA/Full_{sample}.fa" #for N50
-	params:
-		scale=3000000000 #IPM #IPG
-	output:
-		PROCESS+"qc/Normalisation_IPG_{sample}.txt"
-	run:
-		vhf.insertion_normalisation(input.insertions, params[0], input.fasta, output[0])
-'''			
 
 rule bam_coverage: 
 	input:
 		bam=PROCESS+"mapping/Precut_{sample}_sorted.bam"
+	log:
+		log=PROCESS+"log/qc/bam_coverage/{sample}.log"
 	output:
 		covbed=PROCESS+"qc/Coverage/Genomecoverage_{sample}.bed"
-	run: 
-		shell("bedtools genomecov -ibam {input} -bga > {output}")
+	shell: 
+		"""
+		(
+		bedtools genomecov -ibam {input} -bga > {output}
+		) > {log.log} 2>&1
+		"""
 
 ### Read level fastqc analysis
 
@@ -49,10 +46,13 @@ rule extract_fastq_insertions:
         readnames=PROCESS+"blastn/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
     params:
         tempdir=PROCESS+"temp_fastq_{sample}"  # Temporary directory for intermediate files
+    log:
+    	log=PROCESS+"log/qc/extract_fastq_insertions/{sample}.log"
     output:
         fastq=PROCESS + "qc/fastqc/{sample}_filtered.fastq"
     shell:
         '''
+        (
         mkdir -p {params.tempdir}
 
         # Extract header from BAM or generate it from reference genome
@@ -67,6 +67,7 @@ rule extract_fastq_insertions:
 
         # Clean up temporary files
         rm -r {params.tempdir}
+        ) > {log.log} 2>&1
         '''
 
 rule read_level_fastqc:
@@ -74,10 +75,13 @@ rule read_level_fastqc:
         PROCESS + "qc/fastqc/{sample}_filtered.fastq"
     params:
         prefix=PROCESS + "qc/fastqc/readlevel_{sample}/{sample}_read_"
+    log:
+    	log=PROCESS+"log/qc/read_level_fastqc/{sample}.log"
     output:
         directory(PROCESS + "qc/fastqc/readlevel_{sample}/")
     shell:
         """
+        (
         mkdir -p {output}
 
         # Split the FASTQ file into individual entries and replace spaces with underscores in the read names
@@ -95,6 +99,7 @@ rule read_level_fastqc:
         for seq in {params.prefix}*; do
             fastqc -f fastq --noextract -o {output} "$seq"
         done
+        ) > {log.log} 2>&1
         """
 
 rule multiqc:
@@ -104,15 +109,19 @@ rule multiqc:
     params:
         qc_output_dir=PROCESS+"qc/",
         qc_report_location=FINAL+"qc/"
+    log:
+    	log=PROCESS+"log/qc/multiqc/out.log"
     output: 
         PROCESS + "qc/multiqc_report.html",
         report(FINAL + "qc/multiqc_report.html")
     shell:
         """
+        (
         multiqc {input.fastqc} --dirs {input.nanoplot} --force -o {params.qc_output_dir}
         
         # copy report to final location
         cp {output[0]} {output[1]}
+        ) > {log.log} 2>&1
         """
 
 ### Read level overview of mapping quality before and after the cut out of the insertions
@@ -124,12 +133,15 @@ rule extract_mapping_quality:
         readnames=PROCESS + "blastn/Readnames_" + str(FRAG) + "_VectorMatches_{sample}.txt"
     params:
         tempdir=PROCESS+"temp_mapping_{sample}"
+    log:
+    	log=PROCESS+"log/qc/extract_mapping_quality/{sample}.log"
     output:
         quality_scores=temp(PROCESS + "qc/{sample}_precut_mapping_quality.txt"),
         quality_scores2=temp(PROCESS + "qc/{sample}_postcut_mapping_quality.txt"),
         quality_scores3=temp(PROCESS + "qc/{sample}_postcut_unfiltered_mapping_quality.txt")
     shell:
         '''
+        (
         mkdir -p {params.tempdir}
 
         # Extract reads of interest
@@ -144,6 +156,7 @@ rule extract_mapping_quality:
 
         # Clean up
         rm -r {params.tempdir}
+        ) > {log.log} 2>&1
         '''
 rule finalize_mapping_quality:
     input:
@@ -152,18 +165,22 @@ rule finalize_mapping_quality:
         quality_scores_post=PROCESS + "qc/{sample}_postcut_mapping_quality.txt"
     params:
         prefixes=["Precut", "Postcut", "Postcut_filtered"]
+    log:
+    	log=PROCESS+"log/qc/finalize_mapping_quality/{sample}.log"
     output:
         outfile=PROCESS + "qc/mapq/Insertions_{sample}_mapq.txt"
     run:
-        vhf.join_read_mapq(input[0:3], params.prefixes, output.outfile)
+        vhf.join_read_mapq(input[0:3], params.prefixes, output.outfile, log.log)
 
 rule generate_mapq_heatmap:
     input:
         table=PROCESS+"qc/mapq/Insertions_{sample}_mapq.txt"
+    log:
+    	log=PROCESS+"log/qc/generate_mapq_heatmap/{sample}.log"
     output:
         heatmap=report(PROCESS+"qc/mapq/{sample}_mapq_heatmap_image.png")
     run:
-        vhf.plot_mapq_changes(input.table, output.heatmap)
+        vhf.plot_mapq_changes(input.table, output.heatmap, log.log)
 
 #### Visualize fragmentation and longest consecutive interval per read
 
@@ -173,16 +190,21 @@ rule fragmentation_distribution_plots:
 		PROCESS+"blastn/humanref/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		FRAG
+	log:
+		log1=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_match_distribution_{sample}.log",
+		log2=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_read_match_distribution_{sample}.log",
+		log3=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_match_distribution_{sample}.log",
+		log4=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_read_match_distribution_{sample}.log"
 	output:
 		outpath=directory(FINAL+"qc/Fragmentation/Insertions/insertions_" + str(FRAG)+"_{sample}"),
 		outpath2=directory(FINAL+"qc/Fragmentation/Reference/reference_" + str(FRAG)+"_{sample}")
 	run:
 		shell("mkdir {output.outpath}")
-		vhf.fragmentation_match_distribution(input[0], params[0], output[0])
-		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0])
+		vhf.fragmentation_match_distribution(input[0], params[0], output[0], log.log1)
+		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0], log.log2)
 		shell("mkdir {output.outpath2}")
-		vhf.fragmentation_match_distribution(input[1], params[0], output[1])
-		vhf.fragmentation_read_match_distribution(input[1], params[0], output[1])
+		vhf.fragmentation_match_distribution(input[1], params[0], output[1], log.log3)
+		vhf.fragmentation_read_match_distribution(input[1], params[0], output[1], log.log4)
 
 rule detailed_fragmentation_length_plot:
     input:
@@ -190,14 +212,10 @@ rule detailed_fragmentation_length_plot:
     params: 
         buffer=3*FRAG,
         threshold=config["MinInsertionLength"]
+    log:
+    	log=PROCESS+"log/qc/detailed_fragmentation_length_plot/{sample}.log"
     output:
         outpath=directory(FINAL+"qc/Fragmentation/Longest_Interval/{sample}/")
     run:
         shell("mkdir -p {output.outpath}")
-        
-        vhf.find_and_plot_longest_blast_interval(
-            input.matches,
-            params.buffer,
-            params.threshold,
-            output.outpath
-        )
+        vhf.find_and_plot_longest_blast_interval(input.matches, params.buffer, params.threshold, output.outpath,log.log)

@@ -22,9 +22,9 @@ import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 include: config["functional_genomics"]
 include: config["quality_control"]
 #development
-include: config["epigenetics"]
-include: config["variants"]
-include: config["development"]
+#include: config["epigenetics"]
+#include: config["variants"]
+#include: config["development"]
 
 #target rule        
 rule all:
@@ -64,38 +64,62 @@ def get_input_names(wildcards):
 rule copy_config_version:
 	input:
 		config_file="config.yml"
+	log:
+		log=PROCESS+"log/main/copy_config_version/out.log"
 	output:
 		OUTDIR+"config_settings.yml" 
 	shell:
-		"cp {input.config_file} {output}"
+		"""
+		(
+		cp {input.config_file} {output} 
+		) > {log.log} 2>&1
+		"""
 
 rule build_insertion_reference:
 	input:
 		ref=config["ref_genome_ctrl"],
 		vector=config["vector_fasta"]
+	log:
+		log=PROCESS+"log/main/build_insertion_reference/out.log"
 	output:
 		PROCESS+"mapping/vector_ref_genome.fa"
 	shell:
-		"cat {input.ref} {input.vector} > {output}"
+		"""
+		(
+		cat {input.ref} {input.vector} > {output}
+		) > {log.log} 2>&1
+		"""
 		
 
 rule minimap_index:
 	input:
 		ref=PROCESS+"mapping/vector_ref_genome.fa"
+	log:
+		log=PROCESS+"log/main/minimap_index/out.log"
 	output:
 		index=temp(PROCESS+"mapping/ref_genome_index.mmi")
 	resources:
 		mem_mb=5000
 	shell:
-		"minimap2 -d {output.index} {input.ref}"
+		"""
+		(
+		minimap2 -d {output.index} {input.ref} 
+		) > {log.log} 2>&1
+		"""
 
 rule make_fasta_without_tags: #fasta of raw data no trimming whatsoever
 	input:
 		fq=get_input_names
+	log:
+		log=PROCESS+"log/main/make_fasta_without_tags/{sample}.log"
 	output:
 		fasta=PROCESS+"fasta/Full_{sample}.fa"
-	run: 
-		shell("samtools fasta {input} -o {output} > {output}") #takes in bam and outputs fasta, output has to be mentioned twice: 1 for the location, 2 for the option to write "both" reads to one fasta
+	shell: 
+		"""
+		(
+		samtools fasta {input} -o {output} > {output}
+		) > {log.log} 2>&1
+		"""
 ######
 ######
 ###### "Clean" BAM: Cut-out fasta to BAM via Mapping to reference 
@@ -109,12 +133,16 @@ rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 		genome=PROCESS+"mapping/vector_ref_genome.fa"
 	output:
 		PROCESS+"mapping/Postcut_{sample}_unfiltered_sorted.bam"
+	log:
+		log=PROCESS+"log/main/Non_insertion_mapping/{sample}.log"
 	resources:
 		mem_mb=5000
-	shell: #added N=0 instead of default N=1
+	shell: #N=0 instead of default N=1
 		"""
-		minimap2 -y -ax map-ont --score-N 0 {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output} #added the removal of sec and suppl alignments 
+		(
+		minimap2 -y -ax map-ont --score-N 0 {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output}
 		samtools index {output}
+		) > {log.log} 2>&1
 		"""
 
 rule insertion_mapping: #conserves tags!
@@ -124,12 +152,16 @@ rule insertion_mapping: #conserves tags!
 		ref=PROCESS+"mapping/vector_ref_genome.fa"
 	output:
 		PROCESS+"mapping/Precut_{sample}_sorted.bam"
+	log:
+		log=PROCESS+"log/main/insertion_mapping/{sample}.log"
 	resources:
 		mem_mb=5000
 	shell:
 		"""
+		(
 		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
 		samtools index {output}
+		) > {log.log} 2>&1
 		"""
 
 rule clean_postcut_by_maping_quality:
@@ -139,10 +171,14 @@ rule clean_postcut_by_maping_quality:
 		mapq=config["MAPQ"]
 	output:
 		PROCESS+"mapping/Postcut_{sample}_sorted.bam"
+	log:
+		log=PROCESS+"log/main/clean_postcut_by_maping_quality/{sample}.log"
 	shell:
 		"""
+		(
 		samtools view -h -q {params.mapq} {input} -o {output}
 		samtools index {output}
+		) > {log.log} 2>&1
 		"""
 ######
 ######
@@ -158,9 +194,18 @@ rule BAM_to_BED:
 	output:
 		postcut=PROCESS+"mapping/Postcut_{sample}.bed",
 		precut=PROCESS+"mapping/Precut_{sample}.bed"
-	run:
-		shell("bedtools bamtobed -cigar -i {input.precut} > {output.precut}")
-		shell("bedtools bamtobed -cigar -i {input.postcut} > {output.postcut}")  
+	log:
+		log1=PROCESS+"log/main/BAM_to_BED/Precut_{sample}.log",
+		log2=PROCESS+"log/main/BAM_to_BED/Postcut_{sample}.log"
+	shell:
+		"""
+		(
+		bedtools bamtobed -cigar -i {input.precut} > {output.precut}
+		) > {log.log1} 2>&1
+		(
+		bedtools bamtobed -cigar -i {input.postcut} > {output.postcut}
+		) > {log.log2} 2>&1
+		"""
 
 ######
 ######
@@ -176,7 +221,7 @@ rule get_cleavage_sites_for_fasta: #filters and combines matches
 		filtervalue=config["MinInsertionLength"], 
 		overlap=3*FRAG # 2*FRAG #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	log:
-		log=PROCESS+"log/get_cleavage_sites_for_fasta/{sample}.log"
+		log=PROCESS+"log/main/get_cleavage_sites_for_fasta/{sample}.log"
 	output:
 		cleavage=PROCESS+"blastn/CleavageSites_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		reads=PROCESS+"blastn/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
@@ -190,7 +235,7 @@ rule split_fasta:
 	params:
 		mode=config["splitmode"] #if each split fasta substring should be used individually, use "Separated" Join, New mode: Buffer
 	log:
-		log=PROCESS+"log/split_fasta_by_borders/{sample}.log"
+		log=PROCESS+"log/main/split_fasta_by_borders/{sample}.log"
 	output:
 		fasta=PROCESS+"fasta/Cleaved_{sample}_noVector.fa",
 		vector=PROCESS+"fasta/Insertion_{sample}_Vector.fa"
@@ -206,7 +251,7 @@ rule prepare_vector:
 	input:
 		config["vector_fasta"] #vector fasta sequence
 	log:
-		log=PROCESS+"log/prepare_vector/out.log"
+		log=PROCESS+"log/main/prepare_vector/out.log"
 	output: 
 		fasta=PROCESS+"fasta/fragments/Forward_Backward_Vector.fa"
 	run:
@@ -218,7 +263,7 @@ rule vector_fragmentation:
 	params:
 		FRAG
 	log:
-		log=PROCESS+"log/vector_fragmentation/out.log"
+		log=PROCESS+"log/main/vector_fragmentation/out.log"
 	output: 
 		fasta=PROCESS+"fasta/fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	run:
@@ -233,6 +278,8 @@ rule vector_fragmentation:
 rule make_blastn_DB:
 	input:
 		vector_fragmented = PROCESS+"fasta/fragments/" + str(FRAG) + "_Vector_fragments.fa"
+	log:
+		log=PROCESS+"log/main/make_blastn_DB/out.log"
 	output:
 		multiext(PROCESS+"fasta/fragments/" + str(FRAG) + "_Vector_fragments.fa",
 			".ndb",
@@ -243,8 +290,12 @@ rule make_blastn_DB:
 			".ntf",
 			".nto"
 		)
-	run:
-		shell("makeblastdb -in {input.vector_fragmented} -dbtype nucl -blastdb_version 5")
+	shell:
+		"""
+		(
+		makeblastdb -in {input.vector_fragmented} -dbtype nucl -blastdb_version 5 
+		) > {log.log} 2>&1
+		"""
 
 rule find_vector_BLASTn:
 	input:
@@ -253,20 +304,29 @@ rule find_vector_BLASTn:
 	params:
 		tempdir=PROCESS+"temp_{sample}",
 		vector=PROCESS+"fasta/fragments/" + str(FRAG) + "_Vector_fragments.fa"
+	log:
+		log=PROCESS+"log/main/find_vector_BLASTn/{sample}.log"
 	output:
 		PROCESS+"blastn/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	shell:
 		"""
+		(
 		mkdir {params.tempdir}
 		
-        	blastn -query {input.fasta} -db {params.vector} -out {params.tempdir}/temp_output.blastn -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'
+        blastn \
+        -query {input.fasta} \
+        -db {params.vector} \
+        -out {params.tempdir}/temp_output.blastn \
+        -evalue 1e-5 \
+        -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'
 
-        	# Filter results based on bitscore > 50
-        	awk '$16 > 50' {params.tempdir}/temp_output.blastn > {output}
+        # Filter results based on bitscore > 50
+        awk '$16 > 50' {params.tempdir}/temp_output.blastn > {output}
 
-        	# Clean up temporary files
-        	rm -r {params.tempdir}
-        	"""
+        # Clean up temporary files
+        rm -r {params.tempdir}
+        ) > {log.log} 2>&1
+        """
 		
 #blastn vector against human genome: Which vector parts are close to human sequences so that they might raise a false positivite BLAST match
 rule find_vector_BLASTn_in_humanRef:
@@ -274,22 +334,37 @@ rule find_vector_BLASTn_in_humanRef:
 		fasta=PROCESS+"fasta/fragments/" + str(FRAG) + "_Vector_fragments.fa"
 	params:
 		vector=config["blastn_db"] #full human reference
+	log:
+		log=PROCESS+"log/main/find_vector_BLASTn_in_humanRef/{sample}.log"	
 	output:
 		temp(PROCESS+"blastn/humanref/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
-	run:
-		shell("blastn -query {input} -db {params.vector} -out {output} -evalue 1e-5 -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'")
+	shell:
+		"""
+		(
+		blastn \
+		-query {input} \
+		-db {params.vector} \
+		-out {output} \
+		-evalue 1e-5 \
+		-outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'
+		) > {log.log} 2>&1
+		"""
 
 rule hardcode_blast_header:
 	input: 
 		vector=PROCESS+"blastn/"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		humanref=PROCESS+"blastn/humanref/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	log:
+		log=PROCESS+"log/main/hardcode_blast_header/{sample}.log"	
 	output:
 		vector=PROCESS+"blastn/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		humanref=PROCESS+"blastn/humanref/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	shell:
 		"""
+		(
 		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.vector} > {output.vector}
 		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.humanref} > {output.humanref}
+		) > {log.log} 2>&1
 		"""
 		
 rule blast_to_gff:
@@ -310,12 +385,18 @@ rule extract_by_length:
 		humanref=PROCESS+"blastn/humanref/Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
 	params:
 		threshold=config["MinLength"]
+	log:
+		log=PROCESS+"log/main/extract_by_length/{sample}.log"	
 	output:
 		blast=PROCESS+"blastn/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
 		humanref=PROCESS+"blastn/humanref/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
-	run:
-		shell("awk -F'\t' '$11>={params.threshold}' {input.blast} > {output.blast}")
-		shell("awk -F'\t' '$11>={params.threshold}' {input.humanref} > {output.humanref}") 
+	shell:
+		"""
+		(
+		awk -F'\t' '$11>={params.threshold}' {input.blast} > {output.blast}
+		awk -F'\t' '$11>={params.threshold}' {input.humanref} > {output.humanref}
+		) > {log.log} 2>&1
+		""" 
 
 ######
 ######
@@ -331,8 +412,8 @@ rule basic_insertion_plots:
 		report(FINAL+"localization/Heatmap_Insertion_Chr.png"),
 		report(FINAL+"localization/Insertion_length.png")
 	log:
-		log1=PROCESS+"log/basic_insertion_plots/heat.log",
-		log2=PROCESS+"log/basic_insertion_plots/length.log"
+		log1=PROCESS+"log/main/basic_insertion_plots/heat.log",
+		log2=PROCESS+"log/main/basic_insertion_plots/length.log"
 	run:
 		vhf.plot_bed_files_as_heatmap(input, output[0], log.log1)
 		vhf.plot_insertion_length(input, output[1], log.log2)
@@ -352,7 +433,7 @@ rule calculate_exact_insertion_coordinates:
 	params:
 		mode=config["splitmode"]
 	log:
-		log=PROCESS+"log/calculate_exact_insertion_coordinates/{sample}.log"
+		log=PROCESS+"log/main/calculate_exact_insertion_coordinates/{sample}.log"
 	output:
 		out=PROCESS+"localization/ExactInsertions_{sample}.bed",
 	run:
@@ -361,10 +442,13 @@ rule calculate_exact_insertion_coordinates:
 rule collect_outputs:
 	input:
 		coordinates=PROCESS+"localization/ExactInsertions_{sample}.bed",
+	log:
+		log=PROCESS+"log/main/collect_outputs/{sample}.log"
 	output:
 		coordinates=FINAL+"localization/ExactInsertions_{sample}.bed"
 	shell:
 		"""
+		(
 		cp {input.coordinates} {output.coordinates}
+		) > {log.log} 2>&1
 		"""
-

@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import collections
 import seaborn as sns
-from pybedtools import BedTool
+import pybedtools #import BedTool
 import json
 import subprocess
 from Bio.Align.Applications import ClustalOmegaCommandline
@@ -91,79 +91,6 @@ def fragmentation_fasta(fasta, equal_fragments, outfilename, logfile):
                     #print(">"+str(record_id)+"\n"+str(chunk) + "\n")
                     record_id_chunk = str(record_id) + '_%i' % (i)
                     output_file.write(">"+str(record_id_chunk)+"\n"+str(chunk) + "\n")            
-
-
-def fragmentation_match_distribution(data, fragment_specifier, outpath):
-    """
-    Takes the vector fragments and plots histogram of their frequency in the alignment
-    """
-    blasted = pd.read_csv(data, sep="\t")
-
-    try: 
-        if any(x.isupper() for x in blasted['QueryID'][0]): #to make sure the right column is used for plotting. Reads do not have any uppercase letters
-            blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
-            blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
-            freq = collections.Counter(blasted["Fragment"].sort_values())
-        else:
-            blasted[['Vector', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
-            blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
-            freq = collections.Counter(blasted["Fragment"].sort_values())
-        plt.bar(freq.keys(), freq.values(), color='black')
-        #print(blasted["Fragment"].sort_values())
-        if (10000/fragment_specifier) < 50:    
-            plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
-        else:
-            plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
-        
-        plt.ylabel('Alignment Frequency')
-        plt.xlabel("Vector Fragment")
-        plt.title(f'{fragment_specifier} bp fragment distribution')
-        outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-        plt.savefig(outfile)
-        plt.close()
-    except:
-        plt.figure()
-        plt.title('Empty Data.')
-        plt.text(0.5, 0.5, 'No data available', ha='center', va='center', fontsize=12)
-        plt.xlabel("No BLAST matches or read names not all lowercase")
-        plt.xticks([])
-        plt.yticks([])
-        outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-        plt.savefig(outfile)
-        plt.close()
-        return
-
-
-def fragmentation_read_match_distribution(data, fragment_specifier, outpath):
-    """
-    Takes the read ids with matches and plots histogram of their frequency
-    """
-    blasted = pd.read_csv(data, sep="\t")
-    
-    #check if empty
-    if blasted.empty:
-        plt.figure()
-        plt.title('Empty Data')
-        plt.text(0.5, 0.5, 'No data available', ha='center', va='center', fontsize=12)
-        plt.xticks([])
-        plt.yticks([])
-        outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-        plt.savefig(outfile)
-        plt.close()
-        return
-
-    if any(x.isupper() for x in blasted['QueryID'][0]):
-        freq = collections.Counter(blasted["SubjectID"])
-    else:
-        freq = collections.Counter(blasted["QueryID"])
-    plt.bar(freq.keys(), freq.values(), color='black')
-    plt.xticks(rotation=90)
-    plt.ylabel('Read match Frequency')
-    plt.xlabel("Read")
-    plt.title(f'{fragment_specifier} bp read match fragment distribution')
-    outfile = outpath + str("/") + f'{fragment_specifier}_read_match_fragmentation_distribution.png'
-    plt.savefig(outfile, bbox_inches='tight')
-    plt.close()
 
 @redirect_logging(logfile_param="logfile")
 def plot_bed_files_as_heatmap(bed_files, outfile, logfile):
@@ -751,7 +678,8 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
     plt.savefig(outfile, dpi=600)
     plt.show()
 
-def find_and_plot_longest_blast_interval(blastn, buffer, threshold, output_dir):
+@redirect_logging(logfile_param="logfile")
+def find_and_plot_longest_blast_interval(blastn, buffer, threshold, output_dir, logfile):
     """
     Uses the blast result table and creates an illustration of the longest blast interval, including the description of the matching part of the vector. 
     """
@@ -788,17 +716,57 @@ def find_and_plot_longest_blast_interval(blastn, buffer, threshold, output_dir):
             print(f"Not enough matches for {query_id}.")
 
 #functional
-def plot_element_distance(bed, distances, distance_threshold, output_path):
+@redirect_logging(logfile_param="logfile")
+def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_files):
+    """
+    Calculates distances between insertion sites and genomic annotations using bedtools closest.
+    
+    Parameters:
+    - insertions_bed (str): Path to the BED file containing the insertion sites.
+    - output_bed (str): Path to save the output BED file.
+    - annotation_files (str): List of paths to annotation BED files.
+    """
+
+    # At least one annotation input necessary
+    if not annotation_files:
+        raise ValueError("At least one annotation file must be provided.")
+    # Create DataFrame for combined annotations
+    combined_df = pd.DataFrame()
+
+    for file in annotation_files:
+        try:
+            tag = os.path.basename(file).split(".")[0]  # Use file name without extension as tag
+            df = pd.read_csv(file, sep="\t", header=None)  # Load as DataFrame
+            df["source"] = tag  # Add source column
+            combined_df = pd.concat([combined_df, df], ignore_index=True)
+        except:
+            continue
+    
+    # Convert combined DataFrame bed object
+    combined_bed = pybedtools.BedTool.from_dataframe(combined_df)
+    sorted_annotations = combined_bed.sort()
+
+    insertions = pybedtools.BedTool(insertions_bed)
+
+    #bedtools closest operation
+    closest = insertions.closest(sorted_annotations, D="a", filenames=True)
+
+    closest.saveas(output_bed)
+    print(f"Distances calculated and saved to {output_bed}")
+
+@redirect_logging(logfile_param="logfile")
+def plot_element_distance(bed, distances, distance_threshold, output_path, logfile):
     """
     Uses the bed file from the distance calculations and returns a plot to visualize the respective elements with their distance.
     Entries farther than the defined threshold are excluded.
     """
     # Read the table
+    colnames = ["chr", "start_insertion", "stop_insertion", "read", "origcoord", "strand","chr_element","start_element", "stop_element","element_name", "element_score", "element_strand", "source", "distance"]
     df = pd.read_csv(
         bed,
         sep='\t',
         header=None,
-        names=["chr", "start_insertion", "stop_insertion", "read", "source", "element_name", "distance"],
+        names=colnames,
     )
     
     # Apply threshold filtering if provided
@@ -808,9 +776,6 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     # Ensure absolute distance and sort by absolute distance within groups
     df['abs_distance'] = df['distance'].abs()
     df = df.sort_values(by=['read', 'abs_distance']).drop_duplicates(subset=['read', 'element_name', "source"], keep='first').reset_index()
-    
-    # Prepare data for plotting
-    plt.figure(figsize=(max(16, len(df)/10), 9))
     
     # Create scatter plot
     sns.scatterplot(
@@ -834,18 +799,65 @@ def plot_element_distance(bed, distances, distance_threshold, output_path):
     plt.ylabel("Element Name")
     plt.title("Distance Distribution to Elements")
     sns.despine()
-    plt.legend(title="",  bbox_to_anchor=(0.5, 0.5),  loc='upper center', fontsize=8)
+    plt.legend(title="", fontsize=8)
     
     # Save plot
     plt.savefig(output_path, dpi=300)
     plt.close()
     print(f"Plot saved to {output_path}")
 
-def scoring_insertions(data, output_file):
+@redirect_logging(logfile_param="logfile")
+def plot_element_distance_violin(bed, distances, distance_threshold, output_path, logfile):
+    # Read the table
+    colnames = [
+        "chr", "start_insertion", "stop_insertion", "read", "origcoord", "strand",
+        "chr_element", "start_element", "stop_element", "element_name", "element_score",
+        "element_strand", "source", "distance"
+    ]
+    df = pd.read_csv(
+        bed,
+        sep='\t',
+        header=None,
+        names=colnames,
+    )
+
+    # Apply threshold filtering if provided
+    if distance_threshold is not None:
+        df = df[df['distance'].abs() <= int(distance_threshold)]
+
+    # Create a count of how many times each source appears at each distance
+    distance_counts = df.groupby(['distance', 'source', 'read']).size().reset_index(name='count')
+
+    # Create the bar plot
+    print(distance_counts.head())
+    plt.figure(figsize=(10, 6))
+    sns.displot(
+        data=distance_counts,
+        x='distance', y='count', hue='read', col='source',
+        palette='Set2'
+    )
+
+    # Customize the plot
+    plt.xticks(rotation=45)
+    plt.xlabel("Distance (bp)")
+    plt.ylabel("Count of Sources")
+    plt.title("Distribution of Sources at Different Distances")
+    sns.despine()
+
+    # Save the plot
+    plt.tight_layout()  # To ensure everything fits without overlap
+    plt.savefig(output_path, dpi=300)
+    plt.close()
+
+    print(f"Plot saved to {output_path}")
+
+
+@redirect_logging(logfile_param="logfile")
+def scoring_insertions(data, output_file, logfile):
     """
     Uses custom conditions to visualize the entries of the annotated insertion summary table.
     """
-    colnames = ["chr", "start_insertion", "stop_insertion", "read", "source", "element_name", "distance"]
+    colnames = ["chr", "start_insertion", "stop_insertion", "read", "origcoord", "strand","chr_element","start_element", "stop_element","element_name", "element_score", "element_strand", "source", "distance"]
     df = pd.read_csv(
         data,
         sep='\t',
@@ -951,7 +963,8 @@ def scoring_insertions(data, output_file):
     print(heatmap_matrix)
 
 # qc
-def join_read_mapq(file_list, prefixes, output_file):
+@redirect_logging(logfile_param="logfile")
+def join_read_mapq(file_list, prefixes, output_file, logfile):
     """
     Combine multiple text files with specified column prefixes, handling different row counts.
 
@@ -986,7 +999,8 @@ def join_read_mapq(file_list, prefixes, output_file):
     # Save the combined DataFrame to a file
     combined_df.to_csv(output_file, sep="\t", index=False)
 
-def plot_mapq_changes(input_file, output_file):
+@redirect_logging(logfile_param="logfile")
+def plot_mapq_changes(input_file, output_file, logfile):
     """
     Generates a line plot showing the changes in MAPQ values across the three stages 
     (Precut, Postcut, and Postcut_filtered) for each read individually.
@@ -1020,4 +1034,77 @@ def plot_mapq_changes(input_file, output_file):
 
     # Save the plot to the output file
     plt.savefig(output_file)
+    plt.close()
+
+@redirect_logging(logfile_param="logfile")
+def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile):
+    """
+    Takes the vector fragments and plots histogram of their frequency in the alignment
+    """
+    blasted = pd.read_csv(data, sep="\t")
+
+    try: 
+        if any(x.isupper() for x in blasted['QueryID'][0]): #to make sure the right column is used for plotting. Reads do not have any uppercase letters
+            blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
+            blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
+            freq = collections.Counter(blasted["Fragment"].sort_values())
+        else:
+            blasted[['Vector', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
+            blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
+            freq = collections.Counter(blasted["Fragment"].sort_values())
+        plt.bar(freq.keys(), freq.values(), color='black')
+        #print(blasted["Fragment"].sort_values())
+        if (10000/fragment_specifier) < 50:    
+            plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
+        else:
+            plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
+        
+        plt.ylabel('Alignment Frequency')
+        plt.xlabel("Vector Fragment")
+        plt.title(f'{fragment_specifier} bp fragment distribution')
+        outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
+        plt.savefig(outfile)
+        plt.close()
+    except:
+        plt.figure()
+        plt.title('Empty Data.')
+        plt.text(0.5, 0.5, 'No data available', ha='center', va='center', fontsize=12)
+        plt.xlabel("No BLAST matches or read names not all lowercase")
+        plt.xticks([])
+        plt.yticks([])
+        outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
+        plt.savefig(outfile)
+        plt.close()
+        return
+
+@redirect_logging(logfile_param="logfile")
+def fragmentation_read_match_distribution(data, fragment_specifier, outpath, logfile):
+    """
+    Takes the read ids with matches and plots histogram of their frequency
+    """
+    blasted = pd.read_csv(data, sep="\t")
+    
+    #check if empty
+    if blasted.empty:
+        plt.figure()
+        plt.title('Empty Data')
+        plt.text(0.5, 0.5, 'No data available', ha='center', va='center', fontsize=12)
+        plt.xticks([])
+        plt.yticks([])
+        outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
+        plt.savefig(outfile)
+        plt.close()
+        return
+
+    if any(x.isupper() for x in blasted['QueryID'][0]):
+        freq = collections.Counter(blasted["SubjectID"])
+    else:
+        freq = collections.Counter(blasted["QueryID"])
+    plt.bar(freq.keys(), freq.values(), color='black')
+    plt.xticks(rotation=90)
+    plt.ylabel('Read match Frequency')
+    plt.xlabel("Read")
+    plt.title(f'{fragment_specifier} bp read match fragment distribution')
+    outfile = outpath + str("/") + f'{fragment_specifier}_read_match_fragmentation_distribution.png'
+    plt.savefig(outfile, bbox_inches='tight')
     plt.close()
