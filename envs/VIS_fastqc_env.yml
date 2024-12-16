@@ -1,0 +1,7 @@
+name: VIS_fastqc_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - multiqc

@@ -15,7 +15,9 @@ FRAG=config["fragment_size"]
 #local functions - path to helper fucntions needs to be added to the sys path, otherwise import won't find the file
 rootpath = os.path.join(SRC)
 sys.path.append(rootpath)
-#print(rootpath)    
+#print(rootpath)
+print(os.getcwd())
+cwd=os.getcwd()    
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 
 #inmport rules
@@ -100,6 +102,8 @@ rule minimap_index:
 		index=temp(PROCESS+"mapping/ref_genome_index.mmi")
 	resources:
 		mem_mb=5000
+	conda:
+		"envs/VIS_minimap_env.yml"
 	shell:
 		"""
 		(
@@ -114,6 +118,8 @@ rule make_fasta_without_tags: #fasta of raw data no trimming whatsoever
 		log=PROCESS+"log/main/make_fasta_without_tags/{sample}.log"
 	output:
 		fasta=PROCESS+"fasta/Full_{sample}.fa"
+	conda:
+		"envs/VIS_samtools_env.yml"
 	shell: 
 		"""
 		(
@@ -137,6 +143,8 @@ rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 		log=PROCESS+"log/main/Non_insertion_mapping/{sample}.log"
 	resources:
 		mem_mb=5000
+	conda:
+		"envs/VIS_minimap_env.yml"
 	shell: #N=0 instead of default N=1
 		"""
 		(
@@ -156,6 +164,8 @@ rule insertion_mapping: #conserves tags!
 		log=PROCESS+"log/main/insertion_mapping/{sample}.log"
 	resources:
 		mem_mb=5000
+	conda:
+		"envs/VIS_minimap_env.yml"
 	shell:
 		"""
 		(
@@ -173,6 +183,8 @@ rule clean_postcut_by_maping_quality:
 		PROCESS+"mapping/Postcut_{sample}_sorted.bam"
 	log:
 		log=PROCESS+"log/main/clean_postcut_by_maping_quality/{sample}.log"
+	conda:
+		"envs/VIS_samtools_env.yml"
 	shell:
 		"""
 		(
@@ -197,6 +209,8 @@ rule BAM_to_BED:
 	log:
 		log1=PROCESS+"log/main/BAM_to_BED/Precut_{sample}.log",
 		log2=PROCESS+"log/main/BAM_to_BED/Postcut_{sample}.log"
+	conda:
+		"envs/VIS_bedtools_env.yml"
 	shell:
 		"""
 		(
@@ -290,6 +304,8 @@ rule make_blastn_DB:
 			".ntf",
 			".nto"
 		)
+	conda:
+		"envs/VIS_blastn_env.yml"
 	shell:
 		"""
 		(
@@ -308,6 +324,8 @@ rule find_vector_BLASTn:
 		log=PROCESS+"log/main/find_vector_BLASTn/{sample}.log"
 	output:
 		PROCESS+"blastn/"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+	conda:
+		"envs/VIS_blastn_env.yml"
 	shell:
 		"""
 		(
@@ -338,6 +356,8 @@ rule find_vector_BLASTn_in_humanRef:
 		log=PROCESS+"log/main/find_vector_BLASTn_in_humanRef/{sample}.log"	
 	output:
 		temp(PROCESS+"blastn/humanref/"+str(FRAG)+"_VectorMatches_{sample}.blastn")
+	conda:
+		"envs/VIS_blastn_env.yml"
 	shell:
 		"""
 		(

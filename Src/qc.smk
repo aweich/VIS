@@ -15,7 +15,9 @@ rule nanoplot:
 	log:
 		log=PROCESS+"log/qc/nanoplot/{sample}.log"
 	params:
-		outdir=directory(PROCESS+"qc/nanoplot/{sample}/"), 
+		outdir=directory(PROCESS+"qc/nanoplot/{sample}/"),
+	conda:
+		"../envs/VIS_nanoplot_env.yml"
 	shell: 
 		"""
 		(
@@ -31,6 +33,8 @@ rule bam_coverage:
 		log=PROCESS+"log/qc/bam_coverage/{sample}.log"
 	output:
 		covbed=PROCESS+"qc/Coverage/Genomecoverage_{sample}.bed"
+	conda:
+		"../envs/VIS_bedtools_env.yml"
 	shell: 
 		"""
 		(
@@ -50,6 +54,8 @@ rule extract_fastq_insertions:
     	log=PROCESS+"log/qc/extract_fastq_insertions/{sample}.log"
     output:
         fastq=PROCESS + "qc/fastqc/{sample}_filtered.fastq"
+    conda:
+    	"../envs/VIS_samtools_env.yml"
     shell:
         '''
         (
@@ -79,6 +85,8 @@ rule read_level_fastqc:
     	log=PROCESS+"log/qc/read_level_fastqc/{sample}.log"
     output:
         directory(PROCESS + "qc/fastqc/readlevel_{sample}/")
+    conda:
+    	f"{cwd}/envs/VIS_fastqc_env.yml"
     shell:
         """
         (
@@ -114,6 +122,8 @@ rule multiqc:
     output: 
         PROCESS + "qc/multiqc_report.html",
         report(FINAL + "qc/multiqc_report.html")
+    conda:
+    	f"{cwd}/envs/VIS_multiqc_env.yml"
     shell:
         """
         (
@@ -139,6 +149,8 @@ rule extract_mapping_quality:
         quality_scores=temp(PROCESS + "qc/{sample}_precut_mapping_quality.txt"),
         quality_scores2=temp(PROCESS + "qc/{sample}_postcut_mapping_quality.txt"),
         quality_scores3=temp(PROCESS + "qc/{sample}_postcut_unfiltered_mapping_quality.txt")
+    conda:
+    	"../envs/VIS_samtools_env.yml"
     shell:
         '''
         (

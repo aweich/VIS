@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "SimData"
+experiment: "conda_test"
 samples:
     Sim1: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
 
