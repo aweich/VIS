@@ -86,7 +86,7 @@ rule read_level_fastqc:
     output:
         directory(PROCESS + "qc/fastqc/readlevel_{sample}/")
     conda:
-    	f"{cwd}/envs/VIS_fastqc_env.yml"
+    	"../envs/VIS_fastqc_env.yml"
     shell:
         """
         (
@@ -123,7 +123,7 @@ rule multiqc:
         PROCESS + "qc/multiqc_report.html",
         report(FINAL + "qc/multiqc_report.html")
     conda:
-    	f"{cwd}/envs/VIS_multiqc_env.yml"
+    	"../envs/VIS_multiqc_env.yml"
     shell:
         """
         (

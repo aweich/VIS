@@ -4,7 +4,7 @@ from pathlib import Path
 from time import sleep
 
 
-configfile: "config.yml"
+configfile: "config/config.yml"
 SRC=config["source_dir"]
 SAMPLES = expand(config["samples"]) 
 OUTDIR = os.path.join(config["processing_dir"],str(config["experiment"]+"/"))
@@ -12,12 +12,14 @@ PROCESS = OUTDIR+"intermediate/" #intermediate files are stored here
 FINAL = OUTDIR+"final/" # final files are stored here
 FRAG=config["fragment_size"]
 
+
 #local functions - path to helper fucntions needs to be added to the sys path, otherwise import won't find the file
-rootpath = os.path.join(SRC)
+rootpath = os.path.join("workflow/scripts")
 sys.path.append(rootpath)
-#print(rootpath)
+print(rootpath)
 print(os.getcwd())
 cwd=os.getcwd()    
+
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 
 #inmport rules
@@ -65,7 +67,7 @@ def get_input_names(wildcards):
 
 rule copy_config_version:
 	input:
-		config_file="config.yml"
+		"config/config.yml"
 	log:
 		log=PROCESS+"log/main/copy_config_version/out.log"
 	output:
@@ -73,7 +75,7 @@ rule copy_config_version:
 	shell:
 		"""
 		(
-		cp {input.config_file} {output} 
+		cp {input} {output} 
 		) > {log.log} 2>&1
 		"""
 

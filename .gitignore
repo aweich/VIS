@@ -1,4 +1,3 @@
-Results/*
-__pycache__/*
+Results/
+Src/__pycache__/
 .snakemake/
-Src/*.pdf

@@ -42,12 +42,12 @@ cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGene
 #hiC
 encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/HiC_processed.bed"
 #qc rule collection
-quality_control: "./Src/qc.smk"
+quality_control: "rules/qc.smk"
 #functional genomics rule collection
-functional_genomics: "./Src/functional_genomics.smk"
+functional_genomics: "rules/functional_genomics.smk"
 #rules that are still under development WIP
-development: "./Src/development.smk"
+development: "rules/development.smk"
 #epigenetics rule collection WIP
-epigenetics: "./Src/epigenetics.smk"
+epigenetics: "rules/epigenetics.smk"
 #variants rule collection WIP
-variants: "./Src/variants.smk"
+variants: "rules/variants.smk"
