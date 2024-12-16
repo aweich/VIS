@@ -9,13 +9,13 @@
 #full stats of input data		
 rule nanoplot:
 	input:
-		PROCESS+"mapping/Precut_{sample}_sorted.bam"
+		f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam"
 	output:
-		PROCESS+"qc/nanoplot/{sample}/NanoStats.txt"
+		f"{outdir}/intermediate/qc/nanoplot/{{sample}}/NanoStats.txt"
 	log:
-		log=PROCESS+"log/qc/nanoplot/{sample}.log"
+		log=f"{outdir}/intermediate/log/qc/nanoplot/{{sample}}.log"
 	params:
-		outdir=directory(PROCESS+"qc/nanoplot/{sample}/"),
+		outdir=lambda wildcards, input: directory(f"{outdir}/intermediate/qc/nanoplot/{{sample}}/"),
 	conda:
 		"../envs/VIS_nanoplot_env.yml"
 	shell: 
@@ -28,11 +28,11 @@ rule nanoplot:
 
 rule bam_coverage: 
 	input:
-		bam=PROCESS+"mapping/Precut_{sample}_sorted.bam"
+		bam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam"
 	log:
-		log=PROCESS+"log/qc/bam_coverage/{sample}.log"
+		log=f"{outdir}/intermediate/log/qc/bam_coverage/{{sample}}.log"
 	output:
-		covbed=PROCESS+"qc/Coverage/Genomecoverage_{sample}.bed"
+		covbed=f"{outdir}/intermediate/qc/Coverage/Genomecoverage_{{sample}}.bed"
 	conda:
 		"../envs/VIS_bedtools_env.yml"
 	shell: 
@@ -46,14 +46,14 @@ rule bam_coverage:
 
 rule extract_fastq_insertions:
     input:
-    	bam=PROCESS+"mapping/Precut_{sample}_sorted.bam",
-        readnames=PROCESS+"blastn/Readnames_"+str(FRAG)+"_VectorMatches_{sample}.txt"
+    	bam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam",
+        readnames=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_VectorMatches_{{sample}}.txt"
     params:
-        tempdir=PROCESS+"temp_fastq_{sample}"  # Temporary directory for intermediate files
+        tempdir=f"{outdir}/intermediate/temp_fastq_{{sample}}"  # Temporary directory for intermediate files
     log:
-    	log=PROCESS+"log/qc/extract_fastq_insertions/{sample}.log"
+    	log=f"{outdir}/intermediate/log/qc/extract_fastq_insertions/{{sample}}.log"
     output:
-        fastq=PROCESS + "qc/fastqc/{sample}_filtered.fastq"
+        fastq=f"{outdir}/intermediate/qc/fastqc/{{sample}}_filtered.fastq"
     conda:
     	"../envs/VIS_samtools_env.yml"
     shell:
@@ -78,13 +78,13 @@ rule extract_fastq_insertions:
 
 rule read_level_fastqc:
     input:
-        PROCESS + "qc/fastqc/{sample}_filtered.fastq"
+        f"{outdir}/intermediate/qc/fastqc/{{sample}}_filtered.fastq"
     params:
-        prefix=PROCESS + "qc/fastqc/readlevel_{sample}/{sample}_read_"
+        prefix=f"{outdir}/intermediate/qc/fastqc/readlevel_{{sample}}/{{sample}}_read_"
     log:
-    	log=PROCESS+"log/qc/read_level_fastqc/{sample}.log"
+    	log=f"{outdir}/intermediate/log/qc/read_level_fastqc/{{sample}}.log"
     output:
-        directory(PROCESS + "qc/fastqc/readlevel_{sample}/")
+        directory(f"{outdir}/intermediate/qc/fastqc/readlevel_{{sample}}/")
     conda:
     	"../envs/VIS_fastqc_env.yml"
     shell:
@@ -112,16 +112,16 @@ rule read_level_fastqc:
 
 rule multiqc:
     input: 
-        fastqc=expand(PROCESS+"qc/fastqc/readlevel_{sample}/", sample=SAMPLES),
-        nanoplot=expand(PROCESS+"qc/nanoplot/{sample}/NanoStats.txt", sample=SAMPLES)
+        fastqc=expand(f"{outdir}/intermediate/qc/fastqc/readlevel_{{sample}}/", sample=SAMPLES),
+        nanoplot=expand(f"{outdir}/intermediate/qc/nanoplot/{{sample}}/NanoStats.txt", sample=SAMPLES)
     params:
-        qc_output_dir=PROCESS+"qc/",
-        qc_report_location=FINAL+"qc/"
+        qc_output_dir=lambda wildcards, input: f"{outdir}/intermediate/qc/", #lambda added to please the linter
+        qc_report_location=lambda wildcards, input: f"{outdir}/final/qc/", #lambda added to please the linter
     log:
-    	log=PROCESS+"log/qc/multiqc/out.log"
+    	log=f"{outdir}/intermediate/log/qc/multiqc/out.log"
     output: 
-        PROCESS + "qc/multiqc_report.html",
-        report(FINAL + "qc/multiqc_report.html")
+        intermediate=f"{outdir}/intermediate/qc/multiqc_report.html",
+        final=report(f"{outdir}/final/qc/multiqc_report.html")
     conda:
     	"../envs/VIS_multiqc_env.yml"
     shell:
@@ -130,25 +130,25 @@ rule multiqc:
         multiqc {input.fastqc} --dirs {input.nanoplot} --force -o {params.qc_output_dir}
         
         # copy report to final location
-        cp {output[0]} {output[1]}
+        cp {output.intermediate} {output.final}
         ) > {log.log} 2>&1
         """
 
 ### Read level overview of mapping quality before and after the cut out of the insertions
 rule extract_mapping_quality:
     input:
-        bam=PROCESS + "mapping/Precut_{sample}_sorted.bam",
-        bam2=PROCESS + "mapping/Postcut_{sample}_sorted.bam",
-        bam3=PROCESS+"mapping/Postcut_{sample}_unfiltered_sorted.bam",
-        readnames=PROCESS + "blastn/Readnames_" + str(FRAG) + "_VectorMatches_{sample}.txt"
+        bam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam",
+        bam2=f"{outdir}/intermediate/mapping/Postcut_{{sample}}_sorted.bam",
+        bam3=f"{outdir}/intermediate/mapping/Postcut_{{sample}}_unfiltered_sorted.bam",
+        readnames=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_VectorMatches_{{sample}}.txt"
     params:
-        tempdir=PROCESS+"temp_mapping_{sample}"
+        tempdir=f"{outdir}/intermediate/temp_mapping_{{sample}}"
     log:
-    	log=PROCESS+"log/qc/extract_mapping_quality/{sample}.log"
+    	log=f"{outdir}/intermediate/log/qc/extract_mapping_quality/{{sample}}.log"
     output:
-        quality_scores=temp(PROCESS + "qc/{sample}_precut_mapping_quality.txt"),
-        quality_scores2=temp(PROCESS + "qc/{sample}_postcut_mapping_quality.txt"),
-        quality_scores3=temp(PROCESS + "qc/{sample}_postcut_unfiltered_mapping_quality.txt")
+        quality_scores=temp(f"{outdir}/intermediate/qc/{{sample}}_precut_mapping_quality.txt"),
+        quality_scores2=temp(f"{outdir}/intermediate/qc/{{sample}}_postcut_mapping_quality.txt"),
+        quality_scores3=temp(f"{outdir}/intermediate/qc/{{sample}}_postcut_unfiltered_mapping_quality.txt")
     conda:
     	"../envs/VIS_samtools_env.yml"
     shell:
@@ -172,25 +172,25 @@ rule extract_mapping_quality:
         '''
 rule finalize_mapping_quality:
     input:
-        quality_scores_pre=PROCESS + "qc/{sample}_precut_mapping_quality.txt",
-        quality_scores_filtered=PROCESS + "qc/{sample}_postcut_unfiltered_mapping_quality.txt",
-        quality_scores_post=PROCESS + "qc/{sample}_postcut_mapping_quality.txt"
+        quality_scores_pre=f"{outdir}/intermediate/qc/{{sample}}_precut_mapping_quality.txt",
+        quality_scores_filtered=f"{outdir}/intermediate/qc/{{sample}}_postcut_unfiltered_mapping_quality.txt",
+        quality_scores_post=f"{outdir}/intermediate/qc/{{sample}}_postcut_mapping_quality.txt"
     params:
         prefixes=["Precut", "Postcut", "Postcut_filtered"]
     log:
-    	log=PROCESS+"log/qc/finalize_mapping_quality/{sample}.log"
+    	log=f"{outdir}/intermediate/log/qc/finalize_mapping_quality/{{sample}}.log"
     output:
-        outfile=PROCESS + "qc/mapq/Insertions_{sample}_mapq.txt"
+        outfile=f"{outdir}/intermediate/qc/mapq/Insertions_{{sample}}_mapq.txt"
     run:
         vhf.join_read_mapq(input[0:3], params.prefixes, output.outfile, log.log)
 
 rule generate_mapq_heatmap:
     input:
-        table=PROCESS+"qc/mapq/Insertions_{sample}_mapq.txt"
+        table=f"{outdir}/intermediate/qc/mapq/Insertions_{{sample}}_mapq.txt"
     log:
-    	log=PROCESS+"log/qc/generate_mapq_heatmap/{sample}.log"
+    	log=f"{outdir}/intermediate/log/qc/generate_mapq_heatmap/{{sample}}.log"
     output:
-        heatmap=report(PROCESS+"qc/mapq/{sample}_mapq_heatmap_image.png")
+        heatmap=report(f"{outdir}/intermediate/qc/mapq/{{sample}}_mapq_heatmap_image.png")
     run:
         vhf.plot_mapq_changes(input.table, output.heatmap, log.log)
 
@@ -198,18 +198,18 @@ rule generate_mapq_heatmap:
 
 rule fragmentation_distribution_plots:
 	input:
-		PROCESS+"blastn/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn",
-		PROCESS+"blastn/humanref/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+		f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn",
+		f"{outdir}/intermediate/blastn/humanref/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
 	params:
-		FRAG
+		fragmentsize
 	log:
-		log1=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_match_distribution_{sample}.log",
-		log2=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_read_match_distribution_{sample}.log",
-		log3=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_match_distribution_{sample}.log",
-		log4=PROCESS+"log/qc/fragmentation_distribution_plots/fragmentation_read_match_distribution_{sample}.log"
+		log1=f"{outdir}/intermediate/log/qc/fragmentation_distribution_plots/fragmentation_match_distribution_{{sample}}.log",
+		log2=f"{outdir}/intermediate/log/qc/fragmentation_distribution_plots/fragmentation_read_match_distribution_{{sample}}.log",
+		log3=f"{outdir}/intermediate/log/qc/fragmentation_distribution_plots/fragmentation_match_distribution_{{sample}}.log",
+		log4=f"{outdir}/intermediate/log/qc/fragmentation_distribution_plots/fragmentation_read_match_distribution_{{sample}}.log"
 	output:
-		outpath=directory(FINAL+"qc/Fragmentation/Insertions/insertions_" + str(FRAG)+"_{sample}"),
-		outpath2=directory(FINAL+"qc/Fragmentation/Reference/reference_" + str(FRAG)+"_{sample}")
+		outpath=directory(f"{outdir}/final/qc/Fragmentation/Insertions/insertions_{fragmentsize}_{{sample}}"),
+		outpath2=directory(f"{outdir}/final/qc/Fragmentation/Reference/reference_{fragmentsize}_{{sample}}")
 	run:
 		shell("mkdir {output.outpath}")
 		vhf.fragmentation_match_distribution(input[0], params[0], output[0], log.log1)
@@ -220,14 +220,14 @@ rule fragmentation_distribution_plots:
 
 rule detailed_fragmentation_length_plot:
     input:
-        matches=PROCESS+"blastn/Filtered_Annotated_"+str(FRAG)+"_VectorMatches_{sample}.blastn"
+        matches=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
     params: 
-        buffer=3*FRAG,
+        buffer=3*fragmentsize,
         threshold=config["MinInsertionLength"]
     log:
-    	log=PROCESS+"log/qc/detailed_fragmentation_length_plot/{sample}.log"
+    	log=f"{outdir}/intermediate/log/qc/detailed_fragmentation_length_plot/{{sample}}.log"
     output:
-        outpath=directory(FINAL+"qc/Fragmentation/Longest_Interval/{sample}/")
+        outpath=directory(f"{outdir}/final/qc/Fragmentation/Longest_Interval/{{sample}}/")
     run:
         shell("mkdir -p {output.outpath}")
         vhf.find_and_plot_longest_blast_interval(input.matches, params.buffer, params.threshold, output.outpath,log.log)

@@ -1,4 +1,4 @@
-name: VIS_snakemake_base
+name: VIS_minimal
 channels:
   - conda-forge
   - bioconda

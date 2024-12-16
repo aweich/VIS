@@ -41,13 +41,17 @@ ucsc_mirna: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_miRNA_processed_
 cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38/Cosmic_CancerGeneCensus_v101_GRCh38_processed.bed"
 #hiC
 encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/HiC_processed.bed"
+#VIS detection
+detection: "rules/detection.smk"
 #qc rule collection
 quality_control: "rules/qc.smk"
 #functional genomics rule collection
 functional_genomics: "rules/functional_genomics.smk"
+# downstream analysis rules; not as formally strict
+downstream: "rules/downstream.smk"
 #rules that are still under development WIP
-development: "rules/development.smk"
+#development: "rules/development.smk"
 #epigenetics rule collection WIP
-epigenetics: "rules/epigenetics.smk"
+#epigenetics: "rules/epigenetics.smk"
 #variants rule collection WIP
-variants: "rules/variants.smk"
+#variants: "rules/variants.smk"

@@ -15,11 +15,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import collections
 import seaborn as sns
-import pybedtools #import BedTool
+import pybedtools
 import json
 import subprocess
-from Bio.Align.Applications import ClustalOmegaCommandline
+#from Bio.Align.Applications import ClustalOmegaCommandline
 from matplotlib.patches import Patch
+
 #wrapper
 from functools import wraps
 import inspect
@@ -63,7 +64,7 @@ def redirect_logging(logfile_param="logfile"):
     return decorator
 
 
-#main   
+#main
 def chunks(lst, n):
     """
     Returns list of n-sized lists in the nested format: [[],[]]
