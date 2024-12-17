@@ -9,7 +9,7 @@ vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/vectorse
 blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 proteindb: "/home/weichan/swissprot/swissprot"
-splitmode: "Buffer" #"Buffer", "Join", "Separated"
+splitmode: "Split" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
 MinLength: 1
 MAPQ: 10 #mapping quality filter after pseudo-read generation

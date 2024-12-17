@@ -263,8 +263,8 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector, logfil
                             print(record_seq_new)
                             record_id_new = str(record_id)+ '_Buffer'+str(len(buffer))+'Insertion'
                             output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
-                        elif mode == "Separated":
-                            print("Separated mode selected: Insertion sequences are cut from the read and the read is split at the borders.")
+                        elif mode == "Split":
+                            print("Split mode selected: Insertion sequences are cut from the read and the read is split at the borders.")
                             print("Insertion coordinates will be reported as surrounding read coordinates.")
                             #this part only if the non-insertion fragments should NOT be combined
                             for i,entry in enumerate(record_list):

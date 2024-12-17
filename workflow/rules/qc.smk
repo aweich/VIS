@@ -15,7 +15,7 @@ rule nanoplot:
 	log:
 		log=f"{outdir}/intermediate/log/qc/nanoplot/{{sample}}.log"
 	params:
-		outdir=lambda wildcards, input: directory(f"{outdir}/intermediate/qc/nanoplot/{{sample}}/"),
+		outdir=directory(f"{outdir}/intermediate/qc/nanoplot/{{sample}}/"),
 	conda:
 		"../envs/VIS_nanoplot_env.yml"
 	shell: 

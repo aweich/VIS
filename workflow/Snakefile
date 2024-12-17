@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 configfile: "config/config.yml"
-SRC=config["source_dir"]
+#SRC=config["source_dir"] #only in use for r script scirp, will be removed sooner or later
 SAMPLES = expand(config["samples"]) 
 outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
 fragmentsize=config["fragment_size"]
@@ -12,8 +12,6 @@ fragmentsize=config["fragment_size"]
 #local functions - path to helper fucntions needs to be added to the sys path, otherwise import won't find the file
 rootpath = os.path.join("workflow/scripts")
 sys.path.append(rootpath)
-print(rootpath)
-print(os.getcwd())
 cwd=os.getcwd()    
 
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
