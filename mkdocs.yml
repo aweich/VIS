@@ -1,0 +1,9 @@
+site_name: Vector Insertion Site Detection Pipeline
+theme:
+  name: material
+  logo: docs/images/dag.png
+nav:
+  - Home: index.md
+  - Tutorial: tutorial.md
+  - Advanced Usage: advanced_usage.md
+  - Configuration: config.md

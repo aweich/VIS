@@ -1,0 +1,21 @@
+name: VIS_full_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.9 #minimal
+  - snakemake #minimal
+  - biopython #minimal
+  - pandas #minimal
+  - numpy #minimal
+  - matplotlib #minimal
+  - seaborn #minimal
+  - pybedtools #minimal
+  - jsonschema #minimal
+  - samtools #samtools #minimap
+  - minimap2=2.26 #minimap
+  - bedtools #bedtools
+  - blast #blast
+  - multiqc #fastqc #multiqc
+  - nanoplot #nanoplot
