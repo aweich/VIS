@@ -1,0 +1,21 @@
+image: python:3.9
+
+variables:
+  # Replace with a personal access token if needed
+  GITLAB_TOKEN: $CI_JOB_TOKEN
+
+before_script:
+  # Install MkDocs and dependencies
+  - pip install mkdocs mkdocs-material
+
+pages:
+  script:
+    # Build the MkDocs site
+    - mkdocs build
+    # Move the site output to the public directory
+    - mv site public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main  # Adjust to match your default branch

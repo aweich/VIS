@@ -295,27 +295,33 @@ rule find_vector_BLASTn:
 		
 #blastn vector against human genome: Which vector parts are close to human sequences so that they might raise a false positivite BLAST match
 rule find_vector_BLASTn_in_humanRef:
-	input:
-		fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa"
-	params:
-		vector=config["blastn_db"] #full human reference
-	log:
-		log=f"{outdir}/intermediate/log/detection/find_vector_BLASTn_in_humanRef/{{sample}}.log"	
-	output:
-		temp(f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_VectorMatches_{{sample}}.blastn")
-	conda:
-		"../envs/VIS_blastn_env.yml"
-	shell:
-		"""
-		(
-		blastn \
-		-query {input} \
-		-db {params.vector} \
-		-out {output} \
-		-evalue 1e-5 \
-		-outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'
-		) > {log.log} 2>&1
-		"""
+    input:
+        fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa"
+    params:
+        vector=config.get("blastn_db", "")  # Optional blastn database path
+    log:
+        log=f"{outdir}/intermediate/log/detection/find_vector_BLASTn_in_humanRef/{{sample}}.log"
+    output:
+        temp(f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_VectorMatches_{{sample}}.blastn")
+    conda:
+        "../envs/VIS_blastn_env.yml"
+    shell:
+        """
+        (
+        if [ -z "{params.vector}" ]; then
+            # If no blastn_db is provided, create an empty output file
+            touch {output};
+        else
+            # If blastn_db is provided, run the blastn command
+            blastn \
+            -query {input.fasta} \
+            -db {params.vector} \
+            -out {output} \
+            -evalue 1e-5 \
+            -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore';
+        fi
+        ) > {log.log} 2>&1
+        """
 
 rule hardcode_blast_header:
 	input: 
