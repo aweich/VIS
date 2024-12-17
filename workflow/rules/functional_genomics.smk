@@ -23,7 +23,7 @@ rule calc_distance_to_elements:
         insertions=f"{outdir}/intermediate/localization/Sorted_ExactInsertions_{{sample}}.bed",
         ref=config["ref_genome_ctrl"]
     params:
-        genes=config["ucsc_Genes"],
+        genes=config["annotation_1"],
         tf=config.get("ucsc_TF",""),
         tss=config.get("encode_hic", ""), 
         mirna=config.get("cosmic_genes", ""),

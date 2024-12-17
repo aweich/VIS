@@ -4,6 +4,11 @@ theme:
   logo: docs/images/dag.png
 nav:
   - Home: index.md
+  - Getting Started: getting_started.md
+  - Configuration: config.md
+  - Usage: usage.md
   - Tutorial: tutorial.md
   - Advanced Usage: advanced_usage.md
-  - Configuration: config.md
+  - Other: other.md
+markdown_extensions:
+  - admonition

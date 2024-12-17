@@ -18,4 +18,4 @@ pages:
     paths:
       - public
   only:
-    - main  # Adjust to match your default branch
+    - master  # Adjust to match your default branch
