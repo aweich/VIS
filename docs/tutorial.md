@@ -569,7 +569,24 @@ However, the analysis of the output files from above does not take two other imp
 !!! Danger The potential similarity of the insertion sequence with other sequences in your reference is especially important to consider for the use-cases of the pipeline in context with complex vector expression systems. For instance, CAR T cell therapy constructs usually insert sequences that are at least partially derived from human genes.
 However, there is still another important source of potentially misleading results. 
 
--insertion matches with reference
+The pipeline has the functionality to directly perform a BLASTN search for the fragmented insertion sequence against a pre-built version of your reference's BLAST database. For this, one simply needs to specify the `blastn_db` argument in the `config.yml`. 
+
+Since we have not configured this option for the tutorial, we can make use of two other automatically generated plots to still get an idea about potential false positive insertion sequence matches. 
+
+!!! info `../final/qc/Fragmentation/Insertions_{fragmentsize}_{sample}/`
+    <details>
+            <summary>Fragmentation distribution for S1:</summary>
+        <img src="images/tutorial/100_fragmentation_distribution.png" alt="100_fragmentation_distribution.png" width="400">
+        <img src="images/tutorial/100_read_match_fragmentation_distribution.png" alt="100_read_match_fragmentation_distribution.png" width="400">
+    
+    These two plots illustrate the distributions of all the insertion fragments (left) and the amount of fragment matches that were "contributed" from each read (right).
+
+    !!! info The combination of these two plots tells us that something is not right. The `100 bp fragment distribution` shows the existence of every fragment at least once. However, fragment 27 is highly overrepresented among the reads. The `100 bp read match fragment distribution` plot offers us an explanation for this: A few reads contribute many fragments to the total amount of fragments (e.g. `Read-628` or `Read-221`), while many others (e.g. `Read-932` or `Read-1932`) only contribute one single fragment. 
+
+    !!! info Fragment 27 is directly located in the `hGH poly(A) signal` domain of the [vector](other.md/#vector-map). This region is ..., thereby causing several small "off-target" insertion matches for this fragment. 
+    
+    !!! Attention Findings like these are important for choosing the most accurate `MinInsertionLength` threshold in the `config.yml`.     
+</details>
 
 #### Functional annotation 
 ##### Genes in proximity

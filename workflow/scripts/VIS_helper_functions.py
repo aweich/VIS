@@ -1062,7 +1062,7 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile)
     blasted = pd.read_csv(data, sep="\t")
 
     try: 
-        if any(x.isupper() for x in blasted['QueryID'][0]): #to make sure the right column is used for plotting. Reads do not have any uppercase letters
+        if any(x.isupper() for x in blasted['QueryID'][0]) and "Read" not in blasted['QueryID'][0]: #to make sure the right column is used for plotting. Reads do not have any uppercase letters
             blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
             blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
             freq = collections.Counter(blasted["Fragment"].sort_values())
@@ -1071,19 +1071,21 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile)
             blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
             freq = collections.Counter(blasted["Fragment"].sort_values())
         plt.bar(freq.keys(), freq.values(), color='black')
-        #print(blasted["Fragment"].sort_values())
-        if (10000/fragment_specifier) < 50:    
-            plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
-        else:
-            plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
+        upperlimit = max(blasted["Fragment"])
+        plt.xticks(np.arange(0, upperlimit+1, step=round(upperlimit/10)))
+        #if (10000/fragment_specifier) < 50:    
+        #    plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
+        #else:
+        #    plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
         
         plt.ylabel('Alignment Frequency')
-        plt.xlabel("Vector Fragment")
+        plt.xlabel("Insertion Fragment")
         plt.title(f'{fragment_specifier} bp fragment distribution')
         outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
         plt.savefig(outfile)
         plt.close()
     except:
+        print("The provided input could not be processed.")
         plt.figure()
         plt.title('Empty Data.')
         plt.text(0.5, 0.5, 'No data available', ha='center', va='center', fontsize=12)
@@ -1091,7 +1093,7 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile)
         plt.xticks([])
         plt.yticks([])
         outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-        plt.savefig(outfile)
+        plt.savefig(outfile, bbox_inches='tight', dpi=300)
         plt.close()
         return
 
@@ -1114,15 +1116,15 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath, log
         plt.close()
         return
 
-    if any(x.isupper() for x in blasted['QueryID'][0]):
+    if any(x.isupper() for x in blasted['QueryID'][0]) and "Read" not in blasted['QueryID'][0]:
         freq = collections.Counter(blasted["SubjectID"])
     else:
         freq = collections.Counter(blasted["QueryID"])
     plt.bar(freq.keys(), freq.values(), color='black')
-    plt.xticks(rotation=90)
+    plt.xticks(rotation=90, fontsize=8)
     plt.ylabel('Read match Frequency')
     plt.xlabel("Read")
     plt.title(f'{fragment_specifier} bp read match fragment distribution')
     outfile = outpath + str("/") + f'{fragment_specifier}_read_match_fragmentation_distribution.png'
-    plt.savefig(outfile, bbox_inches='tight')
+    plt.savefig(outfile, bbox_inches='tight', dpi=300)
     plt.close()
