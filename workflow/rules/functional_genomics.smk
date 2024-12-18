@@ -39,17 +39,17 @@ rule plot_distance_to_elements:
 	input:
 		distancetable=f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed"
 	params:
-		distances=list(range(-50000, 50001, 5000)),
-		threshold=50000
+		distances=list(range(-10000, 10001, 2000)),
+		threshold=10000
 	log:
         	log1=f"{outdir}/intermediate/log/functional_genomics/plot_distance_to_elements/scatter_{{sample}}.log",
         	log2=f"{outdir}/intermediate/log/functional_genomics/plot_distance_to_elements/violin_{{sample}}.log"
 	output:
 		scatter=report(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
-		violin=report(f"{outdir}/final/functional_genomics/BarPlot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
+		#violin=report(f"{outdir}/final/functional_genomics/BarPlot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
 	run:
 		vhf.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
-		vhf.plot_element_distance_violin(input.distancetable, params.distances, params.threshold, output.violin, log.log2)
+		#vhf.plot_element_distance_violin(input.distancetable, params.distances, params.threshold, output.violin, log.log2)
 
 rule plot_scoring:
     input:

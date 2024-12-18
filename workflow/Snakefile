@@ -22,7 +22,7 @@ include: config["functional_genomics"]
 include: config["quality_control"]
 
 #analysis-specific rules
-include: config["downstream"]
+#include: config["downstream"]
 
 #development
 #include: config["epigenetics"]
@@ -48,6 +48,6 @@ rule all:
 		# process
 		f"{outdir}/config_settings.yml",
 		# downstream
-		expand(f"{outdir}/intermediate/blastn/{fragmentsize}_VectorMatches_{{sample}}.gff", sample=SAMPLES),
+		#expand(f"{outdir}/intermediate/blastn/{fragmentsize}_VectorMatches_{{sample}}.gff", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
 		

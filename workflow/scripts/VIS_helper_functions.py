@@ -96,13 +96,13 @@ def fragmentation_fasta(fasta, equal_fragments, outfilename, logfile):
 @redirect_logging(logfile_param="logfile")
 def plot_bed_files_as_heatmap(bed_files, outfile, logfile):
     """
-    Creates heatmap the chromosome-specific density of matches in BED across the samples
+    Creates heatmap for chromosome-specific density of matches in BED files across samples.
     """
     data = {}
     # Process each BED file
     for file_id, bed_file in enumerate(bed_files):
         # Read the BED file into a DataFrame
-        df = pd.read_csv(bed_file, sep='\t', header=None, names=['Chromosome', 'Start', 'End', 'Read_ID', 'X','XX'])
+        df = pd.read_csv(bed_file, sep='\t', header=None, names=['Chromosome', 'Start', 'End', 'Read_ID', 'X', 'XX'])
 
         # Count chromosome occurrences
         chromosome_counts = df['Chromosome'].value_counts()
@@ -114,20 +114,35 @@ def plot_bed_files_as_heatmap(bed_files, outfile, logfile):
     # Create a DataFrame from the data
     counts_df = pd.DataFrame(data).fillna(0)
 
-    # Create a Seaborn heatmap
-    plt.figure(figsize=(16, 9))
-    if len(counts_df.columns) > 1:
-        sns.clustermap(counts_df, cmap="YlGnBu", annot=True, cbar_pos=(0, .2, .03, .4))
+    # Debugging: Print the DataFrame to ensure correctness
+    print("Counts DataFrame:")
+    print(counts_df)
+
+    if counts_df.empty:
+        print("No data to plot. The counts DataFrame is empty.")
+        return
+
+    # Create the heatmap
+    try:
+        if len(counts_df.columns) > 1:
+            # Attempt clustering heatmap
+            plt.figure(figsize=(16, 9))
+            sns.clustermap(counts_df, cmap="YlGnBu", annot=True, cbar_pos=(0, .2, .03, .4))
+            plt.xlabel('File ID')
+            plt.ylabel('Chromosome')
+            plt.title('Chromosome Occurrences \n in BED Files')
+        else:
+            raise ValueError("Single column or insufficient data for clustering.")
+    except ValueError as e:
+        print(f"Clustering failed: {e}. Falling back to a simple heatmap.")
+        plt.figure(figsize=(16, 9))
+        sns.heatmap(counts_df, annot=True, cmap="YlGnBu")
         plt.xlabel('File ID')
         plt.ylabel('Chromosome')
-        plt.title('Chromosome Occurrences \n  in BED Files')
-        plt.savefig(outfile, bbox_inches="tight")
-    else:    
-        sns.heatmap(counts_df, annot=True,cmap="YlGnBu")
-        plt.xlabel('File ID')
-        plt.ylabel('Chromosome')
-        plt.title('Chromosome Occurrences \n  in BED Files')
-        plt.savefig(outfile, bbox_inches="tight")
+        plt.title('Chromosome Occurrences \n in BED Files')
+
+    # Save the heatmap
+    plt.savefig(outfile, bbox_inches="tight")
 
 ####this part here is dedicated to the splitting of blast-match including fasta reads
 def merge_intervals(intervals, overlap, filtering, filtervalue):
@@ -598,6 +613,8 @@ def plot_insertion_length(bed, outfile, logfile):
         dfs.append(data)
     
     df = pd.concat(dfs, ignore_index=True)
+    print("dataframe overview...")
+    print(df.head())
     df2 = df.copy()
     df2["Length"] = 0
     df_all = pd.concat([df,df2], ignore_index=True)

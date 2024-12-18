@@ -1,20 +1,20 @@
 # Long-read data
-experiment: "conda_test"
+experiment: "tutorial_test"
 samples:
-    Sim1: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/RandomLongReadsWithInsertions.bam"
-
+    S1: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/S1.bam"
+    S2: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/S2.bam"
 processing_dir: "/home/weichan/temporary/Projects/VIS_out"
 source_dir: "Src/"
 vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/vectorseq.fa"
 #blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
-proteindb: "/home/weichan/swissprot/swissprot"
+#proteindb: "/home/weichan/swissprot/swissprot"
 splitmode: "Buffer" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
 MinLength: 1
 MAPQ: 10 #mapping quality filter after pseudo-read generation
 MinInsertionLength: 500 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
-ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/chr1region.fa"
+ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/chr1_1_50000_ref.fa"
 #ref_genome_ctrl: "/home/weichan/permanent/Src/T2T_ref/chm13v2.0.fa"
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/CD123/hg38_CD123.fasta" #might still contain empty last row!
 #ref_genome: "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38_CD19.fasta"
@@ -26,21 +26,22 @@ ucsc_H3K27Ac: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K27Ac
 ucsc_H3K4Me3: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_LayeredH3K4Me3_02_24"
 #ucsc_DNaseH: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_DNaseClusters_02_24_cut"
 #ucsc_TF: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TFClusters_processed.bed"
-annotation_1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODEV44_processed.bed"
-ucsc_Genes_gtf: "/home/weichan/permanent/Projects/VIS/dev/UCSC/gencode.v44.annotation.gtf"
+#annotation_1: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODEV44_processed.bed"
+annotation_1: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/UCSC_genes_chr1_0_500000_processed.bed"
+#ucsc_Genes_gtf: "/home/weichan/permanent/Projects/VIS/dev/UCSC/gencode.v44.annotation.gtf"
 #ucsc exons
-ucsc_exons: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Exons_processed.bed"
+#ucsc_exons: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Exons_processed.bed"
 #sedb
-sedb_cd4: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd4_closest_gene.bed"
-sedb_cd8: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd8_closest_gene.bed"
+#sedb_cd4: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd4_closest_gene.bed"
+#sedb_cd8: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd8_closest_gene.bed"
 #tss
-ucsc_tss: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TSS_peaks_processed_sorted.bed"
+#ucsc_tss: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_TSS_peaks_processed_sorted.bed"
 #miRNA
-ucsc_mirna: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_miRNA_processed_sorted.bed"
+#ucsc_mirna: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_miRNA_processed_sorted.bed"
 #cancer genes
-cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38/Cosmic_CancerGeneCensus_v101_GRCh38_processed.bed"
+#cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38/Cosmic_CancerGeneCensus_v101_GRCh38_processed.bed"
 #hiC
-encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/HiC_processed.bed"
+#encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/HiC_processed.bed"
 #VIS detection
 detection: "rules/detection.smk"
 #qc rule collection

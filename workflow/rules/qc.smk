@@ -157,9 +157,9 @@ rule extract_mapping_quality:
         mkdir -p {params.tempdir}
 
         # Extract reads of interest
-        samtools view {input.bam} | grep -F -f {input.readnames} > {params.tempdir}/temp_precut_reads.sam
-        samtools view {input.bam2} | grep -F -f {input.readnames} > {params.tempdir}/temp_postcut_reads.sam
-        samtools view {input.bam3} | grep -F -f {input.readnames} > {params.tempdir}/temp_postcut_unfiltered_reads.sam
+        samtools view {input.bam} | grep -wF -f {input.readnames} > {params.tempdir}/temp_precut_reads.sam
+	samtools view {input.bam2} | grep '_' > {params.tempdir}/temp_postcut_reads.sam
+	samtools view {input.bam3} | grep '_' > {params.tempdir}/temp_postcut_unfiltered_reads.sam
 
         # Extract mapping quality column (5th field) and read name
         awk '{{print $1,$3,$5}}' {params.tempdir}/temp_precut_reads.sam > {output.quality_scores}
