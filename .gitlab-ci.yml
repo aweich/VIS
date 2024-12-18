@@ -15,10 +15,5 @@ pages:
   script:
     # Build the MkDocs site
     - mkdocs build
-    # Move the site output to the public directory
-    - mv site public
-  artifacts:
-    paths:
-      - public
   only:
     - master  # Adjust to match your default branch
