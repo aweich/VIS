@@ -5,6 +5,7 @@ variables:
   GITLAB_TOKEN: $CI_JOB_TOKEN
 
 before_script:
+  - conda activate documentation_mkdocs
   # Install MkDocs and dependencies
   - pip install mkdocs mkdocs-material
 
