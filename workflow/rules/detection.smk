@@ -180,15 +180,19 @@ rule get_coordinates_for_fasta: #filters and combines matches
 	params:
 		filteroption=True,
 		filtervalue=config["MinInsertionLength"], 
-		overlap=3*fragmentsize #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
+		bridge=config["bridging_size"] #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	log:
 		log=f"{outdir}/intermediate/log/detection/get_coordinates_for_fasta/{{sample}}.log"
 	output:
 		coordinates=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
 		reads=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_InsertionMatches_{{sample}}.txt"
 	run:
-		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output.coordinates, output.reads, log.log)
-
+	    try:
+	        vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.bridge, output.coordinates, output.reads, log.log)
+	    except Exception as e:
+	        with open(log.log, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+            
 rule split_fasta:
 	input:
 		breakpoints=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
@@ -201,8 +205,12 @@ rule split_fasta:
 		fasta=f"{outdir}/intermediate/fasta/Modified_{{sample}}.fa",
 		insertion=f"{outdir}/intermediate/fasta/Insertion_{{sample}}.fa"
 	run:
-		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.insertion, log.log)
-
+	    try:
+	        vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.insertion, log.log)
+	    except Exception as e:
+	        with open(log.log, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+            
 ######
 ######
 ###### Insertion preparation: Fragmentation 
@@ -216,8 +224,12 @@ rule prepare_insertion:
 	output: 
 		fasta=f"{outdir}/intermediate/fasta/fragments/Forward_Backward_Insertion.fa"
 	run:
-		vhf.reverseinsertion(input[0], output[0], log.log)
-		
+	    try:
+	        vhf.reverseinsertion(input[0], output[0], log.log)
+	    except Exception as e:
+	        with open(log.log, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+            
 rule insertion_fragmentation:
 	input:
 		f"{outdir}/intermediate/fasta/fragments/Forward_Backward_Insertion.fa" #does not change anything so it can be removed imo
@@ -228,8 +240,12 @@ rule insertion_fragmentation:
 	output: 
 		fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa"
 	run:
-		vhf.fragmentation_fasta(input[0], params[0], output[0], log.log)
-
+	    try:
+	        vhf.fragmentation_fasta(input[0], params[0], output[0], log.log)
+	    except Exception as e:
+	        with open(log.log, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+            
 ######
 ######
 ###### BLAST Searches - Against insertion and healthy human reference
@@ -270,7 +286,7 @@ rule find_insertion_BLASTn:
 	log:
 		log=f"{outdir}/intermediate/log/detection/find_insertion_BLASTn/{{sample}}.log"
 	output:
-		f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		temp(f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn")
 	conda:
 		"../envs/VIS_blastn_env.yml"
 	shell:
@@ -293,29 +309,29 @@ rule find_insertion_BLASTn:
         	) > {log.log} 2>&1
         	"""
 		
-#blastn insertion against human genome: Which insertion parts are close to human sequences so that they might raise a false positivite BLAST match
-rule find_insertion_BLASTn_in_humanRef:
+#blastn insertion against ref genome: Which insertion parts are close to ref sequences so that they might raise a false positivite BLAST match
+rule find_insertion_BLASTn_in_Ref:
     input:
         fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa"
     params:
-        insertion=config.get("blastn_db", "")  # Optional blastn database path
+        refdb=config.get("blastn_db", "")  # Optional blastn database path
     log:
-        log=f"{outdir}/intermediate/log/detection/find_insertion_BLASTn_in_humanRef/{{sample}}.log"
+        log=f"{outdir}/intermediate/log/detection/find_insertion_BLASTn_in_Ref/{{sample}}.log"
     output:
-        temp(f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_InsertionMatches_{{sample}}.blastn")
+        temp(f"{outdir}/intermediate/blastn/ref/{fragmentsize}_InsertionMatches_{{sample}}.blastn")
     conda:
         "../envs/VIS_blastn_env.yml"
     shell:
         """
         (
-        if [ -z "{params.insertion}" ]; then
+        if [ -z "{params.refdb}" ]; then
             # If no blastn_db is provided, create an empty output file
             touch {output};
         else
             # If blastn_db is provided, run the blastn command
             blastn \
             -query {input.fasta} \
-            -db {params.insertion} \
+            -db {params.refdb} \
             -out {output} \
             -evalue 1e-5 \
             -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore';
@@ -326,19 +342,19 @@ rule find_insertion_BLASTn_in_humanRef:
 rule hardcode_blast_header:
 	input: 
 		insertion=f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		ref=f"{outdir}/intermediate/blastn/ref/{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	log:
 		log=f"{outdir}/intermediate/log/detection/hardcode_blast_header/{{sample}}.log"	
 	output:
-		insertion=f"{outdir}/intermediate/blastn/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		insertion=temp(f"{outdir}/intermediate/blastn/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"),
+		ref=temp(f"{outdir}/intermediate/blastn/ref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn")
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
 		"""
 		(
 		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.insertion} > {output.insertion}
-		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.humanref} > {output.humanref}
+		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.ref} > {output.ref}
 		) > {log.log} 2>&1
 		"""
 		
@@ -346,21 +362,21 @@ rule hardcode_blast_header:
 rule extract_by_length:
 	input:
 		blast=f"{outdir}/intermediate/blastn/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		ref=f"{outdir}/intermediate/blastn/ref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	params:
 		threshold=config["MinLength"]
 	log:
 		log=f"{outdir}/intermediate/log/detection/extract_by_length/{{sample}}.log"	
 	output:
 		blast=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		ref=f"{outdir}/intermediate/blastn/ref/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
 		"""
 		(
 		awk -F'\t' '$11>={params.threshold}' {input.blast} > {output.blast}
-		awk -F'\t' '$11>={params.threshold}' {input.humanref} > {output.humanref}
+		awk -F'\t' '$11>={params.threshold}' {input.ref} > {output.ref}
 		) > {log.log} 2>&1
 		""" 
 
@@ -381,9 +397,17 @@ rule basic_insertion_plots:
 		log1=f"{outdir}/intermediate/log/detection/basic_insertion_plots/heat.log",
 		log2=f"{outdir}/intermediate/log/detection/basic_insertion_plots/length.log"
 	run:
-		vhf.plot_bed_files_as_heatmap(input, output[0], log.log1)
-		vhf.plot_insertion_length(input, output[1], log.log2)
-
+	    try:
+	        vhf.plot_bed_files_as_heatmap(input, output[0], log.log1)
+	    except Exception as e:
+	        with open(log.log1, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+	    try:
+	        vhf.plot_insertion_length(input, output[1], log.log2)
+	    except Exception as e:
+	        with open(log.log2, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+                
 ######
 ######
 ###### Exact localization
@@ -403,8 +427,12 @@ rule calculate_exact_insertion_coordinates:
 	output:
 		out=f"{outdir}/intermediate/localization/ExactInsertions_{{sample}}.bed",
 	run:
-		vhf.reconstruct_coordinates(input.bed, input.borders, params.mode, output.out, log.log)
-
+	    try:
+	        vhf.reconstruct_coordinates(input.bed, input.borders, params.mode, output.out, log.log)
+	    except Exception as e:
+	        with open(log.log, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+                
 rule collect_outputs:
 	input:
 		coordinates=f"{outdir}/intermediate/localization/ExactInsertions_{{sample}}.bed",

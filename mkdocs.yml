@@ -13,3 +13,5 @@ nav:
   - Other: other.md
 markdown_extensions:
   - admonition
+extra_css:
+  - stylesheets/table.css

@@ -1,0 +1,26 @@
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto; /* Default layout, so the description column can expand */
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+table th {
+    background-color: #f2f2f2;
+}
+
+table td:nth-child(1),
+table td:nth-child(2) {
+    white-space: nowrap; /* Prevent wrapping for the first two columns */
+}
+
+table td:nth-child(3) {
+    white-space: normal; /* Allow wrapping for the third column */
+    word-wrap: break-word; /* Ensure long text breaks properly */
+}

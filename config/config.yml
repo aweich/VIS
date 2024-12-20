@@ -4,13 +4,14 @@ samples:
     S1: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/S1.bam"
     S2: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/S2.bam"
 processing_dir: "/home/weichan/temporary/Projects/VIS_out"
-source_dir: "Src/"
+#source_dir: "Src/"
 insertion_fasta: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/vectorseq.fa"
-#blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
+blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 #proteindb: "/home/weichan/swissprot/swissprot"
 splitmode: "Buffer" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
+bridging_size: 300 #amount of bases that are bridged if fragments do not match between other fragments 
 MinLength: 1
 MAPQ: 10 #mapping quality filter after pseudo-read generation
 MinInsertionLength: 500 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?

@@ -182,7 +182,11 @@ rule finalize_mapping_quality:
     output:
         outfile=f"{outdir}/final/qc/mapq/Insertions_{{sample}}_mapq.txt"
     run:
-        vhf.join_read_mapq(input[0:3], params.prefixes, output.outfile, log.log)
+    	try:
+    	    vhf.join_read_mapq(input[0:3], params.prefixes, output.outfile, log.log)
+    	except Exception as e:
+            with open(log.log, "a") as log_file:
+                log_file.write(f"Error: {str(e)}\n")
 
 rule generate_mapq_heatmap:
     input:
@@ -192,14 +196,18 @@ rule generate_mapq_heatmap:
     output:
         heatmap=report(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png")
     run:
-        vhf.plot_mapq_changes(input.table, output.heatmap, log.log)
+        try:
+            vhf.plot_mapq_changes(input.table, output.heatmap, log.log)
+        except Exception as e:
+            with open(log.log, "a") as log_file:
+                log_file.write(f"Error: {str(e)}\n")
 
 #### Visualize fragmentation and longest consecutive interval per read
 
 rule fragmentation_distribution_plots:
 	input:
 		f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
-		f"{outdir}/intermediate/blastn/humanref/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		f"{outdir}/intermediate/blastn/ref/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	params:
 		fragmentsize
 	log:
@@ -212,17 +220,37 @@ rule fragmentation_distribution_plots:
 		outpath2=directory(f"{outdir}/final/qc/Fragmentation/Reference/reference_{fragmentsize}_{{sample}}")
 	run:
 		shell("mkdir {output.outpath}")
-		vhf.fragmentation_match_distribution(input[0], params[0], output[0], log.log1)
-		vhf.fragmentation_read_match_distribution(input[0], params[0], output[0], log.log2)
+		try:
+		    vhf.fragmentation_match_distribution(input[0], params[0], output[0], log.log1)
+		except Exception as e:
+		    with open(log.log1, "a") as log_file:
+                        log_file.write(f"Error: {str(e)}\n")
+              
+		try:
+		    vhf.fragmentation_read_match_distribution(input[0], params[0], output[0], log.log2)
+		except Exception as e:
+		    with open(log.log2, "a") as log_file:
+                        log_file.write(f"Error: {str(e)}\n")
+                
 		shell("mkdir {output.outpath2}")
-		vhf.fragmentation_match_distribution(input[1], params[0], output[1], log.log3)
-		vhf.fragmentation_read_match_distribution(input[1], params[0], output[1], log.log4)
-
+		
+		try:
+		    vhf.fragmentation_match_distribution(input[1], params[0], output[1], log.log3)
+		except Exception as e:
+		    with open(log.log3, "a") as log_file:
+                        log_file.write(f"Error: {str(e)}\n")
+                
+		try:
+		    vhf.fragmentation_read_match_distribution(input[1], params[0], output[1], log.log4)
+		except Exception as e:
+		    with open(log.log4, "a") as log_file:
+                        log_file.write(f"Error: {str(e)}\n")
+                
 rule detailed_fragmentation_length_plot:
     input:
         matches=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
     params: 
-        buffer=3*fragmentsize,
+        bridge=config["bridging_size"],
         threshold=config["MinInsertionLength"]
     log:
     	log=f"{outdir}/intermediate/log/qc/detailed_fragmentation_length_plot/{{sample}}.log"
@@ -230,4 +258,8 @@ rule detailed_fragmentation_length_plot:
         outpath=directory(f"{outdir}/final/qc/Fragmentation/Longest_Interval/{{sample}}/")
     run:
         shell("mkdir -p {output.outpath}")
-        vhf.find_and_plot_longest_blast_interval(input.matches, params.buffer, params.threshold, output.outpath,log.log)
+        try:
+            vhf.find_and_plot_longest_blast_interval(input.matches, params.bridge, params.threshold, output.outpath,log.log)
+        except Exception as e:
+            with open(log.log, "a") as log_file:
+                log_file.write(f"Error: {str(e)}\n")

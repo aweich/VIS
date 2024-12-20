@@ -7,7 +7,7 @@ rule sort_insertion_file:
 	log:
 		log=f"{outdir}/intermediate/log/functional_genomics/sort_insertion_file/{{sample}}.log"
 	output:
-		f"{outdir}/intermediate/localization/Sorted_ExactInsertions_{{sample}}.bed"
+		temp(f"{outdir}/intermediate/localization/Sorted_ExactInsertions_{{sample}}.bed")
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
@@ -48,9 +48,13 @@ rule plot_distance_to_elements:
 		scatter=report(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
 		#violin=report(f"{outdir}/final/functional_genomics/BarPlot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
 	run:
-		vhf.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
+	    try:
+	        vhf.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
 		#vhf.plot_element_distance_violin(input.distancetable, params.distances, params.threshold, output.violin, log.log2)
-
+	    except Exception as e:
+	        with open(log.log1, "a") as log_file:
+                    log_file.write(f"Error: {str(e)}\n")
+                
 rule plot_scoring:
     input:
         f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed"
@@ -59,5 +63,10 @@ rule plot_scoring:
     output:
         plot=report(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.png")
     run:
-        vhf.scoring_insertions(input[0], output.plot, log.log)
+        try:
+            vhf.scoring_insertions(input[0], output.plot, log.log)
+        except Exception as e:
+            with open(log.log, "a") as log_file:
+                log_file.write(f"Error: {str(e)}\n")
+                
 

@@ -575,10 +575,10 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
     """
     PLotting of the longest interval.
     """
-    plt.figure(figsize=(16, 2))
+    plt.figure(figsize=(8, 2))
     # Plot the underlying sequence as a line
     interval=longest_end - longest_start
-    plt.plot([0, interval], [0, 0], color='#E9967A', linewidth=2, label=matches[0]['query_id'])
+    plt.plot([0, interval], [0, 0], color='red', linewidth=2, label=matches[0]['query_id'])
     #plt.scatter(interval + interval*0.005 ,0,marker=">", s=100, color='red')
     # Plot the subject IDs as markers along the line
     for match in matches:
@@ -591,7 +591,7 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
                 match['subject_id'].split("_")[-1], 
                 ha='center', 
                 va='bottom', 
-                fontsize=5, 
+                fontsize=8, 
                 rotation=90
             )
     
@@ -938,6 +938,8 @@ def join_read_mapq(file_list, prefixes, output_file, logfile):
             combined_df = pd.merge(combined_df, df, on="Read", how="outer")
     
     # Save the combined DataFrame to a file
+    print(combined_df.head())
+    combined_df.columns = ["Read", "PrecutChr", "PrecutMAPQ", "PostcutChr", "PostcutMAPQ", "FilteredChr", "FilteredMAPQ"]
     combined_df.to_csv(output_file, sep="\t", index=False)
 
 @redirect_logging(logfile_param="logfile")
@@ -949,18 +951,19 @@ def plot_mapq_changes(input_file, output_file, logfile):
     # Load the data into a pandas DataFrame
     df = pd.read_csv(input_file, sep="\t")
 
+    print(df.head())
     # Prepare the data for plotting
-    plot_data = df[['Read', 'Precut_MAPQ', 'Postcut_MAPQ', 'Postcut_filtered_MAPQ']]
+    plot_data = df[['Read', 'PrecutMAPQ', 'PostcutMAPQ', 'FilteredMAPQ']]
     
     # Reshape the data to have one row per Read and one column per MAPQ stage
     plot_data_melted = plot_data.melt(id_vars=['Read'], var_name='Stage', value_name='MAPQ')
 
     # Set the order for the stages on the x-axis
-    stage_order = ['Precut_MAPQ', 'Postcut_MAPQ', 'Postcut_filtered_MAPQ']
+    stage_order = ['PrecutMAPQ', 'PostcutMAPQ', 'FilteredMAPQ']
     plot_data_melted['Stage'] = pd.Categorical(plot_data_melted['Stage'], categories=stage_order, ordered=True)
 
     # Plotting the lineplot
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(8, 8))
     sns.lineplot(data=plot_data_melted, x='Stage', y='MAPQ', hue='Read', marker='o', dashes=False, markersize=4, alpha=0.5, legend=None)
 
     # Add jittered scatter points on top of the lineplot
@@ -974,7 +977,7 @@ def plot_mapq_changes(input_file, output_file, logfile):
     plt.tight_layout()
 
     # Save the plot to the output file
-    plt.savefig(output_file)
+    plt.savefig(output_file, dpi=300)
     plt.close()
 
 @redirect_logging(logfile_param="logfile")
@@ -994,16 +997,16 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile)
             blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
             freq = collections.Counter(blasted["Fragment"].sort_values())
         
-        plt.figure(figsize=(10, 10))
+        plt.figure(figsize=(5, 4))
         plt.bar(freq.keys(), freq.values(), color='black')
         upperlimit = max(blasted["Fragment"])
-        plt.xticks(np.arange(0, upperlimit+1, step=round(upperlimit/10)))
+        plt.xticks(np.arange(0, upperlimit+1, step=round(upperlimit/10)), fontsize=10)
         
         plt.ylabel('Alignment Frequency')
         plt.xlabel("Insertion Fragment")
         plt.title(f'Combined distribution of all {fragment_specifier} bp fragments')
         outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-        plt.savefig(outfile)
+        plt.savefig(outfile, bbox_inches='tight', dpi=300)
         plt.close()
     except:
         print("The provided input could not be processed.")
@@ -1014,7 +1017,7 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile)
         plt.xticks([])
         plt.yticks([])
         outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-        plt.savefig(outfile, bbox_inches='tight', dpi=300)
+        plt.savefig(outfile, bbox_inches='tight')
         plt.close()
         return
 
@@ -1037,13 +1040,13 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath, log
         plt.close()
         return
 
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(5, 4))
     if any(x.isupper() for x in blasted['QueryID'][0]) and "Read" not in blasted['QueryID'][0]:
         freq = collections.Counter(blasted["SubjectID"])
     else:
         freq = collections.Counter(blasted["QueryID"])
     plt.bar(freq.keys(), freq.values(), color='black')
-    plt.xticks(rotation=90, fontsize=8)
+    plt.xticks(rotation=90, fontsize=6)
     plt.ylabel('Read match Frequency')
     plt.xlabel("Read")
     plt.title(f'Contribution of reads to the total count of {fragment_specifier} bp fragments')
