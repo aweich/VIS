@@ -1,6 +1,7 @@
 site_name: Vector Insertion Site Detection Pipeline
 theme:
-  name: material
+  name: readthedocs
+  highlightjs: true
   logo: docs/images/dag.png
 nav:
   - Home: index.md

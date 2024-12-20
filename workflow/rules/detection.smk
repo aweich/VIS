@@ -25,24 +25,24 @@ rule copy_config_version:
 rule build_insertion_reference:
 	input:
 		ref=config["ref_genome_ctrl"],
-		vector=config["vector_fasta"]
+		insertion=config["insertion_fasta"]
 	log:
 		log=f"{outdir}/intermediate/log/detection/build_insertion_reference/out.log"
 	output:
-		f"{outdir}/intermediate/mapping/vector_ref_genome.fa"
+		temp(f"{outdir}/intermediate/mapping/insertion_ref_genome.fa")
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
 		"""
 		(
-		cat {input.ref} {input.vector} > {output}
+		cat {input.ref} {input.insertion} > {output}
 		) > {log.log} 2>&1
 		"""
 		
 
 rule minimap_index:
 	input:
-		ref=f"{outdir}/intermediate/mapping/vector_ref_genome.fa"
+		ref=f"{outdir}/intermediate/mapping/insertion_ref_genome.fa"
 	log:
 		log=f"{outdir}/intermediate/log/detection/minimap_index/out.log"
 	output:
@@ -82,8 +82,8 @@ rule make_fasta_without_tags: #fasta of raw data no trimming whatsoever
 #rule to create the BAM files with the non-insertion reads and the splitted read fragments
 rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 	input:
-		fasta=f"{outdir}/intermediate/fasta/Cleaved_{{sample}}_noVector.fa",
-		genome=f"{outdir}/intermediate/mapping/vector_ref_genome.fa"
+		fasta=f"{outdir}/intermediate/fasta/Modified_{{sample}}.fa",
+		genome=f"{outdir}/intermediate/mapping/insertion_ref_genome.fa"
 	output:
 		f"{outdir}/intermediate/mapping/Postcut_{{sample}}_unfiltered_sorted.bam"
 	log:
@@ -104,7 +104,7 @@ rule insertion_mapping: #conserves tags!
 	input:
 		bam=lambda wildcards: config["samples"][wildcards.sample],
 		minimapref=f"{outdir}/intermediate/mapping/ref_genome_index.mmi",
-		ref=f"{outdir}/intermediate/mapping/vector_ref_genome.fa"
+		ref=f"{outdir}/intermediate/mapping/insertion_ref_genome.fa"
 	output:
 		f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam"
 	log:
@@ -170,79 +170,79 @@ rule BAM_to_BED:
 
 ######
 ######
-###### fasta preparation: Cut out of blast-detected vector fragments and create new "cut-out" fasta 
+###### fasta preparation: Modify reads with blast-detected insertion fragments 
 ######
 ######
 
-rule get_cleavage_sites_for_fasta: #filters and combines matches
+rule get_coordinates_for_fasta: #filters and combines matches
 	input:
-		f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	params:
 		filteroption=True,
 		filtervalue=config["MinInsertionLength"], 
 		overlap=3*fragmentsize #this is the distance of the start-stop that is allowed to exist to still be combined; This should not be lower than FRAG!
 	log:
-		log=f"{outdir}/intermediate/log/detection/get_cleavage_sites_for_fasta/{{sample}}.log"
+		log=f"{outdir}/intermediate/log/detection/get_coordinates_for_fasta/{{sample}}.log"
 	output:
-		cleavage=f"{outdir}/intermediate/blastn/CleavageSites_{fragmentsize}_VectorMatches_{{sample}}.blastn",
-		reads=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_VectorMatches_{{sample}}.txt"
+		coordinates=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		reads=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_InsertionMatches_{{sample}}.txt"
 	run:
-		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output.cleavage, output.reads, log.log)
+		vhf.splitting_borders(input[0],params.filteroption, params.filtervalue, params.overlap, output.coordinates, output.reads, log.log)
 
 rule split_fasta:
 	input:
-		breakpoints=f"{outdir}/intermediate/blastn/CleavageSites_{fragmentsize}_VectorMatches_{{sample}}.blastn",
+		breakpoints=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
 		fasta=f"{outdir}/intermediate/fasta/Full_{{sample}}.fa"
 	params:
 		mode=config["splitmode"] #if each split fasta substring should be used individually, use "Separated" Join, New mode: Buffer
 	log:
 		log=f"{outdir}/intermediate/log/detection/split_fasta_by_borders/{{sample}}.log"
 	output:
-		fasta=f"{outdir}/intermediate/fasta/Cleaved_{{sample}}_noVector.fa",
-		vector=f"{outdir}/intermediate/fasta/Insertion_{{sample}}_Vector.fa"
+		fasta=f"{outdir}/intermediate/fasta/Modified_{{sample}}.fa",
+		insertion=f"{outdir}/intermediate/fasta/Insertion_{{sample}}.fa"
 	run:
-		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.vector, log.log)
+		vhf.split_fasta_by_borders(input.breakpoints, input.fasta, params.mode, output.fasta, output.insertion, log.log)
 
 ######
 ######
-###### Vector preparation: Fragmentation 
+###### Insertion preparation: Fragmentation 
 ######
 ######
-rule prepare_vector:
+rule prepare_insertion:
 	input:
-		config["vector_fasta"] #vector fasta sequence
+		config["insertion_fasta"] #insertion fasta sequence
 	log:
-		log=f"{outdir}/intermediate/log/detection/prepare_vector/out.log"
+		log=f"{outdir}/intermediate/log/detection/prepare_insertion/out.log"
 	output: 
-		fasta=f"{outdir}/intermediate/fasta/fragments/Forward_Backward_Vector.fa"
+		fasta=f"{outdir}/intermediate/fasta/fragments/Forward_Backward_Insertion.fa"
 	run:
-		vhf.reversevector(input[0], output[0], log.log)
+		vhf.reverseinsertion(input[0], output[0], log.log)
 		
-rule vector_fragmentation:
+rule insertion_fragmentation:
 	input:
-		f"{outdir}/intermediate/fasta/fragments/Forward_Backward_Vector.fa" #does not change anything so it can be removed imo
+		f"{outdir}/intermediate/fasta/fragments/Forward_Backward_Insertion.fa" #does not change anything so it can be removed imo
 	params:
 		fragmentsize
 	log:
-		log=f"{outdir}/intermediate/log/detection/vector_fragmentation/out.log"
+		log=f"{outdir}/intermediate/log/detection/insertion_fragmentation/out.log"
 	output: 
-		fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa"
+		fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa"
 	run:
 		vhf.fragmentation_fasta(input[0], params[0], output[0], log.log)
 
 ######
 ######
-###### BLAST Searches - Against Vector and healthy human reference
+###### BLAST Searches - Against insertion and healthy human reference
 ######
 ######
 
 rule make_blastn_DB:
 	input:
-		vector_fragmented = f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa"
+		insertion_fragmented = f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa"
 	log:
 		log=f"{outdir}/intermediate/log/detection/make_blastn_DB/out.log"
 	output:
-		multiext(f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa",
+		multiext(f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa",
 			".ndb",
 			".nhr",
 			".nin",
@@ -256,21 +256,21 @@ rule make_blastn_DB:
 	shell:
 		"""
 		(
-		makeblastdb -in {input.vector_fragmented} -dbtype nucl -blastdb_version 5 
+		makeblastdb -in {input.insertion_fragmented} -dbtype nucl -blastdb_version 5 
 		) > {log.log} 2>&1
 		"""
 
-rule find_vector_BLASTn:
+rule find_insertion_BLASTn:
 	input:
 		fasta=f"{outdir}/intermediate/fasta/Full_{{sample}}.fa",
-		dummy=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa.ndb", #provokes the building of the database first!
-		vector=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa"
+		dummy=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa.ndb", #provokes the building of the database first!
+		insertion=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa"
 	params:
 		tempdir=f"{outdir}/intermediate/temp_{{sample}}",
 	log:
-		log=f"{outdir}/intermediate/log/detection/find_vector_BLASTn/{{sample}}.log"
+		log=f"{outdir}/intermediate/log/detection/find_insertion_BLASTn/{{sample}}.log"
 	output:
-		f"{outdir}/intermediate/blastn/{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	conda:
 		"../envs/VIS_blastn_env.yml"
 	shell:
@@ -280,7 +280,7 @@ rule find_vector_BLASTn:
         
         blastn \
         -query {input.fasta} \
-        -db {input.vector} \
+        -db {input.insertion} \
         -out {params.tempdir}/temp_output.blastn \
         -evalue 1e-5 \
         -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore'
@@ -293,29 +293,29 @@ rule find_vector_BLASTn:
         	) > {log.log} 2>&1
         	"""
 		
-#blastn vector against human genome: Which vector parts are close to human sequences so that they might raise a false positivite BLAST match
-rule find_vector_BLASTn_in_humanRef:
+#blastn insertion against human genome: Which insertion parts are close to human sequences so that they might raise a false positivite BLAST match
+rule find_insertion_BLASTn_in_humanRef:
     input:
-        fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Vector_fragments.fa"
+        fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa"
     params:
-        vector=config.get("blastn_db", "")  # Optional blastn database path
+        insertion=config.get("blastn_db", "")  # Optional blastn database path
     log:
-        log=f"{outdir}/intermediate/log/detection/find_vector_BLASTn_in_humanRef/{{sample}}.log"
+        log=f"{outdir}/intermediate/log/detection/find_insertion_BLASTn_in_humanRef/{{sample}}.log"
     output:
-        temp(f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_VectorMatches_{{sample}}.blastn")
+        temp(f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_InsertionMatches_{{sample}}.blastn")
     conda:
         "../envs/VIS_blastn_env.yml"
     shell:
         """
         (
-        if [ -z "{params.vector}" ]; then
+        if [ -z "{params.insertion}" ]; then
             # If no blastn_db is provided, create an empty output file
             touch {output};
         else
             # If blastn_db is provided, run the blastn command
             blastn \
             -query {input.fasta} \
-            -db {params.vector} \
+            -db {params.insertion} \
             -out {output} \
             -evalue 1e-5 \
             -outfmt '6 qseqid sseqid qseq sseq qlen slen qstart qend sstart send length mismatch pident qcovs evalue bitscore';
@@ -325,19 +325,19 @@ rule find_vector_BLASTn_in_humanRef:
 
 rule hardcode_blast_header:
 	input: 
-		vector=f"{outdir}/intermediate/blastn/{fragmentsize}_VectorMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		insertion=f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		humanref=f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	log:
 		log=f"{outdir}/intermediate/log/detection/hardcode_blast_header/{{sample}}.log"	
 	output:
-		vector=f"{outdir}/intermediate/blastn/Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		insertion=f"{outdir}/intermediate/blastn/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		humanref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
 		"""
 		(
-		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.vector} > {output.vector}
+		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.insertion} > {output.insertion}
 		echo -e 'QueryID\tSubjectID\tQueryAligned\tSubjectAligned\tQueryLength\tSubjectLength\tQueryStart\tQueryEnd\tSubjectStart\tSubjectEnd\tLength\tMismatch\tPercentageIdentity\tQueryCov\tevalue\tbitscore' | cat - {input.humanref} > {output.humanref}
 		) > {log.log} 2>&1
 		"""
@@ -345,15 +345,15 @@ rule hardcode_blast_header:
 #filter BLAST matches by min length
 rule extract_by_length:
 	input:
-		blast=f"{outdir}/intermediate/blastn/Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		blast=f"{outdir}/intermediate/blastn/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		humanref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	params:
 		threshold=config["MinLength"]
 	log:
 		log=f"{outdir}/intermediate/log/detection/extract_by_length/{{sample}}.log"	
 	output:
-		blast=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn",
-		humanref=f"{outdir}/intermediate/blastn/humanref/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		blast=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		humanref=f"{outdir}/intermediate/blastn/humanref/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
@@ -395,7 +395,7 @@ rule basic_insertion_plots:
 rule calculate_exact_insertion_coordinates:
 	input:
 		bed=f"{outdir}/intermediate/mapping/Postcut_{{sample}}.bed",
-		borders=f"{outdir}/intermediate/blastn/CleavageSites_{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		borders=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	params:
 		mode=config["splitmode"]
 	log:

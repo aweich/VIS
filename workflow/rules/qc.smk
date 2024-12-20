@@ -47,7 +47,7 @@ rule bam_coverage:
 rule extract_fastq_insertions:
     input:
     	bam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam",
-        readnames=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_VectorMatches_{{sample}}.txt"
+        readnames=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_InsertionMatches_{{sample}}.txt"
     params:
         tempdir=f"{outdir}/intermediate/temp_fastq_{{sample}}"  # Temporary directory for intermediate files
     log:
@@ -140,7 +140,7 @@ rule extract_mapping_quality:
         bam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam",
         bam2=f"{outdir}/intermediate/mapping/Postcut_{{sample}}_sorted.bam",
         bam3=f"{outdir}/intermediate/mapping/Postcut_{{sample}}_unfiltered_sorted.bam",
-        readnames=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_VectorMatches_{{sample}}.txt"
+        readnames=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_InsertionMatches_{{sample}}.txt"
     params:
         tempdir=f"{outdir}/intermediate/temp_mapping_{{sample}}"
     log:
@@ -180,17 +180,17 @@ rule finalize_mapping_quality:
     log:
     	log=f"{outdir}/intermediate/log/qc/finalize_mapping_quality/{{sample}}.log"
     output:
-        outfile=f"{outdir}/intermediate/qc/mapq/Insertions_{{sample}}_mapq.txt"
+        outfile=f"{outdir}/final/qc/mapq/Insertions_{{sample}}_mapq.txt"
     run:
         vhf.join_read_mapq(input[0:3], params.prefixes, output.outfile, log.log)
 
 rule generate_mapq_heatmap:
     input:
-        table=f"{outdir}/intermediate/qc/mapq/Insertions_{{sample}}_mapq.txt"
+        table=f"{outdir}/final/qc/mapq/Insertions_{{sample}}_mapq.txt"
     log:
     	log=f"{outdir}/intermediate/log/qc/generate_mapq_heatmap/{{sample}}.log"
     output:
-        heatmap=report(f"{outdir}/intermediate/qc/mapq/{{sample}}_mapq_heatmap_image.png")
+        heatmap=report(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png")
     run:
         vhf.plot_mapq_changes(input.table, output.heatmap, log.log)
 
@@ -198,8 +198,8 @@ rule generate_mapq_heatmap:
 
 rule fragmentation_distribution_plots:
 	input:
-		f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn",
-		f"{outdir}/intermediate/blastn/humanref/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		f"{outdir}/intermediate/blastn/humanref/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	params:
 		fragmentsize
 	log:
@@ -220,7 +220,7 @@ rule fragmentation_distribution_plots:
 
 rule detailed_fragmentation_length_plot:
     input:
-        matches=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn"
+        matches=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
     params: 
         buffer=3*fragmentsize,
         threshold=config["MinInsertionLength"]

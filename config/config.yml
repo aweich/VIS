@@ -5,7 +5,7 @@ samples:
     S2: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/S2.bam"
 processing_dir: "/home/weichan/temporary/Projects/VIS_out"
 source_dir: "Src/"
-vector_fasta: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/vectorseq.fa"
+insertion_fasta: "/home/weichan/permanent/Projects/VIS/dev/minimum_example/vectorseq.fa"
 #blastn_db: "/home/weichan/blastNdb/blastNdb" #human nucleotides to see which parts of the human genome match the CAR construct
 # protein BLASTp database
 #proteindb: "/home/weichan/swissprot/swissprot"

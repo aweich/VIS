@@ -232,27 +232,27 @@ def split_fasta_with_breakpoints(fasta_string, breakpoints):
 
     # Add the sequence after the last breakpoint
     sequences.append(fasta_string[breakpoints[-1]:])
-    #drop every second interval if there are more than two snippets of the fasta: -> To save only the intervals without vector
+    #drop every second interval if there are more than two snippets of the fasta: -> To save only the intervals without insertion
     if len(sequences) > 2:
         del sequences[1::2]  
     
-    #extraction of the vector sequence
-    vector=[]
+    #extraction of the insertion sequence
+    insertion=[]
     
     for i in range(len(breakpoints)):
         if i % 2 == 0 or i == 0:
-            vector.append(fasta_string[breakpoints[i]:breakpoints[i+1]])
+            insertion.append(fasta_string[breakpoints[i]:breakpoints[i+1]])
     
-    return sequences, vector
+    return sequences, insertion
 
 @redirect_logging(logfile_param="logfile")
-def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector, logfile):
+def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outinsertion, logfile):
     """
     Uses previously created breakpoints in border dict to cut out insertions from fasta file
     """
     border_dict = json.load(open(border_dict)) 
     with open(outfasta, 'w') as output_file:
-        with open(outvector, 'w') as output_vector_file:
+        with open(outinsertion, 'w') as output_insertion_file:
             # opening given fasta file using the file path
             with open(fasta, 'r') as fasta_file:
                 # extracting multiple data in single fasta file using biopython
@@ -261,13 +261,13 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector, logfil
                     record_id = record.id
                     record_seq = record.seq
                     if record_id in border_dict:
-                        record_list, vector_list = split_fasta_with_breakpoints(record_seq, border_dict[record_id])
-                        # write out inserted vector sequence
-                        for i,entry in enumerate(vector_list):
-                            vector_seq_new = vector_list[i]
-                            vector_id_new = str(record_id) + '_%i' % (i)
-                            print("Split " + str(record_id) + " into " + str(vector_id_new))
-                            output_vector_file.write(">"+str(vector_id_new)+"\n"+str(vector_seq_new) + "\n")
+                        record_list, insertion_list = split_fasta_with_breakpoints(record_seq, border_dict[record_id])
+                        # write out insertion sequence
+                        for i,entry in enumerate(insertion_list):
+                            insertion_seq_new = insertion_list[i]
+                            insertion_id_new = str(record_id) + '_%i' % (i)
+                            print("Split " + str(record_id) + " into " + str(insertion_id_new))
+                            output_insertion_file.write(">"+str(insertion_id_new)+"\n"+str(insertion_seq_new) + "\n")
                         # write out fasta without insertion        
                         if mode == "Buffer":
                             print("Buffer mode selected: Insertion sequences are replaced by N.")
@@ -297,93 +297,6 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outvector, logfil
                     else:
                         output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
-### this part is to extract the exact cooridnates of the insertions
-'''
-def adjust_coordinates_for_strand(start, stop, strand, insertion_values):
-    """
-    Adjusts the insertion coordinates based on strand directionality.
-    
-    Parameters:
-        start (int): Start coordinate of the read from the BED file.
-        stop (int): Stop coordinate of the read from the BED file.
-        strand (str): Strand information ('+' or '-').
-        insertion_values (list): List of insertion coordinates from the border_dict.
-    
-    Returns:
-        list: Adjusted coordinates as a list of (new_start, new_stop) tuples.
-    """
-    read_length = stop - start
-    adjusted_coords = []
-
-    if strand == "+":
-        # Use insertion values as-is for the + strand
-        for i in range(0, len(insertion_values), 2):
-            new_start = start + insertion_values[i]
-            new_stop = start + insertion_values[i + 1]
-            adjusted_coords.append((new_start, new_stop))
-    elif strand == "-":
-        # Reverse and flip insertion values for the - strand
-        for i in range(0, len(insertion_values), 2):
-            reversed_stop = read_length - insertion_values[i]
-            reversed_start = read_length - insertion_values[i + 1]
-            new_stop = start + reversed_stop
-            new_start = start + reversed_start
-            adjusted_coords.append((new_start, new_stop))
-
-    return adjusted_coords
-
-def exact_insertion_coordinates(border_dict, bed, outfile):
-    """
-    Updates BED file coordinates based on border_dict values.
-    Adjusts for strand directionality and creates new BED entries for each insertion.
-    """
-    bed = pd.read_csv(bed, sep='\t', header=None, usecols=[0, 1, 2, 3, 5])
-    bed['BaseRead'] = bed[3].str.split("_").str[0]  # Get the original read name
-
-    # Dict with nsertion intervals
-    border_dict = json.load(open(border_dict))
-
-    # Filter BED entries to only include those present in the border_dict
-    matching_entries = bed[bed["BaseRead"].isin(border_dict.keys())].copy()
-    print(matching_entries.head())
-    print(border_dict)
-    # Check if there are matching entries
-    if matching_entries.empty:
-        print("No matching reads found in the BED file.")
-        return
-
-    # Process matching entries by updating cooridnates
-    results = []
-    for _, row in matching_entries.iterrows():
-        read_name = row["BaseRead"]
-        old_start = row[1]
-        old_stop = row[2]
-        strand = row[5]
-        chromosome = row[0]
-
-        # Get insertion coordinates from the dictionary
-        insertion_values = border_dict[read_name]
-        print(read_name)
-        print(insertion_values)
-
-
-        # Ensure insertion_values are in pairs (start, stop)
-        if len(insertion_values) % 2 != 0:
-            print(f"Error: Uneven number of coordinates for read {read_name}")
-            continue
-
-        # Adjust coordinates based on strand
-        adjusted_coords = adjust_coordinates_for_strand(old_start, old_stop, strand, insertion_values)
-        print(adjusted_coords)
-        old_coords = [old_start, old_stop]
-        print(old_coords)
-
-        for new_start, new_stop in adjusted_coords:
-            results.append([chromosome, new_start, new_stop, read_name, old_coords, strand])
-    updated_bed = pd.DataFrame(results, columns=[0, 1, 2, 3, 5, 6])
-    updated_bed.to_csv(outfile, sep='\t', index=False, header=False)
-    print(f"Insertion BED file saved to {outfile}")
-'''
 #cigar for exact cooridinates
 def parse_cigar(cigar, start, strand):
     """
@@ -579,7 +492,7 @@ def blast2gff(blast,outfile):
             gff_file.write(f"{subject_id}\t{start}\t{end}\tBLAST\tfeature\t.\t.\t{sequence_id}\n")
 
 @redirect_logging(logfile_param="logfile")
-def reversevector(fastain, fastaout, logfile):
+def reverseinsertion(fastain, fastaout, logfile):
     with open(fastaout, 'w') as output_file:
         # opening given fasta file using the file path
         with open(fastain, 'r') as fasta_file:
@@ -699,7 +612,7 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
 @redirect_logging(logfile_param="logfile")
 def find_and_plot_longest_blast_interval(blastn, buffer, threshold, output_dir, logfile):
     """
-    Uses the blast result table and creates an illustration of the longest blast interval, including the description of the matching part of the vector. 
+    Uses the blast result table and creates an illustration of the longest blast interval, including the description of the matching part of the insertion. 
     """
     df = pd.read_csv(blastn, sep='\t')
     # Extract matches and group by QueryID
@@ -769,7 +682,28 @@ def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_f
     #bedtools closest operation
     closest = insertions.closest(sorted_annotations, D="a", filenames=True)
 
-    closest.saveas(output_bed)
+    # Convert BedTool output to DataFrame
+    closest_df = closest.to_dataframe(
+        names=[
+            "InsertionChromosome",
+            "InsertionStart",
+            "InsertionEnd",
+            "InsertionRead",
+            "InsertionOrig",
+            "InsertionStrand",
+            "AnnotationChromosome",
+            "AnnotationStart",
+            "AnnotationEnd",
+            "AnnotationID",
+            "AnnotationScore",
+            "AnnotationStrand",
+            "AnnotationSource",
+            "Distance",
+        ]
+    )
+
+    # Save DataFrame to a file with headers
+    closest_df.to_csv(output_bed, sep="\t", index=False)
     print(f"Distances calculated and saved to {output_bed}")
 
 @redirect_logging(logfile_param="logfile")
@@ -779,36 +713,34 @@ def plot_element_distance(bed, distances, distance_threshold, output_path, logfi
     Entries farther than the defined threshold are excluded.
     """
     # Read the table
-    colnames = ["chr", "start_insertion", "stop_insertion", "read", "origcoord", "strand","chr_element","start_element", "stop_element","element_name", "element_score", "element_strand", "source", "distance"]
     df = pd.read_csv(
         bed,
         sep='\t',
-        header=None,
-        names=colnames,
     )
     
+    print(df.head())
     # Apply threshold filtering if provided
     if distance_threshold is not None:
-        df = df[df['distance'].abs() <= int(distance_threshold)]
+        df = df[df['Distance'].abs() <= int(distance_threshold)]
   
     # Ensure absolute distance and sort by absolute distance within groups
-    df['abs_distance'] = df['distance'].abs()
-    df = df.sort_values(by=['read', 'abs_distance']).drop_duplicates(subset=['read', 'element_name', "source"], keep='first').reset_index()
+    df['abs_distance'] = df['Distance'].abs()
+    df = df.sort_values(by=['InsertionRead', 'abs_distance']).drop_duplicates(subset=['InsertionRead', 'AnnotationID', "AnnotationSource"], keep='first').reset_index()
     
     # Create scatter plot
     sns.scatterplot(
         data=df,
-        x='distance',
-        y='element_name',
-        hue='read',
+        x='Distance',
+        y='AnnotationID',
+        hue='InsertionRead',
         palette='tab10',
         s=100,
-        style='source'
+        style='AnnotationSource'
     )
     
     # Plot binned rugplot for distances
     bin_size = 100  # Bin size for grouping distances
-    df['distance_bin'] = (df['distance'] // bin_size) * bin_size
+    df['distance_bin'] = (df['Distance'] // bin_size) * bin_size
     sns.rugplot(x=df['distance_bin'], color='black', height=0.05, linewidth=1)
     
     # Configure plot aesthetics
@@ -827,31 +759,24 @@ def plot_element_distance(bed, distances, distance_threshold, output_path, logfi
 @redirect_logging(logfile_param="logfile")
 def plot_element_distance_violin(bed, distances, distance_threshold, output_path, logfile):
     # Read the table
-    colnames = [
-        "chr", "start_insertion", "stop_insertion", "read", "origcoord", "strand",
-        "chr_element", "start_element", "stop_element", "element_name", "element_score",
-        "element_strand", "source", "distance"
-    ]
     df = pd.read_csv(
         bed,
         sep='\t',
-        header=None,
-        names=colnames,
     )
 
     # Apply threshold filtering if provided
     if distance_threshold is not None:
-        df = df[df['distance'].abs() <= int(distance_threshold)]
+        df = df[df['Distance'].abs() <= int(distance_threshold)]
 
     # Create a count of how many times each source appears at each distance
-    distance_counts = df.groupby(['distance', 'source', 'read']).size().reset_index(name='count')
+    distance_counts = df.groupby(['Distance', 'AnnotationSource', 'InsertionRead']).size().reset_index(name='count')
 
     # Create the bar plot
     print(distance_counts.head())
     plt.figure(figsize=(10, 6))
     sns.displot(
         data=distance_counts,
-        x='distance', y='count', hue='read', col='source',
+        x='Distance', y='count', hue='InsertionRead', col='AnnotationSource',
         palette='Set2'
     )
 
@@ -879,8 +804,6 @@ def scoring_insertions(data, output_file, logfile):
     df = pd.read_csv(
         data,
         sep='\t',
-        header=None,
-        names=colnames,
     )
     
     # Drop duplicate entries
@@ -1057,30 +980,28 @@ def plot_mapq_changes(input_file, output_file, logfile):
 @redirect_logging(logfile_param="logfile")
 def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile):
     """
-    Takes the vector fragments and plots histogram of their frequency in the alignment
+    Takes the insertion fragments and plots histogram of their frequency in the alignment
     """
     blasted = pd.read_csv(data, sep="\t")
 
     try: 
         if any(x.isupper() for x in blasted['QueryID'][0]) and "Read" not in blasted['QueryID'][0]: #to make sure the right column is used for plotting. Reads do not have any uppercase letters
-            blasted[['Vector', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
+            blasted[['Insertion', 'Fragment']] = blasted['QueryID'].str.split('_', n=1, expand=True)
             blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
             freq = collections.Counter(blasted["Fragment"].sort_values())
         else:
-            blasted[['Vector', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
+            blasted[['Insertion', 'Fragment']] = blasted['SubjectID'].str.split('_', n=1, expand=True)
             blasted["Fragment"] = pd.to_numeric(blasted["Fragment"])
             freq = collections.Counter(blasted["Fragment"].sort_values())
+        
+        plt.figure(figsize=(10, 10))
         plt.bar(freq.keys(), freq.values(), color='black')
         upperlimit = max(blasted["Fragment"])
         plt.xticks(np.arange(0, upperlimit+1, step=round(upperlimit/10)))
-        #if (10000/fragment_specifier) < 50:    
-        #    plt.xticks(np.arange(0, (10000/fragment_specifier)+1))
-        #else:
-        #    plt.xticks(np.arange(0, (10000/fragment_specifier)+1, step=(10000/fragment_specifier)/10))
         
         plt.ylabel('Alignment Frequency')
         plt.xlabel("Insertion Fragment")
-        plt.title(f'{fragment_specifier} bp fragment distribution')
+        plt.title(f'Combined distribution of all {fragment_specifier} bp fragments')
         outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
         plt.savefig(outfile)
         plt.close()
@@ -1116,6 +1037,7 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath, log
         plt.close()
         return
 
+    plt.figure(figsize=(10, 10))
     if any(x.isupper() for x in blasted['QueryID'][0]) and "Read" not in blasted['QueryID'][0]:
         freq = collections.Counter(blasted["SubjectID"])
     else:
@@ -1124,7 +1046,7 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath, log
     plt.xticks(rotation=90, fontsize=8)
     plt.ylabel('Read match Frequency')
     plt.xlabel("Read")
-    plt.title(f'{fragment_specifier} bp read match fragment distribution')
+    plt.title(f'Contribution of reads to the total count of {fragment_specifier} bp fragments')
     outfile = outpath + str("/") + f'{fragment_specifier}_read_match_fragmentation_distribution.png'
     plt.savefig(outfile, bbox_inches='tight', dpi=300)
     plt.close()

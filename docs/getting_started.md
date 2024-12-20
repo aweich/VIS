@@ -19,15 +19,19 @@ The pipeline contains the option for an [integrated package management](https://
 In other words, the workflow will be installing all required packages for each rule as needed.
 This means that we only need to install a lightweight environment ourselves to run the pipeline locally.
 
-!!! Info While the classical way of setting up the pipeline has the advantage of being lightweight in its installation of packagages, the actuall running of the pipeline will be a little more complicated and might require additional modifications depending on your local setup of `conda`/`mamba`. For this reason, we also provide a convenient alternative which works by installing all packages needed for the pipeline in one environment (see below).
+!!! Info 
+
+    While the classical way of setting up the pipeline has the advantage of being lightweight in its installation of packagages, the actuall running of the pipeline will be a little more complicated and might require additional modifications depending on your local setup of `conda`/`mamba`. For this reason, we also provide a convenient alternative which works by installing all packages needed for the pipeline in one environment (see below).
 
 Create the minimal environment for running the pipeline via 
 
 ```bash 
-   mamba env create --name VIS_minimal -f workflow/envs/VIS_minimal_env.yml
+    mamba env create --name VIS_minimal -f workflow/envs/VIS_minimal_env.yml
 ```
 
-!!! Info You can use ´conda´ instead of ´mamba´ if desired, but ´mamba is faster. 
+!!! Info 
+
+    You can use ´conda´ instead of ´mamba´ if desired, but ´mamba is faster. 
 
 Then, activate the environment via 
 
@@ -44,7 +48,9 @@ Create the full environment for running the pipeline via
    mamba env create --name VIS_full -f workflow/envs/VIS_full_env.yml
 ```
 
-!!! Info It is also possible to use `conda` for the creation of the environment (`mamba` is way faster though). Since we are installing more dependencies here, the use of `mamba` is highly encouraged.
+!!! Info 
+    
+    It is also possible to use `conda` for the creation of the environment (`mamba` is way faster though). Since we are installing more dependencies here, the use of `mamba` is highly encouraged.
 
 Then, activate the environment via
 

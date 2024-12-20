@@ -39,15 +39,15 @@ rule all:
 		f"{outdir}/final/localization/Insertion_length.png",
 		# functional genomics
 		expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
-		expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.png", sample=SAMPLES),
+		#expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.png", sample=SAMPLES),
 		# quality control
-		expand(f"{outdir}/intermediate/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
+		expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
 		expand(f"{outdir}/final/qc/Fragmentation/Insertions/insertions_{fragmentsize}_{{sample}}", sample=SAMPLES),
 		expand(f"{outdir}/final/qc/Fragmentation/Longest_Interval/{{sample}}/", sample=SAMPLES),
 		f"{outdir}/final/qc/multiqc_report.html",
 		# process
 		f"{outdir}/config_settings.yml",
 		# downstream
-		#expand(f"{outdir}/intermediate/blastn/{fragmentsize}_VectorMatches_{{sample}}.gff", sample=SAMPLES),
+		#expand(f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
 		

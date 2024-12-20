@@ -28,14 +28,14 @@ rule chromosome_read_plots:
 		"""	
 
 
-#for the circular vector maps
+#for the circular insertion maps
 rule blast_to_gff:
 	input:
-		ref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_VectorMatches_{{sample}}.blastn",
-		vector=f"{outdir}/intermediate/blastn/{fragmentsize}_VectorMatches_{{sample}}.blastn"
+		ref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		insertion=f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	output:
-		vector=f"{outdir}/intermediate/blastn/{fragmentsize}_VectorMatches_{{sample}}.gff",
-		ref=f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_VectorMatches_{{sample}}.gff"  
+		insertionr=f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.gff",
+		ref=f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_InsertionMatches_{{sample}}.gff"  
 	run:
 		vhf.blast2gff(input.ref, output.ref)
-		vhf.blast2gff(input.vector, output.vector)  
+		vhf.blast2gff(input.insertion, output.insertion)  
