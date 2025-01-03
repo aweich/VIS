@@ -2,6 +2,7 @@
 
 # for the insertion specific gviz plot
 #this ensures that a writable R lib exists where the needed packages will be installed to!
+'''
 shell.prefix('export R_LIBS_USER=~/R/x86_64-pc-linux-gnu-library/4.0 && ')      
 rule chromosome_read_plots: 
 	input:
@@ -27,15 +28,15 @@ rule chromosome_read_plots:
 		) > {log.log} 2>&1
 		"""	
 
-
+'''
 #for the circular insertion maps
 rule blast_to_gff:
 	input:
-		ref=f"{outdir}/intermediate/blastn/humanref/Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
-		insertion=f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		ref=f"{outdir}/intermediate/blastn/ref/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		insertion=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
 	output:
-		insertionr=f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.gff",
-		ref=f"{outdir}/intermediate/blastn/humanref/{fragmentsize}_InsertionMatches_{{sample}}.gff"  
+		insertion=f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff",
+		ref=f"{outdir}/intermediate/blastn/ref/Filtered_Annotated_{fragmentsize}_ref_InsertionMatches_{{sample}}.gff"  
 	run:
 		vhf.blast2gff(input.ref, output.ref)
 		vhf.blast2gff(input.insertion, output.insertion)  

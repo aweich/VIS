@@ -1,13 +1,22 @@
-## Simulation data for tutorial
-#### Reference Genome
+## Other
+### Simulation data for tutorial
+#### Reference genome
 
 The first 500kb of chromosome 1 from the `hg38` assembly was used as the reference genome. The extracted sequence was saved as `chr1` in the FASTA format, which was then used for subsequent simulations and as reference genome for the [tutorial](tutorial.md/#prepare-configyml).
 
-#### Insertion Sequence
+#### Insertion sequence
 
-The insertion sequence for the simulation was based on the [FTCAR2:pFlagCMV-mCAR-TVV vector construct](http://n2t.net/addgene:87239), obtained from Addgene (Plasmid # 87239). This construct comprises a vector system for the transduction of CXADR (Coxsackievirus-Adenovirus Receptor) into mammalian cells.
+The insertion sequence for the simulation was based on the [pSLCAR-CD19-CD3z vector construct](http://n2t.net/addgene:135993), obtained from Addgene (Plasmid # 135993). 
 
-#### Simulation Process Overview
+The construct encapsulates a a CAR T cell vector sequence and was developed by [Scott McComb and colleagues](https://www.sciencedirect.com/science/article/pii/S2329050120300231?via%3Dihub). The vector architecture is illustrated below with some key features highlighted, as well as with an illustration of the 100bp-long fragmentation used in the [tutorial](#tutorial.md/). 
+
+![Tutorial_Figure_Fragmentation.png](images/Tutorial_Figure_Fragmentation.png)
+
+!!! Hint "Further Details"
+
+    Lentivirus-based transduction systems generally integrate the DNA sequence between the two long terminal repeats (LTRs). In a biological context, we would typically observe only the sequence between the 5' LTR and the 3' LTR, rather than the entire vector construct. To maintain simplicity in the simulated data, this specific adjustment to the vector sequence was not made.
+
+#### Read data generation
 
 1. **Reference Genome Sampling:** 1000 reads were sampled from the reference genome with a mean read length of 10,000 bp, generated from a log-normal distribution.
 2. **Insertion Introduction:** 5 of the 1000 reads were randomly chosen to receive an insertion, either the full-length or part of the construct, with random insertion directionality (`+` or `-`).
@@ -19,9 +28,6 @@ minimap2 -ax map-ont chr1_1_50000_ref.fa S1.fa | samtools sort | samtools view -
 ```
 
 This simulation provides a set of reads with varying insertion locations for evaluating the pipeline's detection and analysis capabilities.
-
-
-### Annotation data
 
 <details>
   <summary>Full Simulation Code:</summary>
@@ -38,7 +44,8 @@ from Bio.Seq import Seq  # For reverse complement
 reference_genome_path = "chr1_1_50000_ref.fa" # Reference genome
 vector_sequence_path = "vectorseq.fa"   # Vector sequence
 
-random.seed(2079)  # Seed for reproducibility
+random.seed(2101)  # Seed for random, S1: 2101 and S2: 2015
+np.random.seed(2101)  # Seed for numpy.random, S1: 2101 and S2: 2015
 
 def collapse_fasta(fastapath):
     """Collapses multi-line FASTA sequences into a single string."""
@@ -64,6 +71,7 @@ def add_insertions_to_reads(reads, insertion_sequence, num_insertions):
     """Adds insertions with strandedness to randomly selected reads."""
     insertion_summary = []  # To store insertion details for the summary
     for _ in range(num_insertions):
+        strand = None
         # Randomly select a read to modify
         read_index = random.randint(0, len(reads) - 1)
         read = reads[read_index]
@@ -79,7 +87,11 @@ def add_insertions_to_reads(reads, insertion_sequence, num_insertions):
         # Decide the strandedness of the insertion
         if random.choice([True, False]):  # 50% chance for negative strand
             insertion = str(Seq(insertion).reverse_complement())  # Reverse complement for negative strand
-
+            strand = "-" 
+        
+        if strand is None: #default to positive
+            strand = '+'
+        
         # Insert the sequence at a random position in the read
         insert_position = random.randint(0, len(read))
         modified_read = read[:insert_position] + insertion + read[insert_position:]
@@ -88,7 +100,6 @@ def add_insertions_to_reads(reads, insertion_sequence, num_insertions):
         reads[read_index] = modified_read
 
         # Store the details of the insertion
-        strand = "-" if insertion != insertion_sequence else "+"
         insertion_summary.append((f'Read-{read_index + 1}', len(insertion), strand))
 
     return reads, insertion_summary
@@ -129,24 +140,58 @@ print(f"Total reads: {len(total_reads)}")
 <details>
   <summary>Summary of Inserted Reads for S1:</summary>
 ```
-Read-221: Insertion length = 5711, Strand = +
-Read-628: Insertion length = 2139, Strand = -
-Read-536: Insertion length = 2018, Strand = -
-Read-399: Insertion length = 5711, Strand = +
-Read-46: Insertion length = 2137, Strand = -
+Read-745: Insertion length = 8746, Strand = -
+Read-555: Insertion length = 8746, Strand = +
+Read-561: Insertion length = 2248, Strand = +
+Read-343: Insertion length = 8746, Strand = +
+Read-902: Insertion length = 8746, Strand = +
 ```
 </details>
 <details>
   <summary>Summary of Inserted Reads for S2:</summary>
 
 ```
-Read-389: Insertion length = 3328, Strand = -
-Read-920: Insertion length = 2039, Strand = -
-Read-532: Insertion length = 5711, Strand = +
-Read-328: Insertion length = 5711, Strand = +
-Read-347: Insertion length = 4109, Strand = -
+Read-522: Insertion length = 8746, Strand = +
+Read-824: Insertion length = 8746, Strand = -
+Read-262: Insertion length = 2532, Strand = -
+Read-417: Insertion length = 2593, Strand = -
+Read-682: Insertion length = 8746, Strand = +
 ```
 </details>
 <br> 
 
-# show the vector sequence and how it is fragmented into 100bp sized-fragments
+#### Annotation data processing
+
+The gene annotation data was obtained from UCSC by selecting the region `chr1:1-500,000` from the `All GENCODE V44` track and downloading the selection with the `"All fields from selected table"` output format.
+<details>
+  <summary>Full Annotation Data Processing </summary>
+<br>
+The raw donloaded table had the following format:
+```plaintext
+#bin	name	chrom	strand	txStart	txEnd	cdsStart	cdsEnd	exonCount	exonStarts	exonEnds	score	name2	cdsStartStat	cdsEndStat	exonFrames
+585	ENST00000456328.2	chr1	+	11868	14409	11868	11868	3	11868,12612,13220,	12227,12721,14409,	0	DDX11L2	none	none	-1,-1,-1,
+585	ENST00000619216.1	chr1	-	17368	17436	17368	17368	1	17368,	17436,	0	MIR6859-1	none	none	-1,
+585	ENST00000473358.1	chr1	+	29553	31097	29553	29553	3	29553,30563,30975,	30039,30667,31097,	0	MIR1302-2HG	none	none	-1,-1,-1,
+585	ENST00000469289.1	chr1	+	30266	31109	30266	30266	2	30266,30975,	30667,31109,	0	MIR1302-2HG	none	none	-1,-1,
+...
+```
+
+It was then processed with the command: 
+
+```bash
+cat UCSC_genes_chr1_0_500000 | cut -f 3,4,5,6,13 | awk -v OFS="\t" 'NR > 1 {print $1, $3, $4, $5, ".", $2}' - | sort -k1,1 -k2,2n > UCSC_genes_chr1_0_500000
+```
+
+This converted the table into the desired BED6 format:
+```plaintext
+chr1	11868	14409	DDX11L2	.	+
+chr1	17368	17436	MIR6859-1	.	-
+chr1	29553	31097	MIR1302-2HG	.	+
+...
+```
+
+</details>
+
+ show the vector sequence and how it is fragmented into 100bp sized-fragments
+
+### Second page

@@ -24,3 +24,8 @@ table td:nth-child(3) {
     white-space: normal; /* Allow wrapping for the third column */
     word-wrap: break-word; /* Ensure long text breaks properly */
 }
+
+table td:nth-child(4) {
+    white-space: normal; /* Allow wrapping for the third column */
+    word-wrap: break-word; /* Ensure long text breaks properly */
+}

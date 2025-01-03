@@ -16,5 +16,10 @@ Welcome to the documentation for the **Vector Insertion Site Detection Pipeline*
 - [Usage](usage.md)
 - [Tutorial](tutorial.md)
 - [Advanced Usage](advanced_usage.md)
-- [Contribution](other.md)
-- [Citation](other.md)
+
+## Citation
+
+## License
+
+## Contribution
+We encourage contributions to enhance and refine this codebase, whether through providing feedback, improving functionality, or sharing domain-specific expertise. If you have suggestions, encounter issues, or require assistance, please feel free to reach out for support and collaboration.

@@ -22,7 +22,7 @@ include: config["functional_genomics"]
 include: config["quality_control"]
 
 #analysis-specific rules
-#include: config["downstream"]
+include: config["downstream"]
 
 #development
 #include: config["epigenetics"]
@@ -38,7 +38,8 @@ rule all:
 		f"{outdir}/final/localization/Heatmap_Insertion_Chr.png",
 		f"{outdir}/final/localization/Insertion_length.png",
 		# functional genomics
-		expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
+		expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES),
+		#expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.png", sample=SAMPLES),
 		# quality control
 		expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
@@ -48,6 +49,6 @@ rule all:
 		# process
 		f"{outdir}/config_settings.yml",
 		# downstream
-		#expand(f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
+		expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
 		

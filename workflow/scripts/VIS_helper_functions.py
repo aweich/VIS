@@ -534,7 +534,7 @@ def plot_insertion_length(bed, outfile, logfile):
     sns.pointplot(data=df_all, x="Length", y="Read", hue='ID', linestyle="None", marker="_", legend=None, linewidth=2)
     sns.scatterplot(data=df, x="Length", y="Read", hue='ID', linestyle="None", marker="o")
     plt.legend(loc='lower center', bbox_to_anchor=[0.5, 1])
-    plt.savefig(outfile, bbox_inches="tight")
+    plt.savefig(outfile, bbox_inches="tight", dpi=600)
 
 ### this is for plotting each single read with a match and the matching parts            
 def find_longest_interval(matches, buffer):
@@ -591,7 +591,7 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
                 match['subject_id'].split("_")[-1], 
                 ha='center', 
                 va='bottom', 
-                fontsize=8, 
+                fontsize=6, 
                 rotation=90
             )
     
@@ -709,8 +709,7 @@ def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_f
 @redirect_logging(logfile_param="logfile")
 def plot_element_distance(bed, distances, distance_threshold, output_path, logfile):
     """
-    Uses the bed file from the distance calculations and returns a plot to visualize the respective elements with their distance.
-    Entries farther than the defined threshold are excluded.
+    Uses the bed file from the distance calculations and provides a plot to visualize the respective elements with their distance. Entries that are further away than the defined threshold value are excluded.
     """
     # Read the table
     df = pd.read_csv(
@@ -738,8 +737,8 @@ def plot_element_distance(bed, distances, distance_threshold, output_path, logfi
         style='AnnotationSource'
     )
     
-    # Plot binned rugplot for distances
-    bin_size = 100  # Bin size for grouping distances
+    # Binned rugplot for distances
+    bin_size = 100  # Bin size grouping distances
     df['distance_bin'] = (df['Distance'] // bin_size) * bin_size
     sns.rugplot(x=df['distance_bin'], color='black', height=0.05, linewidth=1)
     
@@ -963,13 +962,10 @@ def plot_mapq_changes(input_file, output_file, logfile):
     plot_data_melted['Stage'] = pd.Categorical(plot_data_melted['Stage'], categories=stage_order, ordered=True)
 
     # Plotting the lineplot
-    plt.figure(figsize=(8, 8))
-    sns.lineplot(data=plot_data_melted, x='Stage', y='MAPQ', hue='Read', marker='o', dashes=False, markersize=4, alpha=0.5, legend=None)
+    plt.figure(figsize=(6, 6))
+    sns.lineplot(data=plot_data_melted, x='Stage', y='MAPQ', hue='Read', marker='o', dashes=False, markersize=6, alpha=0.5)
 
-    # Add jittered scatter points on top of the lineplot
-    sns.scatterplot(data=plot_data_melted, x='Stage', y='MAPQ', hue='Read', alpha=0.5, marker='o', s=40)
-
-    plt.title('MAPQ Changes Across Stages for Each Read')
+    #plt.title('MAPQ Changes Across Stages for Each Read')
     plt.xlabel('Stage')
     plt.ylabel('Mapping Quality (MAPQ)')
     plt.xticks(rotation=45)
@@ -1002,11 +998,11 @@ def fragmentation_match_distribution(data, fragment_specifier, outpath, logfile)
         upperlimit = max(blasted["Fragment"])
         plt.xticks(np.arange(0, upperlimit+1, step=round(upperlimit/10)), fontsize=10)
         
-        plt.ylabel('Alignment Frequency')
+        plt.ylabel('Count')
         plt.xlabel("Insertion Fragment")
         plt.title(f'Combined distribution of all {fragment_specifier} bp fragments')
         outfile = outpath + str("/") + f'{fragment_specifier}_fragmentation_distribution.png'
-        plt.savefig(outfile, bbox_inches='tight', dpi=300)
+        plt.savefig(outfile, bbox_inches='tight', dpi=600)
         plt.close()
     except:
         print("The provided input could not be processed.")
@@ -1046,10 +1042,10 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath, log
     else:
         freq = collections.Counter(blasted["QueryID"])
     plt.bar(freq.keys(), freq.values(), color='black')
-    plt.xticks(rotation=90, fontsize=6)
-    plt.ylabel('Read match Frequency')
+    plt.xticks(rotation=90, fontsize=10)
+    plt.ylabel('Fragment Count')
     plt.xlabel("Read")
     plt.title(f'Contribution of reads to the total count of {fragment_specifier} bp fragments')
     outfile = outpath + str("/") + f'{fragment_specifier}_read_match_fragmentation_distribution.png'
-    plt.savefig(outfile, bbox_inches='tight', dpi=300)
+    plt.savefig(outfile, bbox_inches='tight', dpi=600)
     plt.close()
