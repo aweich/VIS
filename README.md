@@ -1,5 +1,7 @@
-# Logo with the name
-#github action buttons via snakemake unit tests
+<p align="center">
+    <img src="docs/images/logo.png" alt="Logo" width=200>
+</p>
+
 # Vector Insertion Site Detection Pipeline
 > This is a snakemake workflow for the guided-search for long insertion sequences (e.g. CAR vectors) in long-read DNA Sequencing data.
 
@@ -22,10 +24,16 @@
 - Especially CAR T cell therapy can benefit from such a detailed approach, since the T cells are introduced back into the patients after the transduction and potentially dangerous clones are thereby introduced to the patient. This might be one explanantion of the recent case reports regarding secondary T cell Lymphomas following CAR T cell therapy.
 
 ## Workflow
-- Overview (create it in a more universal manner though!) + DAG
-- Illustration of the workflow
 
----
+<p align="center">
+    <img src="/docs/introduction/images/Workflow_for_Documentation.svg" alt="Workflow overview" width=300>
+</p>
+
+Detailed explanations of the detection pipeline can be found [here](). In brief, a known target insertion (i.e. vector) is fragmented into smaller DNA sequences and used for a sequence similarity search against reads from long-read DNA sequencing. Matching reads are subjected to one of three types of modifications (buffer, split, join). These modified reads are subsequently mapped against their respective reference genome, and the exact genomic location of the insertion is calculated using a CIGAR-based approach. Finally, genomic annotations are utilized to calculate the distances of specific elements (genes, transcription factors, etc.) to the detected insertion sites.
+
+## General Usage
+
+Everything from installation to customization for this pipeline can be found [here](). If you are new to snakemake, check out the general idea behind it [here](). After installation, it is advised to first familiarize yourself with the workflow by following the [tutorial](), where every output file is introduced.   
 
 ## Setup
 
@@ -125,154 +133,13 @@ This will, however, fail since the sample names defined in the default config ar
 
 ## Tutorial
 
-A detailed description and an exemplary run with simulated data can be found [here]().
+A detailed description and an exemplary run with simulated data can be found [readthedocslink?]().
 
-## Recommendations
-
-- Run the pipeline iteratively first on a smaller subset of your data. It is very likely that you need to change the thresholds for the fragment size and MinInsertioNlength multiple times before you figure out the best configuration for your dataset.
-
-## Contact
-Created by []() - feel free to contact me!
+## Contact & Contribution
 
 ## License
-This project is available under the [... License]().
+This project is available under the [Apache License 2.0](LICENSE).
 
 ---
-
-# Tutorial (will be moved to ./docs/tutorial at a later point)
-
-## Setup
-Either 
-
-Clone the repository and create a new working environment: 
-
-`git clone https://github.com/yourusername/VIS_pipeline.git`
-   
-`conda env create -f VIS_env.yml`
-   
-`conda activate VIS_pipeline
-
-Also make sure that you have [blastn] () and [fastqc] () installed and executable in the previously generated environemnt.
-
-Or
-
-make use of the the modularization character of the pipeline:
-
-`git clone the repository and and conda env create -f VIS_snakemake_base_env.yml´
-
-Activate the environment and dry run it via 
-
-`snakemake --cores 5  --use-conda -n`
-
-In case your conda frontend is conda and not mamba, use it as:
-
-`snakemake --cores 5  --use-conda --conda-frontend conda -n`
-
-For each rule, the pipeline as a dedicated env assigned, if it requires anything that is not already present in VIS_basic_env. 
-On the first execution of the pipeline, the requirements of each env will be checked and if needed, packages will be installed. 
-
-For convenience, it is also possible to initialize the full environment once and run the pipeline from within by using  
-
-`snakemake --cores 5 -n`
-
-For clarity, we will use this type of execution for the rest of the tutorial.
-
-## Collect the reference files
-
-To now execute the pipeline for the first time, we need to make sure all dependencies required in the config are defined. Open the `config.yml` file and add the missing paths.
-
-For a minimum reproducible example, you can leave the config as it is for now. 
-samples:
-    Simulated1: "Simulated.bam"
-
-
-
-## Quick start
-
-`snakemake -n`
-
-To illustrate these rules in a directed acyclic graph, run:
-
-`snakemake --forceall --rulegraph | dot -Tpng > dag.png`
-
-To run the full pipeline using 20 cores and automatically generate a report about the run afterwards, run: 
-`snakemake --cores 20 && snakemake --report`
-
-## General usage
-
-### Running the pipeline
-#### Modify config
-#### Run 
- After we have installed everything, it's time to check what the pipeline will be doing after the execution. Let's look at a dry-run of the workflow:
- 
- `snakemake -n`
- 
-Snakemake will run all of these rules on our provided files. Let's check the DAG again to see whether we can understand the route that snakemake will take:
-
-snakemake --forceall --rulegraph | dot -Tpng > dag.png`
-
-Okay, that's enough preparation. Let's run it!
-
-The execution time of the pipeline depends on the amount of physical cores that you can allocate to the workflow. Let's choose a low number for now:
-
-`snakemake --cores 5 && snakemake --report`
-
-Error handling:
-You can now follow the different rules in your terminal window. If you encounter errors, make sure to double-check your initial input. If your error is for a specific rule, check the detailed documentation for this step in ./log/rulename
-
-Other general debugging ressources for everything related to snakemake can be found [here] () or [here] ().
-
-If you see the following, the pipeline was executed successfully.
-img
-
-So let's take a look at the output. 
-
-### Inspecting the output
-#### check report
-
-Since we ran the pipeline with `&& snakemake --report`, we have also automatically generated a general report for the workflow. 
-Take a look at the Statistics in report.html. The mapping rules clearly took the longest to finish.
-
-Throughout the pipeline, some simple plots are also generated to give you a glimpse of what your insertions look like. 
-Navigate to the results tab and take a look at the detected lengths of your insertions. Some of the lengths are clearly longer than others. It looks like some of the reads only contained parts of the insertion. 
-
-To get an idea about quality control metrics, navigate to the multiqc.html report in the results tab. 
-
-#### check final output files
-
-maybe run `tree´ for the directory structure
-
-
-Next to this overview, there are also other files generated that can subsequently be used for further investigations. The directory structure provided will pre-sort the outputs into intermediate and final output. Navigate to the final output/final/localization first.
-
-Here, the most interesting one, of course, is the sample-specific BED file in containing the genomic positions of the insertions. This is also used for the annotation of each insertion (see functional genomics).
-
-In output/final/qc, the subfolder fragmentation contains detailed information about each sample's fragmented insertion coverage, i.e. which parts of the insertion sequence was detected in the reads, what are the consecutive intervals for each read's insertion, and if there were also parts of the insertions detected, that match the human reference genome. In summary, this output gives you an idea about the effectiveness of the fragmentation of your inserted sequence for the detection of the read. Depending on the size of the insertion, you might want to run the analysis pipeline again and change the fragment-length in the config to further increase your level of detail.   
-
-In the output/intermediate folder, you can find various subdirectories with intermediate files created during the pipeline run. Most of them are self-explanatory when looking at the workflow of the pipeline. To make things easier, an illustration about which files are created were in the DAG, please see below.  
-
-Congratulations, you have finished the quick start using simulated data! If you want to unleash the full power of the pipeline, feel free to continue with the advanced usage tutorial below.
-
-
-### functional genomics
-
-
-## Adcanced usage
-#### Custom thresholds
-#### Custom insertion annotations
-#### Developer mode
-- Pre-select output
-- Separated or Join functionality
-- Add custom rules
-
-
-to do:
-
-Create minimum reproducible example:
-- 2 simulated samples with 10 insertions each; some +, some -, randomly spreach across the reference genome -> make the files small)
-- create small lightweight gtf gene reference
-- create small lightweight blastndb
-- only use chromosome 1 for example for know: randomly smaple reads from chr1 and merge 10 insertions in there (+ and -)
-- also add chr1 hg38.fa then
 
 

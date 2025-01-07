@@ -1,7 +1,10 @@
-# Vector Insertion Site – Detection Pipeline
+
 <p align="center">
-    <img src="../images/logo.png" alt="Logo" width=300>
+    <img src="../images/logo.png" alt="Logo" width=200>
 </p>
+
+# Vector Insertion Site – Detection Pipeline
+
 ## Introduction
 Welcome to the documentation for the **Vector Insertion Site (VIS) Detection Pipeline**. This **Snakemake** workflow helps researchers detect and annotate insertion sites with known sequences in long-read DNA sequencing data. The workflow is fully extensible with customized functions and adheres to the Snakemake styling guide. The basic detection workflow is illustrated in [Figure 1](#figure-1-illustrated-core-functionality) with some of the key analysis steps. A detailed structure for the Snakemake pipeline can be found in [Figure 2](#figure-2-dag-of-the-workflow), where a directed acyclic graph (DAG) of the individual rules provides an overview of the workflow components.
 
