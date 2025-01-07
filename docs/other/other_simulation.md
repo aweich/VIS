@@ -1,20 +1,19 @@
-## Other
 ### Simulation data for tutorial
 #### Reference genome
 
-The first 500kb of chromosome 1 from the `hg38` assembly was used as the reference genome. The extracted sequence was saved as `chr1` in the FASTA format, which was then used for subsequent simulations and as reference genome for the [tutorial](tutorial.md/#prepare-configyml).
+The first 500kb of chromosome 1 from the `hg38` assembly was used as the reference genome. The extracted sequence was saved as `chr1` in the FASTA format, which was then used for subsequent simulations and as reference genome for the [tutorial](../tutorial/tutorial_before.md/#prepare-configyml).
 
 #### Insertion sequence
 
 The insertion sequence for the simulation was based on the [pSLCAR-CD19-CD3z vector construct](http://n2t.net/addgene:135993), obtained from Addgene (Plasmid # 135993). 
 
-The construct encapsulates a a CAR T cell vector sequence and was developed by [Scott McComb and colleagues](https://www.sciencedirect.com/science/article/pii/S2329050120300231?via%3Dihub). The vector architecture is illustrated below with some key features highlighted, as well as with an illustration of the 100bp-long fragmentation used in the [tutorial](#tutorial.md/). 
+The construct encapsulates a a CAR T cell vector sequence and was developed by [Scott McComb and colleagues](https://www.sciencedirect.com/science/article/pii/S2329050120300231?via%3Dihub). The vector architecture is illustrated below with some key features highlighted, as well as with an illustration of the 100bp-long fragmentation used in the [tutorial](../tutorial/tutorial_intro.md). 
 
 ![Tutorial_Figure_Fragmentation.png](images/Tutorial_Figure_Fragmentation.png)
 
 !!! Hint "Further Details"
 
-    Lentivirus-based transduction systems generally integrate the DNA sequence between the two long terminal repeats (LTRs). In a biological context, we would typically observe only the sequence between the 5' LTR and the 3' LTR, rather than the entire vector construct. To maintain simplicity in the simulated data, this specific adjustment to the vector sequence was not made.
+    Lentivirus-based transduction systems generally integrate the DNA sequence between the two long terminal repeats (LTRs). In a biological context, we would typically observe only the sequence between the 5' LTR and the 3' LTR, rather than the entire vector construct. To maintain simplicity in the simulated data, this specific adjustment to the vector sequence has not been made.
 
 #### Read data generation
 
@@ -115,7 +114,7 @@ insertion_reads, insertion_summary = add_insertions_to_reads(non_insertion_reads
 # Combine reads and save them to a file
 total_reads = insertion_reads + non_insertion_reads
 
-output_file_path = "S2.fa"
+output_file_path = "S1.fa"
 with open(output_file_path, 'w') as output_file:
     for i, read in enumerate(total_reads):
         output_file.write(f'>Read-{i+1}\n{read}\n')
@@ -126,7 +125,7 @@ for read_name, insertion_length, strand in insertion_summary:
     print(f"{read_name}: Insertion length = {insertion_length}, Strand = {strand}")
 
 # Save summary to a file
-summary_file_path = "S2_InsertionSummary.txt"
+summary_file_path = "S1_InsertionSummary.txt"
 with open(summary_file_path, 'w') as summary_file:
     summary_file.write("Summary of Inserted Reads:\n")
     for read_name, insertion_length, strand in insertion_summary:
@@ -193,5 +192,3 @@ chr1	29553	31097	MIR1302-2HG	.	+
 </details>
 
  show the vector sequence and how it is fragmented into 100bp sized-fragments
-
-### Second page

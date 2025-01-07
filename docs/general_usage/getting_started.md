@@ -1,4 +1,4 @@
-## Getting Started
+# Getting Started
 #### Prerequisites
 
 !!! info
@@ -25,7 +25,7 @@ This means that we only need to install a lightweight environment ourselves to r
 
 !!! Info 
 
-    While the classical way of setting up the pipeline has the advantage of being lightweight in its installation of packagages, the actuall running of the pipeline will be a little more complicated and might require additional modifications depending on your local setup of `conda`/`mamba`. For this reason, we also provide a convenient alternative which works by installing all packages needed for the pipeline in one environment (see below).
+    While the traditional method of setting up the pipeline offers the advantage of being lightweight in its package installation, the actual execution of the pipeline can be slightly more complex and may require additional adjustments based on your local setup of `conda` or `mamba`. To address this, we also provide a convenient alternative that installs all required packages for the pipeline within a single environment below.
 
 Create the minimal environment for running the pipeline: 
 
@@ -53,7 +53,7 @@ Create the full environment for running the pipeline:
 ```
 
 !!! Info 
-    It is also possible to use `conda` for the creation of the environment (`mamba` is way faster though). Since we are installing more dependencies here, the use of `mamba` is highly encouraged.
+    It is also possible to use `conda` for the creation of the environment. Since we are installing more dependencies here, the use of `mamba` is highly encouraged.
 
 Then, activate the environment:
 

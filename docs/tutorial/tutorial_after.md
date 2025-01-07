@@ -1,135 +1,14 @@
-# Tutorial
-
-
-Now, let's explore a minimal example of what the pipeline can accomplish. To demonstrate this, we’ve simulated some sequencing data and randomly introduced insertions in some of the samples. For more details on the data, refer to [this section](other.md/#simulate_data_for_tutorial).
-
-## Before running the pipeline
----
-### Prepare config.yml
-
-To inform the pipeline about the location of our samples and other dependencies, we need to open and edit the configuration file. Open the `config.yml` file and fill in the missing dependencies as outlined below:
-
-```yaml
-# tutorial config
-experiment: "tutorial"
-samples:
-    S1: "tutorial/simulated/S1.bam",
-    S2: "tutorial/simulated/S2.bam"
-processing_dir: "tutorial/out"
-vector_fasta: "tutorial/references/vectorseq.fa"
-splitmode: "Buffer"
-fragment_size: 100
-MinLength: 1
-MAPQ: 10
-MinInsertionLength: 500
-ref_genome_ctrl: "tutorial/references/chr1region.fa"
-annotation_1: "tutorial/references/UCSC_GENCODEV44_chr1region.bed"
-detection: "rules/detection.smk"
-quality_control: "rules/qc.smk"
-functional_genomics: "rules/functional_genomics.smk"
-```
-<br>
-
-### Check setup
-
-Before we begin, make sure you have all the necessary files ready. You can quickly verify this by running: 
-
-```bash
-    snakemake -n
-```
-
-If you see a list of jobs waiting for [execution](#expected-jobs), you're all set for the next steps.
-
-!!! info 
-    
-    For this tutorial, we will run the workflow using the alternative setup (i.e., one virtual environment). If this isn't the setup you've chosen, simply add `--use-conda` to the snakemake commands. 
-
-<br>
-
-## Running the pipeline
----
-### Expected jobs 
-
-```bash
-> snakemake --cores 2 -n
-
-...
-Job stats:
-job                                      count
--------------------------------------  -------
-BAM_to_BED                                   2
-Non_insertion_mapping                        2
-all                                          1
-basic_insertion_plots                        1
-build_insertion_reference                    1
-calc_distance_to_elements                    2
-calculate_exact_insertion_coordinates        2
-clean_postcut_by_maping_quality              2
-collect_outputs                              2
-copy_config_version                          1
-detailed_fragmentation_length_plot           2
-extract_by_length                            2
-extract_fastq_insertions                     2
-extract_mapping_quality                      2
-finalize_mapping_quality                     2
-find_insertion_BLASTn                        2
-find_insertion_BLASTn_in_Ref                 2
-fragmentation_distribution_plots             2
-generate_mapq_heatmap                        2
-get_coordinates_for_fasta                    2
-hardcode_blast_header                        2
-insertion_fragmentation                      1
-insertion_mapping                            2
-make_blastn_DB                               1
-make_fasta_without_tags                      2
-minimap_index                                1
-multiqc                                      1
-nanoplot                                     2
-prepare_insertion                            1
-read_level_fastqc                            2
-sort_insertion_file                          2
-split_fasta                                  2
-total                                       55
-
-```
-
-All of these jobs will be executed in the correct order by the workflow. So let's finally run it.
-
-<br>
-
-### Execution
-```bash
-    snakemake --cores 2
-```
-!!! info 
-    
-    Depending on the number of cores specified and whether the environments need to be built for the first time, this process may take a while. However, since the simulated data is very small, the expected runtime should not exceed 5-10 minutes.
-
-If you see this message, the workflow has executed successfully and completed. If not, refer to the [error handling](#error-handling) section. 
-
-```bash
-    Finished job 0.
-    55 of 55 steps (100%) done
-``` 
-
-Now, run snakemake again with its built-in `--report` functionality to get a comprehensive overview of the workflow's runtime and output. 
-
-```bash
-    snakemake --report
-```
-<br>
-
 ## After running the pipeline
 ---
 ### Snakemake report
 
 We have also automatically generated a general report for the workflow, which is stored in the working directory of the pipeline. Take a look at the statistics in `report.html`. Some rules took way longer to complete than others.
 
-![report_statistics.png](images/tutorial/report_statistics.png)
+![report_statistics.png](images/report_statistics.png)
 
 Throughout the pipeline, several simple plots are generated to give insights into the insertions' characteristics, such as their length and chromosomal specificity. Navigate to the results tab to explore the detected insertion lengths. It appears that some reads only contain parts of the insertion.
 
-![Insertion_Length.png](images/tutorial/Insertion_length.png)
+![Insertion_Length.png](images/Insertion_length.png)
 
 If you would like to explore quality control metrics, check out the `multiqc.html` report in the results tab. 
 
@@ -475,11 +354,11 @@ File: `../final/qc/Fragmentation/Longest_Interval/{sample}/Longest_interval_{rea
 
 **S1 Read-343:**
 
-![Longest_interval_Read-343](images/tutorial/Longest_interval_Read-343.png)
+![Longest_interval_Read-343](images/Longest_interval_Read-343.png)
 
 The small numbers displayed above the line represent the matching vector fragments, while the x-axis indicates the actual length in base pairs (bp) of the longest consecutive interval.
 
-The longest detected interval of this read contained all possible 100 bp vector fragments from 0 to 87, with ambiguous 100 bp matches in the region around positions 6/7 and 55/56 of the insertion sequence. This ambigous region of the insertion corresponds to the long-terminal reapeats (LTRs) of the [vector construct](other.md/#vector-map). 
+The longest detected interval of this read contained all possible 100 bp vector fragments from 0 to 87, with ambiguous 100 bp matches in the region around positions 6/7 and 55/56 of the insertion sequence. This ambigous region of the insertion corresponds to the long-terminal reapeats (LTRs) of the [vector construct](../other/other_simulation.md/#insertion-sequence). 
 
 !!! info
 
@@ -487,7 +366,7 @@ The longest detected interval of this read contained all possible 100 bp vector 
 
 **S2 Read-262:**
 
-![Longest_interval_Read-536](images/tutorial/Longest_interval_Read-262.png)
+![Longest_interval_Read-536](images/Longest_interval_Read-262.png)
 
 The small numbers displayed above the line represent the borders of the matching vector fragments, while the x-axis indicates the actual length in base pairs (bp) of the interval.
 
@@ -504,7 +383,7 @@ The workflow automatically assesses the quality of the input sequencing data, th
 
 ##### Input data quality
 
-The pipeline integrates basic quality assessment tools from widely established resources, including [FastQC](), [MultiQC](), and [NanoPlot](). An overview of the results can be accessed via Snakemake's workflow report, which is generated using `snakemake --report` or directly in the output directory.
+The pipeline integrates basic quality assessment tools from widely established resources, including [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), [MultiQC](https://docs.seqera.io/multiqc), and [NanoPlot](https://github.com/wdecoster/NanoPlot). An overview of the results can be accessed via Snakemake's workflow report, which is generated using `snakemake --report` or directly in the output directory.
 
 File: `../final/qc/multiqc_report.html`
 
@@ -549,7 +428,7 @@ The table illustrates changes in mapping quality and chromosome alignment for ea
 
     **S1:**
 
-    ![S1_mapq_heatmap_image.png](images/tutorial/S1_mapq_heatmap_image.png)
+    ![S1_mapq_heatmap_image.png](images/S1_mapq_heatmap_image.png)
 
 
 ##### Fragmentation
@@ -561,13 +440,13 @@ The pipeline includes functionality to perform a BLASTN search of the fragmented
 
 !!! Danger 
     
-    The potential similarity of the insertion sequence to other sequences in your reference is particularly important when using the pipeline in conjunction with complex vector expression systems. For example, CAR T cell vector constructs (like our example vector [construct](other.md/#insertion-sequence) ) often insert sequences partially derived from human genes.
+    The potential similarity of the insertion sequence to other sequences in your reference is particularly important when using the pipeline in conjunction with complex vector expression systems. For example, CAR T cell vector constructs (like our example vector [construct](../other/other_simulation.md/#insertion-sequence) ) often insert sequences partially derived from human genes.
 
 As this option is not configured for the tutorial, we can instead rely on two other automatically generated plots to gain insights into potential false-positive matches for the insertion sequence. 
 
 Directory: `../final/qc/Fragmentation/Insertions_{fragmentsize}_{sample}/`
     
-![Combined_Barplots.png](images/tutorial/Combined_Barplots.png)
+![Combined_Barplots.png](images/Combined_Barplots.png)
     
 These two plots illustrate the distributions of all insertion fragments (left) and the number of fragment matches "contributed" by each read (right).
 
@@ -588,9 +467,9 @@ These two plots illustrate the distributions of all insertion fragments (left) a
     As mentioned before, the safest way to identify potential misleading fragment matches in advance is to provide a human BLASTn reference database to the pipeline. The vector fragments are then automatically aligned against this reference, and the resulting plots offer an overview of the vector regions that are highly likely to appear, even in the absence of an actual insertion.
 
     <details><summary> S1 Barplots when provided a BLASTn reference: </summary>
-        ![Combined_BlastN_Barplots.png](images/tutorial/Combined_BlastN_Barplots.png)
+        ![Combined_BlastN_Barplots.png](images/Combined_BlastN_Barplots.png)
 
-    The bar plots now illustrate which vector fragments are likely to produce false positives. When comparing these fragments with the structure of the [construct](other.md/#insertion-sequence), you can identify three main regions of fragment matches: fragments `22`–`25` correspond to the EF-1a core promoter, fragments `35`–`39` align with CD28 and CD247, and fragments `56`–`57` represent the 3'LTR. These are all human components in the vector architecture that we can also anticipate detecting with the pipeline by using the vector genome as the target sequence.
+    The bar plots now illustrate which vector fragments are likely to produce false positives. When comparing these fragments with the structure of the [construct](../other/other_simulation.md/#insertion-sequence), you can identify three main regions of fragment matches: fragments `22`–`25` correspond to the EF-1a core promoter, fragments `35`–`39` align with CD28 and CD247, and fragments `56`–`57` represent the 3'LTR. These are all human components in the vector architecture that we can also anticipate detecting with the pipeline by using the vector genome as the target sequence.
    
     </details>
     
@@ -601,7 +480,7 @@ Typically, identifying the genomic localization of an insertion is just the star
 
 ##### Genes in proximity
 
-For the tutorial, we have defined only one annotation file in the `config.yml`, which simply contains the known genes located in our specified reference FASTA. For details on generating this file, refer to [this](other.md/#simulate-data-for-tutorial).The pipeline compares the locations of the insertions with the entries in the provided annotation file and reports the closest match, producing the file shown below.
+For the tutorial, we have defined only one annotation file in the `config.yml`, which simply contains the known genes located in our specified reference FASTA. For details on generating this file, refer to [this](../other/other_simulation.md/#annotation-data-processing).The pipeline compares the locations of the insertions with the entries in the provided annotation file and reports the closest match, producing the file shown below.
 
 File: `../final/functional_genomics/Functional_distances_to_Insertions_{sample}.bed`
 
@@ -614,7 +493,7 @@ File: `../final/functional_genomics/Functional_distances_to_Insertions_{sample}.
 | chr1                | 432141         | 440886       | Read-902      | [428005, 432140]   | +               | chr1                 | 450739          | 451678        | OR4F29          | .               | -                | UCSC_genes_chr1_0_500000_processed          | 9854     |
 
  
-A good starting point to get familiar with the personalization of the pipeline tailored to your specific research question can be including a rule for the visualisation of this table. Check out the [advanced usage](advanced_usage.md/#custom-insertion-annotations) for more on this. 
+A good starting point to get familiar with the personalization of the pipeline tailored to your specific research question can be including a rule for the visualisation of this table. Check out the [advanced usage](../advanced_usage/advanced_usage_custom.md/#custom-annotations) for more on this. 
 
 !!! Hint "Further Details"   
 
@@ -623,7 +502,7 @@ A good starting point to get familiar with the personalization of the pipeline t
 
 #### 4. Intermediate files
 
-The workflow generates numerous additional files beyond those listed above. Most of these files are straightforward to understand once you are familiar with the pipeline's functionality. They are typically not critical for most use cases unless [debugging](#error-handling) is required or you integrate [custom downstream rules](advanced_usage.md/#developer-mode) into the analysis.  
+The workflow generates numerous additional files beyond those listed above. Most of these files are straightforward to understand once you are familiar with the pipeline's functionality. They are typically not critical for most use cases unless [debugging](../advanced_usage/advanced_usage_errors.md) is required or you integrate [custom downstream rules](../advanced_usage/advanced_usage_custom.md) into the analysis.  
 
 Directory: `../intermediate/`
 
@@ -650,7 +529,7 @@ Directory: `../intermediate/`
 
     **`log/`**
 
-    - See [Error handling](#log-files)
+    - See [Error handling](../other.md/#log-files)
 
     **`mapping/`**
 
@@ -666,12 +545,3 @@ Directory: `../intermediate/`
     - `nanoplot/`: Nanoplot raw output
     - `multiqc_report.html`: Report as in final output
 
----
-
-## Error handling
-
-#### Snakemake
-General debugging ressources for everything related to snakemake can be found in the snakemake [FAQ](https://snakemake.readthedocs.io/en/v6.15.5/project_info/faq.html).
-
-#### Log files
-The pipeline is designed with rule-specific `log` files, which are stored in the `intermediate` output directory. These logs serve as the primary resource for identifying and addressing any rule-specific issues that arise during execution. If you encounter errors or unexpected behavior, these files should be your first point of reference for debugging. 

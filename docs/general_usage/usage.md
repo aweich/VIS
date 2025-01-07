@@ -1,4 +1,4 @@
-## Usage
+# Usage
 
 After the setup, you are ready to run the pipeline on your specific files and use-cases. Generally, the execution follows the same principles as defined in the [snakemake documentation](https://snakemake.readthedocs.io/en/stable/). However, here is a quick overview about the basic commands for execution, since they slightly differ depending on the chosen mode of the setup: 
 
@@ -30,4 +30,4 @@ To run the full pipeline using 20 cores and automatically generate a report abou
    snakemake --cores 20 && snakemake --report
 ```
 
-This, however, will fail since the sample names defined in the default config are dummies. Let's look at the [tutorial](tutorial.md) for a step-by-step explanation of the the workflow and its outputs. 
+This, however, will fail since the sample names defined in the default config are dummies. Let's look at the [tutorial](../tutorial/tutorial_intro.md) for a step-by-step explanation of the the workflow and its outputs. 

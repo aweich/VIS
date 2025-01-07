@@ -1,0 +1,42 @@
+## Before running the pipeline
+---
+### Prepare config.yml
+
+To inform the pipeline about the location of our samples and other dependencies, we need to open and edit the configuration file. Open the `config.yml` file and fill in the missing dependencies as outlined below:
+
+```yaml
+# tutorial config
+experiment: "tutorial"
+samples:
+    S1: "tutorial/simulated/S1.bam",
+    S2: "tutorial/simulated/S2.bam"
+processing_dir: "tutorial/out"
+vector_fasta: "tutorial/references/vectorseq.fa"
+splitmode: "Buffer"
+fragment_size: 100
+MinLength: 1
+MAPQ: 10
+MinInsertionLength: 500
+ref_genome_ctrl: "tutorial/references/chr1region.fa"
+annotation_1: "tutorial/references/UCSC_GENCODEV44_chr1region.bed"
+detection: "rules/detection.smk"
+quality_control: "rules/qc.smk"
+functional_genomics: "rules/functional_genomics.smk"
+```
+<br>
+
+### Check setup
+
+Before we begin, make sure you have all the necessary files ready. You can quickly verify this by running: 
+
+```bash
+    snakemake -n
+```
+
+If you see a list of jobs waiting for [execution](./tutorial_running.md#expected-jobs), you're all set for the next steps.
+
+!!! info 
+    
+    For this tutorial, we will run the workflow using the alternative setup (i.e., one virtual environment). If this isn't the setup you've chosen, simply add `--use-conda` to the snakemake commands. 
+
+<br>

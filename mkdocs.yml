@@ -2,15 +2,26 @@ site_name: Vector Insertion Site Detection Pipeline
 theme:
   name: readthedocs
   highlightjs: true
-  logo: docs/images/dag.png
+  logo: images/logo.png
+
 nav:
-  - Home: index.md
-  - Getting Started: getting_started.md
-  - Configuration: config.md
-  - Usage: usage.md
-  - Tutorial: tutorial.md
-  - Advanced Usage: advanced_usage.md
-  - Other: other.md
+  - Background:
+    - Introduction: introduction/index.md
+  - General Usage:
+    - Getting Started: general_usage/getting_started.md
+    - Configuration: general_usage/config.md
+    - Usage: general_usage/usage.md
+  - Tutorial: 
+    - Introduction: tutorial/tutorial_intro.md
+    - Before running the pipeline: tutorial/tutorial_before.md
+    - Running the pipeline: tutorial/tutorial_running.md
+    - After running the pipeline: tutorial/tutorial_after.md
+  - Advanced Usage:
+    - Customization: advanced_usage/advanced_usage_custom.md
+    - Error handling: advanced_usage/advanced_usage_errors.md
+  - Other:
+    - Simulation data: other/other_simulation.md
+    - Limitations: other/other_limitations.md
 markdown_extensions:
   - admonition
 extra_css:
