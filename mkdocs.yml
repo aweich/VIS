@@ -5,8 +5,7 @@ theme:
   logo: images/logo.png
 
 nav:
-  - Background:
-    - Introduction: introduction/index.md
+  - Introduction: index.md
   - General Usage:
     - Getting Started: general_usage/getting_started.md
     - Configuration: general_usage/config.md
