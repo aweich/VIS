@@ -147,7 +147,6 @@ def plot_bed_files_as_heatmap(bed_files, outfile, logfile):
 ####this part here is dedicated to the splitting of blast-match including fasta reads
 def merge_intervals(intervals, overlap, filtering, filtervalue):
     # Sort intervals by start coordinates
-    #sorted_intervals = sorted(intervals, key=lambda x: x[0])
     intervals.sort() #sorts all intervals in ascending order: Overlaps are possible! #sorts inplace
     print(intervals)
 
@@ -158,7 +157,6 @@ def merge_intervals(intervals, overlap, filtering, filtervalue):
     
     #intermediate coordinates if needed
     for i in range(0, len(intervals)-1): #iterating over start and stops with 1 offset! this means that we take a look at stop_interval1 and start_interval2
-        #print(str(intervals[i]),str(intervals[i + 1]))
         if abs(intervals[i] - intervals[i + 1]) >= overlap: #strictness filter
             merged_intervals.append(intervals[i]) #adds intermediate coordinate as end of interval
             merged_intervals.append(intervals[i+1]) # = new start
@@ -480,17 +478,6 @@ def reconstruct_coordinates(bed_with_cigar, fasta_coordinates, splitmode, output
     reconstructed_bed = pd.DataFrame(results)
     reconstructed_bed.to_csv(output, sep='\t', index=False, header=False)
 
-
-def blast2gff(blast,outfile):
-    """
-    Transforms blast output into gff format.
-    """
-    with open(blast, 'r') as blast_file, open(outfile, 'w') as gff_file:
-        for line in blast_file:
-            fields = line.strip().split('\t')
-            sequence_id, subject_id, start, end = fields[0], fields[1], fields[8], fields[9]
-            gff_file.write(f"{subject_id}\t{start}\t{end}\tBLAST\tfeature\t.\t.\t{sequence_id}\n")
-
 @redirect_logging(logfile_param="logfile")
 def reverseinsertion(fastain, fastaout, logfile):
     with open(fastaout, 'w') as output_file:
@@ -705,202 +692,6 @@ def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_f
     # Save DataFrame to a file with headers
     closest_df.to_csv(output_bed, sep="\t", index=False)
     print(f"Distances calculated and saved to {output_bed}")
-
-@redirect_logging(logfile_param="logfile")
-def plot_element_distance(bed, distances, distance_threshold, output_path, logfile):
-    """
-    Uses the bed file from the distance calculations and provides a plot to visualize the respective elements with their distance. Entries that are further away than the defined threshold value are excluded.
-    """
-    # Read the table
-    df = pd.read_csv(
-        bed,
-        sep='\t',
-    )
-    
-    print(df.head())
-    # Apply threshold filtering if provided
-    if distance_threshold is not None:
-        df = df[df['Distance'].abs() <= int(distance_threshold)]
-  
-    # Ensure absolute distance and sort by absolute distance within groups
-    df['abs_distance'] = df['Distance'].abs()
-    df = df.sort_values(by=['InsertionRead', 'abs_distance']).drop_duplicates(subset=['InsertionRead', 'AnnotationID', "AnnotationSource"], keep='first').reset_index()
-    
-    # Create scatter plot
-    sns.scatterplot(
-        data=df,
-        x='Distance',
-        y='AnnotationID',
-        hue='InsertionRead',
-        palette='tab10',
-        s=100,
-        style='AnnotationSource'
-    )
-    
-    # Binned rugplot for distances
-    bin_size = 100  # Bin size grouping distances
-    df['distance_bin'] = (df['Distance'] // bin_size) * bin_size
-    sns.rugplot(x=df['distance_bin'], color='black', height=0.05, linewidth=1)
-    
-    # Configure plot aesthetics
-    plt.xticks(sorted({x for n in distances for x in (n, -n)}), rotation=45)
-    plt.xlabel("Distance (bp)")
-    plt.ylabel("Element Name")
-    plt.title("Distance Distribution to Elements")
-    sns.despine()
-    plt.legend(title="", fontsize=8)
-    
-    # Save plot
-    plt.savefig(output_path, dpi=300)
-    plt.close()
-    print(f"Plot saved to {output_path}")
-
-@redirect_logging(logfile_param="logfile")
-def plot_element_distance_violin(bed, distances, distance_threshold, output_path, logfile):
-    # Read the table
-    df = pd.read_csv(
-        bed,
-        sep='\t',
-    )
-
-    # Apply threshold filtering if provided
-    if distance_threshold is not None:
-        df = df[df['Distance'].abs() <= int(distance_threshold)]
-
-    # Create a count of how many times each source appears at each distance
-    distance_counts = df.groupby(['Distance', 'AnnotationSource', 'InsertionRead']).size().reset_index(name='count')
-
-    # Create the bar plot
-    print(distance_counts.head())
-    plt.figure(figsize=(10, 6))
-    sns.displot(
-        data=distance_counts,
-        x='Distance', y='count', hue='InsertionRead', col='AnnotationSource',
-        palette='Set2'
-    )
-
-    # Customize the plot
-    plt.xticks(rotation=45)
-    plt.xlabel("Distance (bp)")
-    plt.ylabel("Count of Sources")
-    plt.title("Distribution of Sources at Different Distances")
-    sns.despine()
-
-    # Save the plot
-    plt.tight_layout()  # To ensure everything fits without overlap
-    plt.savefig(output_path, dpi=300)
-    plt.close()
-
-    print(f"Plot saved to {output_path}")
-
-
-@redirect_logging(logfile_param="logfile")
-def scoring_insertions(data, output_file, logfile):
-    """
-    Uses custom conditions to visualize the entries of the annotated insertion summary table.
-    """
-    colnames = ["chr", "start_insertion", "stop_insertion", "read", "origcoord", "strand","chr_element","start_element", "stop_element","element_name", "element_score", "element_strand", "source", "distance"]
-    df = pd.read_csv(
-        data,
-        sep='\t',
-    )
-    
-    # Drop duplicate entries
-    df = df.drop_duplicates().reset_index(drop=True)
-
-    # Define conditions
-    conditions = [
-        ("COSMIC", 0), ("TF", 0), ("GENCODEV44", 0), ("HiC_Tcells", 0), ("Exons", 0),
-        ("COSMIC", 10_000), ("TF", 10_000), ("GENCODEV44", 10_000), ("HiC_Tcells", 10_000),
-        ("COSMIC", 50_000), ("TF", 50_000), ("GENCODEV44", 50_000), ("HiC_Tcells", 50_000),
-        ("COSMIC", None), ("TF", None), ("GENCODEV44", None), ("HiC_Tcells", None),
-    ]
-
-    for source, distance in conditions:
-        if distance == 0:
-            df[f"{source}_0"] = df["source"].str.contains(source) & (df["distance"] == 0)
-        elif distance == 10_000:
-            df[f"{source}_10kb"] = df["source"].str.contains(source) & ((10_000 > abs(df["distance"])) & (abs(df["distance"]) > 0))
-        elif distance == 50_000:
-            df[f"{source}_50kb"] = df["source"].str.contains(source) & ((50_000 > abs(df["distance"])) & (abs(df["distance"]) > 10_000))
-        else:
-            df[f"{source}_Safe"] = df["source"].str.contains(source) & (abs(df["distance"]) > 50_000)
-
-    # Aggregate data
-    heatmap_data = df.groupby(["read", "chr", "start_insertion", "stop_insertion"]).agg("sum").reset_index()
-
-    # Select numeric columns
-    heatmap_matrix = heatmap_data.drop(columns=colnames)
-    heatmap_matrix.index = heatmap_data["chr"] + "_" + \
-                           heatmap_data["start_insertion"].astype(str) + "_" + \
-                           heatmap_data["stop_insertion"].astype(str)
-
-    # Calculate Final Score
-    def calculate_score(row):
-        if row["COSMIC_0"] > 0 or row["Exons_0"] > 0 or (row["TF_0"] + row["GENCODEV44_0"] > 1):
-            return "Dangerous"
-        elif (row["TF_0"] <= 1 or row["GENCODEV44_0"] <= 1 or row["COSMIC_10kb"] > 0 or row["HiC_Tcells_10kb"] > 0):
-            return "Likely Dangerous"
-        elif all(value > 0 for col, value in row.items() if "_Safe" in col) and row.sum() == row[[col for col in row.index if "_Safe" in col]].sum():
-            return "Safe"
-        else:
-            return "Intermediate"
-
-    heatmap_matrix["Risk"] = heatmap_matrix.apply(calculate_score, axis=1)
-
-    # Map scores to colors
-    score_colors = {
-        "Dangerous": "red",
-        "Likely Dangerous": "orange",
-        "Intermediate": "yellow",
-        "Safe": "green"
-    }
-    row_colors = heatmap_matrix["Risk"].map(score_colors)
-
-    # Prepare row color map
-    row_color_cmap = pd.DataFrame({
-        "Risk": row_colors
-    })
-
-    # Plot clustermap with annotated row colors and custom colormap
-    cluster_grid = sns.clustermap(
-        heatmap_matrix.drop(columns=["Risk"]),
-        cmap="Greys",
-        row_colors=row_colors,
-        figsize=(10, 5),
-        dendrogram_ratio=(0.1, 0.1),
-        linewidths=0.5,
-        linecolor="grey",
-        annot=True,
-        col_cluster=False,
-        row_cluster=False,
-        clip_on=False,
-        cbar_kws={
-            "label": "Counts",
-            "ticks": [0, 1, 2, 3, 4, 5],
-            "shrink": 0.3,
-            "orientation": "horizontal", 
-        },
-        vmin=0, vmax=5
-    )
-
-    # Add a custom legend
-    legend_handles = [Patch(color=color, label=label) for label, color in score_colors.items()]
-    cluster_grid.ax_heatmap.legend(
-        handles=legend_handles,
-        title="Risk Assessment",
-        loc="upper center",
-        bbox_to_anchor=(0.5, 1.2),  # Position the legend below the plot
-        ncol=4,  # Number of columns in the legend
-        frameon=True
-    )
-
-
-    # Save the plot
-    plt.savefig(output_file, bbox_inches="tight")
-
-    # Optionally, print the heatmap matrix with Final Scores
-    print(heatmap_matrix)
 
 # qc
 @redirect_logging(logfile_param="logfile")

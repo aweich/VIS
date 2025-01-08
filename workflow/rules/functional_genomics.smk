@@ -46,27 +46,9 @@ rule plot_distance_to_elements:
         	log2=f"{outdir}/intermediate/log/functional_genomics/plot_distance_to_elements/violin_{{sample}}.log"
 	output:
 		scatter=report(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
-		#violin=report(f"{outdir}/final/functional_genomics/BarPlot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
 	run:
 	    try:
 	        vhf.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
-		#vhf.plot_element_distance_violin(input.distancetable, params.distances, params.threshold, output.violin, log.log2)
 	    except Exception as e:
 	        with open(log.log1, "a") as log_file:
                     log_file.write(f"Error: {str(e)}\n")
-                
-rule plot_scoring:
-    input:
-        f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed"
-    log:
-        log=f"{outdir}/intermediate/log/functional_genomics/plot_scoring/{{sample}}.log"
-    output:
-        plot=report(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.png")
-    run:
-        try:
-            vhf.scoring_insertions(input[0], output.plot, log.log)
-        except Exception as e:
-            with open(log.log, "a") as log_file:
-                log_file.write(f"Error: {str(e)}\n")
-                
-

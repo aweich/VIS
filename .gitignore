@@ -3,3 +3,4 @@ workflow/scripts/__pycache__/
 Src/
 tutorial/out/
 .snakemake/
+project_info.txt
