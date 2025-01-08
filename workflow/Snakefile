@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 
-configfile: "config/config.yml"
+configfile: "config/config_tutorial.yml"
 #SRC=config["source_dir"] #only in use for r script scirp, will be removed sooner or later
 SAMPLES = expand(config["samples"]) 
 outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
@@ -22,7 +22,7 @@ include: config["functional_genomics"]
 include: config["quality_control"]
 
 #analysis-specific rules
-include: config["downstream"]
+#include: config["downstream"]
 
 #development
 #include: config["epigenetics"]
@@ -49,6 +49,6 @@ rule all:
 		# process
 		f"{outdir}/config_settings.yml",
 		# downstream
-		expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
+		#expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
 		

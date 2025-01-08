@@ -6,19 +6,20 @@ To inform the pipeline about the location of our samples and other dependencies,
 
 ```yaml
 # tutorial config
-experiment: "tutorial"
+experiment: "simulation_tutorial"
 samples:
-    S1: "tutorial/simulated/S1.bam",
-    S2: "tutorial/simulated/S2.bam"
+  S1: "tutorial/simulated/S1.bam"
+  S2: "tutorial/simulated/S2.bam"
 processing_dir: "tutorial/out"
-vector_fasta: "tutorial/references/vectorseq.fa"
+insertion_fasta: "tutorial/references/vectorseq.fa"
 splitmode: "Buffer"
 fragment_size: 100
+bridging_size: 300
 MinLength: 1
 MAPQ: 10
 MinInsertionLength: 500
-ref_genome_ctrl: "tutorial/references/chr1region.fa"
-annotation_1: "tutorial/references/UCSC_GENCODEV44_chr1region.bed"
+ref_genome_ctrl: "tutorial/references/chr1_1_50000_ref.fa"
+annotation_1: "tutorial/references/UCSC_genes_chr1_0_500000_processed.bed"
 detection: "rules/detection.smk"
 quality_control: "rules/qc.smk"
 functional_genomics: "rules/functional_genomics.smk"

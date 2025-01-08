@@ -1,3 +1,5 @@
 Results/
 workflow/scripts/__pycache__/
+Src/
+tutorial/out/
 .snakemake/

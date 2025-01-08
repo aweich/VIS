@@ -1,0 +1,6 @@
+Summary of Inserted Reads:
+Read-522: Insertion length = 8746, Strand = +
+Read-824: Insertion length = 8746, Strand = -
+Read-262: Insertion length = 2532, Strand = -
+Read-417: Insertion length = 2593, Strand = -
+Read-682: Insertion length = 8746, Strand = +
