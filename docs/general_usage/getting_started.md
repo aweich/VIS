@@ -8,8 +8,8 @@
 Clone and navigate into the repository:
    
 ```bash
-   git clone https://github.com/YOUR-USERNAME/YOUR-REPOSITORY
-   cd YOUR-REPOSITORY
+   git clone https://github.com/aweich/VIS
+   cd VIS
 ```
 ---
 

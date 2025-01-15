@@ -284,7 +284,7 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outinsertion, log
                             #this part only if the non-insertion fragments should NOT be combined
                             for i,entry in enumerate(record_list):
                                 record_seq_new = record_list[i]
-                                record_id_new = str(record_id) + '_%i' % (i)
+                                record_id_new = str(record_id) + '_%i' % (i)+'Insertion'
                                 print("Split " + str(record_id) + "into " + str(record_id_new))
                                 output_file.write(">"+str(record_id_new)+"\n"+str(record_seq_new) + "\n")
                         else: 
@@ -678,10 +678,11 @@ def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_f
     sorted_annotations = combined_bed.sort()
 
     insertions = pybedtools.BedTool(insertions_bed)
-
     #bedtools closest operation
     closest = insertions.closest(sorted_annotations, D="a", filenames=True)
 
+    print(type(closest))
+    print(closest)
     # Convert BedTool output to DataFrame
     closest_df = closest.to_dataframe(
         names=[
@@ -690,6 +691,7 @@ def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_f
             "InsertionEnd",
             "InsertionRead",
             "InsertionOrig",
+            "InsertionOrig2",
             "InsertionStrand",
             "AnnotationChromosome",
             "AnnotationStart",
@@ -702,6 +704,9 @@ def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_f
         ]
     )
 
+    print(closest_df.head())
+    closest_df = closest_df.drop(columns=["InsertionOrig","InsertionOrig2"])
+    print(closest_df.head())
     # Save DataFrame to a file with headers
     closest_df.to_csv(output_bed, sep="\t", index=False)
     print(f"Distances calculated and saved to {output_bed}")

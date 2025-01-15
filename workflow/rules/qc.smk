@@ -146,9 +146,9 @@ rule extract_mapping_quality:
     log:
     	log=f"{outdir}/intermediate/log/qc/extract_mapping_quality/{{sample}}.log"
     output:
-        quality_scores=temp(f"{outdir}/intermediate/qc/{{sample}}_precut_mapping_quality.txt"),
-        quality_scores2=temp(f"{outdir}/intermediate/qc/{{sample}}_postcut_mapping_quality.txt"),
-        quality_scores3=temp(f"{outdir}/intermediate/qc/{{sample}}_postcut_unfiltered_mapping_quality.txt")
+        quality_scores=f"{outdir}/intermediate/qc/{{sample}}_precut_mapping_quality.txt",
+        quality_scores2=f"{outdir}/intermediate/qc/{{sample}}_postcut_mapping_quality.txt",
+        quality_scores3=f"{outdir}/intermediate/qc/{{sample}}_postcut_unfiltered_mapping_quality.txt"
     conda:
     	"../envs/VIS_samtools_env.yml"
     shell:
@@ -158,8 +158,8 @@ rule extract_mapping_quality:
 
         # Extract reads of interest
         samtools view {input.bam} | grep -wF -f {input.readnames} > {params.tempdir}/temp_precut_reads.sam
-	samtools view {input.bam2} | grep '_' > {params.tempdir}/temp_postcut_reads.sam
-	samtools view {input.bam3} | grep '_' > {params.tempdir}/temp_postcut_unfiltered_reads.sam
+	samtools view {input.bam2} | grep 'Insertion' > {params.tempdir}/temp_postcut_reads.sam
+	samtools view {input.bam3} | grep 'Insertion' > {params.tempdir}/temp_postcut_unfiltered_reads.sam
 
         # Extract mapping quality column (5th field) and read name
         awk '{{print $1,$3,$5}}' {params.tempdir}/temp_precut_reads.sam > {output.quality_scores}

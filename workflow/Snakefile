@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 
-configfile: "config/config_tutorial.yml"
+configfile: "config/config_CD19_28z.yml"
 #SRC=config["source_dir"] #only in use for r script scirp, will be removed sooner or later
 SAMPLES = expand(config["samples"]) 
 outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
@@ -39,7 +39,8 @@ rule all:
 		f"{outdir}/final/localization/Insertion_length.png",
 		# functional genomics
 		expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES),
-		#expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
+		expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
+		expand(f"{outdir}/intermediate/localization/annotation/Annotation_introns_Insertions_{{sample}}.bed", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.png", sample=SAMPLES),
 		# quality control
 		expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
