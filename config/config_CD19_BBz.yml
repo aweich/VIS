@@ -14,7 +14,7 @@ splitmode: "Buffer" #"Buffer", "Join", "Separated"
 fragment_size: 100 #input for custom function
 bridging_size: 300 #amount of bases that are bridged if fragments do not match between other fragments 
 MinLength: 1
-MAPQ: 10 #mapping quality filter after pseudo-read generation
+MAPQ: 20 #mapping quality filter after pseudo-read generation
 MinInsertionLength: 500 #212 eef1a length,cd247 1600nt. 1182 in car123 maybe 1200 with buffer?
 ref_genome_ctrl: "/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg_withBasecalling/hg38.fa"
 #ref_genome_ctrl: "/home/weichan/permanent/Src/T2T_ref/chm13v2.0.fa"

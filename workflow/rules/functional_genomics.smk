@@ -68,10 +68,11 @@ rule plot_scoring:
     log:
         log=f"{outdir}/intermediate/log/functional_genomics/plot_scoring/{{sample}}.log"
     output:
-        plot=report(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.png")
+        plot=report(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg"),
+        data=(f"{outdir}/final/functional_genomics/Insertion_Scoring_Data_{{sample}}.txt")
     run:
         try:
-            vhf.scoring_insertions(input[0], output.plot, log.log)
+            vhf.scoring_insertions(input[0], output.plot, output.data, log.log)
         except Exception as e:
             with open(log.log, "a") as log_file:
                 log_file.write(f"Error: {str(e)}\n")
@@ -100,14 +101,17 @@ rule annotation_overlap_insertion:
         	exons=config.get("ucsc_exons"),
         	introns=config.get("ucsc_introns"),
         	promoter=config.get("ucsc_promoter"),
+        	gene=config.get("annotation_1"),
 	log:
 		log=f"{outdir}/intermediate/log/functional_genomics/annotation_overlap_insertion/introns_{{sample}}.log",
 		log2=f"{outdir}/intermediate/log/functional_genomics/annotation_overlap_insertion/exons_{{sample}}.log",
-		log3=f"{outdir}/intermediate/log/functional_genomics/annotation_overlap_insertion/promoter_{{sample}}.log"
+		log3=f"{outdir}/intermediate/log/functional_genomics/annotation_overlap_insertion/promoter_{{sample}}.log",
+		log4=f"{outdir}/intermediate/log/functional_genomics/annotation_overlap_insertion/gene_{{sample}}.log"
 	output:
 		introns=f"{outdir}/intermediate/localization/annotation/Annotation_introns_Insertions_{{sample}}.bed",
 		exons=f"{outdir}/intermediate/localization/annotation/Annotation_exons_Insertions_{{sample}}.bed",
-		promoter=f"{outdir}/intermediate/localization/annotation/Annotation_promoter_Insertions_{{sample}}.bed"
+		promoter=f"{outdir}/intermediate/localization/annotation/Annotation_promoter_Insertions_{{sample}}.bed",
+		gene=f"{outdir}/intermediate/localization/annotation/Annotation_gene_Insertions_{{sample}}.bed"
 	conda:
 		"../envs/VIS_bedtools_env.yml"
 	shell: #1 base is enough
@@ -121,4 +125,7 @@ rule annotation_overlap_insertion:
 		(
 		bedtools intersect -a {input} -b {params.promoter} -wb > {output.promoter}
 		) > {log.log3} 2>&1
+		(
+		bedtools intersect -a {input} -b {params.gene} -wb > {output.gene}
+		) > {log.log4} 2>&1
 		"""

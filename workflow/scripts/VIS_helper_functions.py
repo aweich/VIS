@@ -297,8 +297,15 @@ def split_fasta_by_borders(border_dict, fasta, mode, outfasta, outinsertion, log
                     else:
                         output_file.write(">"+str(record_id)+"\n"+str(record_seq) + "\n")     
 
+
+def get_read_length(fasta_file, read_id):
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        if record.id == read_id:
+            return len(record.seq)
+    return None
+
 #cigar for exact cooridinates
-def parse_cigar(cigar, start, strand):
+def parse_cigar(cigar, start):
     """
     Parses a CIGAR string to reconstruct the original FASTA from the alignment. 
     Soft-clipping is used to "correct" the start coordinates based on the real read length and the optimal alignment.
@@ -308,7 +315,6 @@ def parse_cigar(cigar, start, strand):
     Parameters:
         cigar (str): The CIGAR string (e.g., "50M5I30M10S").
         start (int): The genomic start position of the read (1-based).
-        strand (str): The strand orientation ('+' or '-').
 
     Returns:
         list: A list of (genomic_position, operation) tuples.
@@ -375,7 +381,7 @@ def parse_cigar(cigar, start, strand):
     return positions, adjusted_start, start
 
 @redirect_logging(logfile_param="logfile")
-def reconstruct_coordinates(bed_with_cigar, fasta_coordinates, splitmode, output, logfile):
+def reconstruct_coordinates(bed_with_cigar, fasta_coordinates, full_fasta, splitmode, output, logfile):
     """
     Reconstructs global coordinates of reads by translating FASTA-based positions using CIGAR strings.
     If there was not "Buffer" mode chosen for the split fasta function, the coordinates can not be re-constructed on base level accuracy.
@@ -419,13 +425,19 @@ def reconstruct_coordinates(bed_with_cigar, fasta_coordinates, splitmode, output
             chrom = row['chrom']
             origcoord = [start, stop]
 
-
+            orig_length = get_read_length(full_fasta, read_name)
+            print(f"Original length of {read_name} in FASTA: {orig_length}")
             # Parse CIGAR string and adjust start position
-            positions, adjusted_start, orig_start = parse_cigar(cigar, start, strand)
+            positions, adjusted_start, orig_start = parse_cigar(cigar, start)
             # Map FASTA coordinates to BED coordinates
             fasta_coords = fasta_coordinates[read_name]
             fastalength = len(positions)
             
+            if orig_length != fastalength:
+                print(f"Something went wrong. Reconstruced length from cigar {fastalength} does not match the original length from FASTA {orig_length}")
+                print("The insertion coordinates cannot be accurately determined. Chose 'Split' or 'Join' to locate the reads with insertions. Shutting down...")
+                sys.exit()
+
             for i in range(0, len(fasta_coords), 2):
                 fasta_start = fasta_coords[i]
                 fasta_end = fasta_coords[i + 1]
@@ -800,11 +812,25 @@ def plot_element_distance_violin(bed, distances, distance_threshold, output_path
 
 
 @redirect_logging(logfile_param="logfile")
-def scoring_insertions(data, output_file, logfile):
+def scoring_insertions(data, output_plot, output_file, logfile):
     """
     Uses custom conditions to visualize the entries of the annotated insertion summary table.
     """
-    colnames = ["chr", "start_insertion", "stop_insertion", "read", "origcoord", "strand","chr_element","start_element", "stop_element","element_name", "element_score", "element_strand", "source", "distance"]
+    colnames = names=[
+            "InsertionChromosome",
+            "InsertionStart",
+            "InsertionEnd",
+            "InsertionRead",
+            "InsertionStrand",
+            "AnnotationChromosome",
+            "AnnotationStart",
+            "AnnotationEnd",
+            "AnnotationID",
+            "AnnotationScore",
+            "AnnotationStrand",
+            "AnnotationSource",
+            "Distance",
+        ]
     df = pd.read_csv(
         data,
         sep='\t',
@@ -813,52 +839,79 @@ def scoring_insertions(data, output_file, logfile):
     # Drop duplicate entries
     df = df.drop_duplicates().reset_index(drop=True)
 
+    # Only distance = 0 matters here
+    #df = df[df["Distance"] == 0]
+
     # Define conditions
     conditions = [
-        ("COSMIC", 0), ("TF", 0), ("GENCODEV44", 0), ("HiC_Tcells", 0), ("Exons", 0),
-        ("COSMIC", 10_000), ("TF", 10_000), ("GENCODEV44", 10_000), ("HiC_Tcells", 10_000),
-        ("COSMIC", 50_000), ("TF", 50_000), ("GENCODEV44", 50_000), ("HiC_Tcells", 50_000),
-        ("COSMIC", None), ("TF", None), ("GENCODEV44", None), ("HiC_Tcells", None),
+        ("Cosmic", 0), ("TF", 0), ("Intron", 0), ("HiC", 0), ("Exon", 0), ("Promoter", 0)
     ]
 
     for source, distance in conditions:
-        if distance == 0:
-            df[f"{source}_0"] = df["source"].str.contains(source) & (df["distance"] == 0)
-        elif distance == 10_000:
-            df[f"{source}_10kb"] = df["source"].str.contains(source) & ((10_000 > abs(df["distance"])) & (abs(df["distance"]) > 0))
-        elif distance == 50_000:
-            df[f"{source}_50kb"] = df["source"].str.contains(source) & ((50_000 > abs(df["distance"])) & (abs(df["distance"]) > 10_000))
-        else:
-            df[f"{source}_Safe"] = df["source"].str.contains(source) & (abs(df["distance"]) > 50_000)
+        df[f"{source}_0"] = df["AnnotationSource"].str.contains(source) & (df["Distance"] == 0)
 
     # Aggregate data
-    heatmap_data = df.groupby(["read", "chr", "start_insertion", "stop_insertion"]).agg("sum").reset_index()
+    heatmap_data = df.groupby(["InsertionRead", "InsertionChromosome", "InsertionStart", "InsertionEnd"]).agg("sum").reset_index()
 
     # Select numeric columns
     heatmap_matrix = heatmap_data.drop(columns=colnames)
-    heatmap_matrix.index = heatmap_data["chr"] + "_" + \
-                           heatmap_data["start_insertion"].astype(str) + "_" + \
-                           heatmap_data["stop_insertion"].astype(str)
+    heatmap_matrix.index = heatmap_data["InsertionChromosome"] + "_" + \
+                           heatmap_data["InsertionStart"].astype(str) + "_" + \
+                           heatmap_data["InsertionEnd"].astype(str)
+
 
     # Calculate Final Score
     def calculate_score(row):
-        if row["COSMIC_0"] > 0 or row["Exons_0"] > 0 or (row["TF_0"] + row["GENCODEV44_0"] > 1):
-            return "Dangerous"
-        elif (row["TF_0"] <= 1 or row["GENCODEV44_0"] <= 1 or row["COSMIC_10kb"] > 0 or row["HiC_Tcells_10kb"] > 0):
-            return "Likely Dangerous"
-        elif all(value > 0 for col, value in row.items() if "_Safe" in col) and row.sum() == row[[col for col in row.index if "_Safe" in col]].sum():
-            return "Safe"
+        if row.loc["Intron_0"] < 1 and row.loc["Exon_0"] < 1 and row.loc["Promoter_0"] < 1:
+            if row.loc["TF_0"] < 1 and row.loc["HiC_0"] < 1:
+                return "0"
+            else:
+                return "1"    
+        elif row.loc["Intron_0"] >= 1 and row.loc["Exon_0"] < 1:
+            if row.loc["TF_0"] > 1 or row.loc["HiC_0"] > 1:
+                if row.loc["Cosmic_0"] < 1:
+                    return "2"
+                else:
+                    return "4"
+            else:
+                if row.loc["Cosmic_0"] < 1:
+                    return "1"
+                else:
+                    return "4"
+        elif row.loc["Exon_0"] >= 1:
+            if row.loc["TF_0"] > 1 or row.loc["HiC_0"] > 1:
+                if row.loc["Cosmic_0"] < 1:
+                    return "3"
+                else:
+                    return "4"
+            else:
+                if row.loc["Cosmic_0"] < 1:
+                    return "2"
+                else:
+                    return "4"
+        elif row.loc["Promoter_0"] >= 1:
+            if row.loc["TF_0"] > 1 or row.loc["HiC_0"] > 1:
+                if row.loc["Cosmic_0"] < 1:
+                    return "3"
+                else:
+                    return "4"
+            else:
+                if row.loc["Cosmic_0"] < 1:
+                    return "3"
+                else:
+                    return "4"
         else:
-            return "Intermediate"
+            return "Undefined"
 
     heatmap_matrix["Risk"] = heatmap_matrix.apply(calculate_score, axis=1)
 
     # Map scores to colors
     score_colors = {
-        "Dangerous": "red",
-        "Likely Dangerous": "orange",
-        "Intermediate": "yellow",
-        "Safe": "green"
+        "4": "red",
+        "3": "orange",
+        "2": "yellow",
+        "1": "lightgrey",
+        "0": "green"
     }
     row_colors = heatmap_matrix["Risk"].map(score_colors)
 
@@ -867,12 +920,15 @@ def scoring_insertions(data, output_file, logfile):
         "Risk": row_colors
     })
 
+    #pretty names
+    heatmap_matrix.columns = ["Cancer gene", "TF", "Intron", "HiC", "Exon", "Promoter", "Risk"]
+    
     # Plot clustermap with annotated row colors and custom colormap
     cluster_grid = sns.clustermap(
         heatmap_matrix.drop(columns=["Risk"]),
         cmap="Greys",
         row_colors=row_colors,
-        figsize=(10, 5),
+        figsize=(10,10),
         dendrogram_ratio=(0.1, 0.1),
         linewidths=0.5,
         linecolor="grey",
@@ -880,14 +936,21 @@ def scoring_insertions(data, output_file, logfile):
         col_cluster=False,
         row_cluster=False,
         clip_on=False,
+        label=False,
         cbar_kws={
             "label": "Counts",
             "ticks": [0, 1, 2, 3, 4, 5],
-            "shrink": 0.3,
+            "shrink": 0.5,
             "orientation": "horizontal", 
         },
         vmin=0, vmax=5
     )
+
+    # Add a "5+" label to the last tick
+    cbar = cluster_grid.ax_cbar  # Access the color bar
+    cbar.set_xticks([0, 1, 2, 3, 4, 5])  # Set tick positions
+    cbar.set_xticklabels(["0", "1", "2", "3", "4", "5+"]) 
+
 
     # Add a custom legend
     legend_handles = [Patch(color=color, label=label) for label, color in score_colors.items()]
@@ -896,16 +959,16 @@ def scoring_insertions(data, output_file, logfile):
         title="Risk Assessment",
         loc="upper center",
         bbox_to_anchor=(0.5, 1.2),  # Position the legend below the plot
-        ncol=4,  # Number of columns in the legend
+        ncol=5,  # Number of columns in the legend
         frameon=True
     )
 
-
     # Save the plot
-    plt.savefig(output_file, bbox_inches="tight")
+    plt.savefig(output_plot, format="svg", bbox_inches="tight")
 
-    # Optionally, print the heatmap matrix with Final Scores
+    # Heatmap matrix with Final Scores
     print(heatmap_matrix)
+    heatmap_matrix.to_csv(output_file, sep="\t")
 
 # qc
 @redirect_logging(logfile_param="logfile")
