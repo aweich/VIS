@@ -11,10 +11,9 @@ outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
 fragmentsize=config["fragment_size"]
 
 
-#local functions - path to helper functions needs to be added to the sys path, otherwise import won't find the file
-rootpath = os.path.join("workflow/scripts")
-sys.path.append(rootpath)
-cwd=os.getcwd()    
+# Get absolute path to 'workflow/scripts'
+script_dir = os.path.join(os.path.dirname(__file__), "scripts")
+sys.path.append(script_dir)   
 
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
 
