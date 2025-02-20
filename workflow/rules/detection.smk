@@ -8,7 +8,7 @@
 
 rule copy_config_version:
 	input:
-		"config/config.yml"
+		config=CONFIG
 	log:
 		log=f"{outdir}/intermediate/log/detection/copy_config_version/out.log"
 	output:
@@ -419,7 +419,8 @@ rule basic_insertion_plots:
 rule calculate_exact_insertion_coordinates:
 	input:
 		bed=f"{outdir}/intermediate/mapping/Postcut_{{sample}}.bed",
-		borders=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn"
+		borders=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
+		fasta=f"{outdir}/intermediate/fasta/Full_{{sample}}.fa"
 	params:
 		mode=config["splitmode"]
 	log:
@@ -428,7 +429,7 @@ rule calculate_exact_insertion_coordinates:
 		out=f"{outdir}/intermediate/localization/ExactInsertions_{{sample}}.bed",
 	run:
 	    try:
-	        vhf.reconstruct_coordinates(input.bed, input.borders, params.mode, output.out, log.log)
+	        vhf.reconstruct_coordinates(input.bed, input.borders, input.fasta, params.mode, output.out, log.log)
 	    except Exception as e:
 	        with open(log.log, "a") as log_file:
                     log_file.write(f"Error: {str(e)}\n")

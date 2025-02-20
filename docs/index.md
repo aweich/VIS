@@ -52,7 +52,7 @@ It is recommended to familiarize yourself with the workflow and its outputs befo
 
 ## Citation and Contribution
 
-If you are using this pipeline or the search strategy implemented in this pipeline, please cite us using "github.com/aweich/VIS-dp". 
+If you are using this pipeline or the search strategy implemented in this pipeline, please cite us using "...". 
 
 We encourage contributions to enhance and refine this codebase, whether through providing feedback, improving functionality, or sharing domain-specific expertise. If you have suggestions, encounter issues, or require assistance, please feel free to reach out for support and collaboration.
 
