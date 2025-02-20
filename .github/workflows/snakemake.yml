@@ -21,11 +21,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          mamba install -c conda-forge -y snakemake
+          mamba env create -f workflow/envs/VIS_minimal.yml
+          source activate VIS_minimal
 
       - name: Run Snakemake
         uses: snakemake/snakemake-github-action@v1
         with:
           snakefile: "workflow/Snakefile" 
-          args: "--cores 1 --configfile config/config.yml -n"
+          args: "--cores 1 -n --use-conda"
           conda-frontend: "mamba"

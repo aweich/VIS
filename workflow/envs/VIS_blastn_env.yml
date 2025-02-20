@@ -1,0 +1,7 @@
+name: VIS_blastn_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - blast
