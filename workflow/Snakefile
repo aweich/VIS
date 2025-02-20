@@ -1,3 +1,4 @@
+import sys
 import os
 from pathlib import Path
 
@@ -16,6 +17,7 @@ script_dir = os.path.join(os.path.dirname(__file__), "scripts")
 sys.path.append(script_dir)   
 
 import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
+print('Import successful')
 
 #inmport rules
 include: config["detection"]
