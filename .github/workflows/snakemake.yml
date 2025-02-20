@@ -29,5 +29,4 @@ jobs:
         uses: snakemake/snakemake-github-action@v1
         with:
           snakefile: "workflow/Snakefile" 
-          args: "--cores 1 -n --use-conda"
-          conda-frontend: "mamba"
+          args: "--cores 1 --config config/config_CD19_BBz.yml -n --use-conda"
