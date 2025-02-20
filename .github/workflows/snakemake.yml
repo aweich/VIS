@@ -26,6 +26,6 @@ jobs:
       - name: Run Snakemake
         uses: snakemake/snakemake-github-action@v1
         with:
-          snakefile: "workflow/Snakefile"  
-          args: "--cores 1 -n"
+          snakefile: "workflow/Snakefile" 
+          args: "--cores 1 --configfile config/config.yml -n"
           conda-frontend: "mamba"

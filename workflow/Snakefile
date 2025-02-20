@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 
-CONFIG = "config/config_CD19_BBz.yml"
+CONFIG = "config/config.yml"
 configfile: CONFIG
 #SRC=config["source_dir"] #only in use for r script scirp, will be removed sooner or later
 SAMPLES = expand(config["samples"]) 
@@ -25,7 +25,7 @@ include: config["quality_control"]
 
 
 #analysis-specific rules
-include: config["downstream"]
+#include: config["downstream"]
 
 #development
 #include: config["epigenetics"]
@@ -54,7 +54,7 @@ rule all:
 		# process
 		f"{outdir}/config_settings.yml",
 		
-    # downstream
-		expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
+    		# downstream
+		#expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
 		
