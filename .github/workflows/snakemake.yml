@@ -1,0 +1,31 @@
+name: Snakemake Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  snakemake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          mamba-version: "*"
+          channels: conda-forge,bioconda,defaults
+
+      - name: Install dependencies
+        run: |
+          mamba install -c conda-forge -y snakemake
+
+      - name: Run Snakemake
+        uses: snakemake/snakemake-github-action@v1
+        with:
+          snakefile: "workflow/Snakefile"  
+          args: "--cores 1 -n"
+          conda-frontend: "mamba"
