@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 
-CONFIG = "config/config.yml"
+CONFIG = "config/config_CD19_BBz.yml"
 configfile: CONFIG
 #SRC=config["source_dir"] #only in use for r script scirp, will be removed sooner or later
 SAMPLES = expand(config["samples"]) 
