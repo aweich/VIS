@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           mamba env create -f workflow/envs/VIS_minimal.yml
-          source activate VIS_minimal
+          mamba activate VIS_minimal
 
       - name: Run Snakemake
         uses: snakemake/snakemake-github-action@v1
