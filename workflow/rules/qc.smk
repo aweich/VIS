@@ -26,22 +26,6 @@ rule nanoplot:
 		) > {log.log} 2>&1
 		"""
 
-rule bam_coverage: 
-	input:
-		bam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam"
-	log:
-		log=f"{outdir}/intermediate/log/qc/bam_coverage/{{sample}}.log"
-	output:
-		covbed=f"{outdir}/intermediate/qc/Coverage/Genomecoverage_{{sample}}.bed"
-	conda:
-		"../envs/VIS_bedtools_env.yml"
-	shell: 
-		"""
-		(
-		bedtools genomecov -ibam {input} -bga > {output}
-		) > {log.log} 2>&1
-		"""
-
 ### Read level fastqc analysis
 
 rule extract_fastq_insertions:

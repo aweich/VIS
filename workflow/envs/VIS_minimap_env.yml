@@ -1,8 +1,0 @@
-name: VIS_minimap_env
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - minimap2
-  - samtools

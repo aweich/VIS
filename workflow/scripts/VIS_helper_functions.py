@@ -147,7 +147,6 @@ def plot_bed_files_as_heatmap(bed_files, outfile, logfile):
 ####this part here is dedicated to the splitting of blast-match including fasta reads
 def merge_intervals(intervals, overlap, filtering, filtervalue):
     # Sort intervals by start coordinates
-    #sorted_intervals = sorted(intervals, key=lambda x: x[0])
     intervals.sort() #sorts all intervals in ascending order: Overlaps are possible! #sorts inplace
     print(intervals)
 
@@ -158,7 +157,6 @@ def merge_intervals(intervals, overlap, filtering, filtervalue):
     
     #intermediate coordinates if needed
     for i in range(0, len(intervals)-1): #iterating over start and stops with 1 offset! this means that we take a look at stop_interval1 and start_interval2
-        #print(str(intervals[i]),str(intervals[i + 1]))
         if abs(intervals[i] - intervals[i + 1]) >= overlap: #strictness filter
             merged_intervals.append(intervals[i]) #adds intermediate coordinate as end of interval
             merged_intervals.append(intervals[i+1]) # = new start
@@ -491,17 +489,6 @@ def reconstruct_coordinates(bed_with_cigar, fasta_coordinates, full_fasta, split
     # Save results to a new BED file
     reconstructed_bed = pd.DataFrame(results)
     reconstructed_bed.to_csv(output, sep='\t', index=False, header=False)
-
-
-def blast2gff(blast,outfile):
-    """
-    Transforms blast output into gff format.
-    """
-    with open(blast, 'r') as blast_file, open(outfile, 'w') as gff_file:
-        for line in blast_file:
-            fields = line.strip().split('\t')
-            sequence_id, subject_id, start, end = fields[0], fields[1], fields[8], fields[9]
-            gff_file.write(f"{subject_id}\t{start}\t{end}\tBLAST\tfeature\t.\t.\t{sequence_id}\n")
 
 @redirect_logging(logfile_param="logfile")
 def reverseinsertion(fastain, fastaout, logfile):
