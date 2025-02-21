@@ -2,7 +2,8 @@ import sys
 import os
 from pathlib import Path
 
-
+env_name = os.getenv('CONDA_DEFAULT_ENV')
+print(f"Current Conda environment: {env_name}")
 
 CONFIG = "config/config_CD19_BBz.yml"
 configfile: CONFIG
@@ -20,12 +21,10 @@ print(snakefile_dir)
 # Set the correct scripts directory path
 script_dir = os.path.join(snakefile_dir, "scripts")
 print(script_dir)
+
 # Ensure the script directory is in sys.path
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
-
-# Debugging: Print sys.path to verify
-print("Updated sys.path:", sys.path)
 
 import VIS_helper_functions as vhf #custom functions to make snakemake pipeline leaner
 print('Import successful')
