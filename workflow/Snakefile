@@ -6,7 +6,9 @@ import subprocess
 # Run conda list command and capture the output
 result = subprocess.run(['conda', 'list'], capture_output=True, text=True)
 print(result.stdout)
+print(result) 
 
+import pandas
 import Bio
 
 env_name = os.getenv('CONDA_DEFAULT_ENV')
