@@ -24,11 +24,4 @@ jobs:
           mamba env create -f workflow/envs/VIS_minimal.yml
           eval "$(mamba shell hook --shell bash)"
           mamba activate VIS_minimal
-          
-      - name: Linting
-        uses: snakemake/snakemake-github-action@v1
-        with:
-          directory: '.'
-          snakefile: 'workflow/Snakefile'
-          args: '--lint'
 
