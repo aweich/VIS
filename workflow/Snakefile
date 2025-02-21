@@ -13,11 +13,16 @@ outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
 fragmentsize=config["fragment_size"]
 
 
-# Get absolute path to 'workflow/scripts'
-rootpath = os.path.join("workflow/scripts")
-sys.path.append(rootpath)
+# Get path to the script directory
+script_dir = os.path.abspath(os.path.join(os.getcwd(), "workflow/scripts"))
 
-print(sys.path)
+# Ensure the script directory in sys.path
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
+# Debugging
+print("Updated sys.path:", sys.path)
+
 import VIS_helper_functions as vhf #custom functions to make snakemake pipeline leaner
 print('Import successful')
 
