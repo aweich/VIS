@@ -1,5 +1,4 @@
 import sys
-print(sys.path)
 import os
 from pathlib import Path
 
@@ -12,13 +11,15 @@ SAMPLES = expand(config["samples"])
 outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
 fragmentsize=config["fragment_size"]
 
-
+print(os.getcwd())
+runner="/github/workspace/workflow/scripts"
+sys.path.insert(0, runner)
 # Find the absolute path to the current Snakefile directory
 snakefile_dir = os.path.dirname(os.path.abspath(__file__))
-
+print(snakefile_dir)
 # Set the correct scripts directory path
 script_dir = os.path.join(snakefile_dir, "scripts")
-
+print(script_dir)
 # Ensure the script directory is in sys.path
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
