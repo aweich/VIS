@@ -29,7 +29,7 @@ jobs:
         run: |
           eval "$(mamba shell hook --shell bash)"
           mamba activate VIS_minimal
-          snakemake --directory . --snakefile workflow/Snakefile --configfile config.yml --cores 1 --use-conda -n --conda-cleanup-pkgs cache
+          snakemake --directory . --snakefile workflow/Snakefile --configfile config/config.yml --cores 1 --use-conda -n --conda-cleanup-pkgs cache
         env:
           CONDA_DEFAULT_ENV: VIS_minimal
 
