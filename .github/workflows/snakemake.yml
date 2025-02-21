@@ -25,6 +25,11 @@ jobs:
           eval "$(mamba shell hook --shell bash)"
           mamba activate VIS_minimal
 
+      - name: Debug File Paths
+        run: |
+          echo "Current working directory: $(pwd)"
+          ls -R workflow/scripts
+          
       - name: Run Snakemake
         uses: snakemake/snakemake-github-action@v1
         with:

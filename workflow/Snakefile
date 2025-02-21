@@ -1,4 +1,5 @@
 import sys
+print(sys.path)
 import os
 from pathlib import Path
 
@@ -13,10 +14,11 @@ fragmentsize=config["fragment_size"]
 
 
 # Get absolute path to 'workflow/scripts'
-script_dir = os.path.join(os.path.dirname(__file__), "scripts")
-sys.path.append(script_dir)   
+rootpath = os.path.join("workflow/scripts")
+sys.path.append(rootpath)
 
-import VIS_helper_functions as vhf #functions to make snakemake pipeline leaner
+print(sys.path)
+import VIS_helper_functions as vhf #custom functions to make snakemake pipeline leaner
 print('Import successful')
 
 #inmport rules
