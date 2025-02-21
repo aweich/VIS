@@ -31,10 +31,6 @@ jobs:
           directory: '.'
           snakefile: 'workflow/Snakefile'
           args: '--cores 1 --use-conda -n --conda-cleanup-pkgs cache'
-          stagein: | 
-            mamba env create -f workflow/envs/VIS_minimal.yml
-            eval "$(mamba shell hook --shell bash)"
-            mamba activate VIS_minimal' # additional preliminary commands to run (can be multiline)
-          show-disk-usage-on-error: true
-          conda-env: 'VIS_minimal'
+        env:
+          CONDA_DEFAULT_ENV: VIS_minimal
 
