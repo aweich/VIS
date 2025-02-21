@@ -31,9 +31,7 @@ jobs:
           ls -R workflow/scripts
           
       - name: Run Snakemake
-        uses: snakemake/snakemake-github-action@v1
-        with:
-          directory: '.'
-          stagein: 'mamba activate VIS_minimal'
-          snakefile: "workflow/Snakefile" 
-          args: "--cores 1 --configfile config/config_CD19_BBz.yml -n --use-conda"
+        run: |
+          eval "$(mamba shell hook --shell bash)"
+          mamba activate VIS_minimal
+          snakemake --cores 1 --configfile config/config_CD19_BBz.yml -n --use-conda
