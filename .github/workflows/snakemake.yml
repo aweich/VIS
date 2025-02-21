@@ -24,14 +24,23 @@ jobs:
           mamba env create -f workflow/envs/VIS_minimal.yml
           eval "$(mamba shell hook --shell bash)"
           mamba activate VIS_minimal
-
-      - name: Debug File Paths
-        run: |
-          echo "Current working directory: $(pwd)"
-          ls -R workflow/scripts
           
       - name: Run Snakemake
         run: |
           eval "$(mamba shell hook --shell bash)"
           mamba activate VIS_minimal
           snakemake --cores 1 --configfile config/config_CD19_BBz.yml -n --use-conda
+
+      - name: Testing
+        uses: snakemake/snakemake-github-action@v1
+        with:
+          directory: 'workflow'
+          snakefile: 'workflow/Snakefile'
+          args: '--cores 1 --use-conda -n --conda-cleanup-pkgs cache'
+          stagein: | 
+            mamba env create -f workflow/envs/VIS_minimal.yml
+            eval "$(mamba shell hook --shell bash)"
+            mamba activate VIS_minimal' # additional preliminary commands to run (can be multiline)
+          show-disk-usage-on-error: true
+          conda-env: 'VIS_minimal'
+
