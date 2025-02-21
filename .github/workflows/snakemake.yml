@@ -25,12 +25,6 @@ jobs:
           eval "$(mamba shell hook --shell bash)"
           mamba activate VIS_minimal
           
-      - name: Run Snakemake
-        run: |
-          eval "$(mamba shell hook --shell bash)"
-          mamba activate VIS_minimal
-          snakemake --cores 1 --configfile config/config_CD19_BBz.yml -n --use-conda
-
       - name: Testing
         uses: snakemake/snakemake-github-action@v1
         with:
