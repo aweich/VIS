@@ -25,11 +25,10 @@ jobs:
           eval "$(mamba shell hook --shell bash)"
           mamba activate VIS_minimal
           
-      - name: Testing
-        run: |
-          eval "$(mamba shell hook --shell bash)"
-          mamba activate VIS_minimal
-          snakemake --directory . --snakefile workflow/Snakefile --configfile config/config.yml --cores 1 --use-conda -n --conda-cleanup-pkgs cache
-        env:
-          CONDA_DEFAULT_ENV: VIS_minimal
+      - name: Linting
+        uses: snakemake/snakemake-github-action@v1
+        with:
+          directory: '.test'
+          snakefile: 'workflow/Snakefile'
+          args: '--lint'
 
