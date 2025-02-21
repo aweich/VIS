@@ -1,15 +1,6 @@
 import sys
 import os
 from pathlib import Path
-import subprocess
-
-# Run conda list command and capture the output
-result = subprocess.run(['conda', 'list'], capture_output=True, text=True)
-print(result.stdout)
-print(result) 
-
-import pandas
-import Bio
 
 env_name = os.getenv('CONDA_DEFAULT_ENV')
 print(f"Current Conda environment: {env_name}")
@@ -35,6 +26,11 @@ print(script_dir)
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
 
+simple=os.path.join(os.getcwd(), "scripts")
+sys.path.insert(0, simple) 
+print("___")
+print(os.getcwd())
+print(sys.path)
 import VIS_helper_functions as vhf #custom functions to make snakemake pipeline leaner
 print('Import successful')
 
