@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 env_name = os.getenv('CONDA_DEFAULT_ENV')
-print(f"Current Conda environment: {env_name}")
+print(f"Current environment (should be either 'VIS_minimal' or 'VIS_full'): {env_name}")
 
 CONFIG = "config/config_CD19_BBz.yml"
 configfile: CONFIG
@@ -12,27 +12,7 @@ SAMPLES = expand(config["samples"])
 outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
 fragmentsize=config["fragment_size"]
 
-print(os.getcwd())
-runner="/github/workspace/workflow/scripts"
-sys.path.insert(0, runner)
-# Find the absolute path to the current Snakefile directory
-snakefile_dir = os.path.dirname(os.path.abspath(__file__))
-print(snakefile_dir)
-# Set the correct scripts directory path
-script_dir = os.path.join(snakefile_dir, "scripts")
-print(script_dir)
-
-# Ensure the script directory is in sys.path
-if script_dir not in sys.path:
-    sys.path.insert(0, script_dir)
-
-simple=os.path.join(os.getcwd(), "workflow/scripts")
-sys.path.insert(0, simple) 
-print("___")
-print(os.getcwd())
-print(sys.path)
 import VIS_helper_functions as vhf #custom functions to make snakemake pipeline leaner
-print('Import successful')
 
 #inmport rules
 include: config["detection"]
