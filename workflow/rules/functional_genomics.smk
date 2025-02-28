@@ -30,11 +30,11 @@ rule calc_distance_to_elements:
         insertions=f"{outdir}/intermediate/localization/temp_Sorted_ExactInsertions_{{sample}}.bed",
         ref=config["ref_genome_ctrl"]
     params:
-        genes=config["ucsc_introns"],
-        tf=config.get("ucsc_TF",""),
-        tss=config.get("encode_hic", ""), 
-        mirna=config.get("cosmic_genes", ""),
-        exons=config.get("ucsc_exons", "")
+        config["ucsc_introns"],
+        config.get("ucsc_TF",""),
+        config.get("encode_hic", ""), 
+        config.get("cosmic_genes", ""),
+        config.get("ucsc_exons", "")
     log:
         log=f"{outdir}/intermediate/log/functional_genomics/calc_distance_to_elements/{{sample}}.log"
     output:

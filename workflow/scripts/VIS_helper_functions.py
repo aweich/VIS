@@ -855,7 +855,7 @@ def scoring_insertions(data, output_plot, output_file, logfile):
             else:
                 return "1"    
         elif row.loc["Intron_0"] >= 1 and row.loc["Exon_0"] < 1:
-            if row.loc["TF_0"] > 1 or row.loc["HiC_0"] > 1:
+            if row.loc["TF_0"] >= 1 or row.loc["HiC_0"] >= 1:
                 if row.loc["Cosmic_0"] < 1:
                     return "2"
                 else:
@@ -1104,3 +1104,28 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath, log
     outfile = outpath + str("/") + f'{fragment_specifier}_read_match_fragmentation_distribution.png'
     plt.savefig(outfile, bbox_inches='tight', dpi=600)
     plt.close()
+
+#cmod
+@redirect_logging(logfile_param="logfile")
+def get_inserted_fasta_seq(fasta, coordinates, output_file, logfile):
+    """
+    Uses FASTA with insertion carrying reads and extracts actual insertion sequence. Used for subsequent multiple sequence alignment
+    """
+    print(fasta)
+    print(coordinates)
+    print("files")
+    border_dict = json.load(open(coordinates)) 
+    print(border_dict)
+    print(fasta)
+    with open(output_file, "w") as out_f:
+        with open(fasta, "r") as f:
+            fasta_dict = SeqIO.to_dict(SeqIO.parse(f, "fasta"))
+            # Create a new dictionary without the suffix
+            fasta_dict_no_suffix = {seq_id.split('_')[0]: record for seq_id, record in fasta_dict.items()}
+            for seq_id, borders in border_dict.items():
+                if seq_id in fasta_dict_no_suffix:
+                    for start, end in zip(borders[::2], borders[1::2]):
+                        sequence = fasta_dict_no_suffix[seq_id].seq[start:end]
+                        out_f.write(">"+str(seq_id)+"\n"+str(sequence) + "\n")
+    f.close()
+    out_f.close()

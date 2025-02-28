@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "BBz"
+experiment: "test_cmod"
 samples:
     MK028_BBz: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_BBz_pooled.bam"
     MK014_BBz: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_BBz_pooled.bam"
@@ -61,3 +61,5 @@ downstream: "rules/downstream.smk"
 #epigenetics: "rules/epigenetics.smk"
 #variants rule collection WIP
 #variants: "rules/variants.smk"
+cmod: "rules/cmod.smk"
+threads: 25
