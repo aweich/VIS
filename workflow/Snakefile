@@ -22,7 +22,6 @@ import VIS_helper_functions as vhf #custom functions to make snakemake pipeline 
 
 #inmport rules
 include: config["detection"]
-include: config["functional_genomics"]
 include: config["quality_control"]
 
 #analysis-specific rules
@@ -33,35 +32,48 @@ include: config["quality_control"]
 #include: config["variants"]
 #include: config["development"]
 
-# Optional c-modification rule: Only works if input BAMs have MM tags
+
+#conditional rule all based on defined rules
+conditional_output = list()
+
+if "functional_genomics" in config:
+	include: config["functional_genomics"]
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/intermediate/localization/annotation/Annotation_{{annotation}}_Insertions_{{sample}}.bed",
+									annotation=[k.replace("annotate_", "") for k in config if k.startswith("annotate_")],
+									sample=SAMPLES))
+
+if "plot_functional_genomics" in config:
+
+	import VIS_plot_functional_annotation_helper_functions as vhf_fa
+	include: config["plot_functional_genomics"]
+
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg", sample=SAMPLES))
+
 if "cmod" in config:
 	include: config["cmod"]
-	rule all:
-		input:
-			expand(f"{outdir}/intermediate/cmod/Final_Isolated_Reads_{{sample}}.bam", sample=SAMPLES),
-			expand(f"{outdir}/intermediate/cmod/Isolated_Reads_{{sample}}.tsv", sample=SAMPLES),
-			#expand(f"{outdir}/intermediate/cmod/Calls_Isolated_Reads_{{sample}}.tsv", sample=SAMPLES)
-else:
-	rule all:
-		input: 
-			#detection
-			expand(f"{outdir}/final/localization/ExactInsertions_{{sample}}.bed", sample=SAMPLES),
-			f"{outdir}/final/localization/Heatmap_Insertion_Chr.png",
-			f"{outdir}/final/localization/Insertion_length.png",
-			#functional genomics
-			expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES),
-			expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
-			expand(f"{outdir}/intermediate/localization/annotation/Annotation_gene_Insertions_{{sample}}.bed", sample=SAMPLES),
-			expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg", sample=SAMPLES),
-			#quality control
-			expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
-			expand(f"{outdir}/final/qc/Fragmentation/Insertions/insertions_{fragmentsize}_{{sample}}", sample=SAMPLES),
-			expand(f"{outdir}/final/qc/Fragmentation/Longest_Interval/{{sample}}/", sample=SAMPLES),
-			f"{outdir}/final/qc/multiqc_report.html",
-			# process
-			f"{outdir}/config_settings.yml",
-			# downstream
-			#expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
-			#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
-			# for msa
-			#expand(f"{outdir}/intermediate/fasta/Inserted_sequence_{{sample}}.fa", sample=SAMPLES)
+	conditional_output.append(expand(f"{outdir}/intermediate/cmod/Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/intermediate/cmod/Calls_Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
+
+rule all:
+	input:
+		#detection
+		expand(f"{outdir}/final/localization/ExactInsertions_{{sample}}.bed", sample=SAMPLES),
+		f"{outdir}/final/localization/Heatmap_Insertion_Chr.png",
+		f"{outdir}/final/localization/Insertion_length.png",
+		#quality control
+		expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
+		expand(f"{outdir}/final/qc/Fragmentation/Insertions/insertions_{fragmentsize}_{{sample}}", sample=SAMPLES),
+		expand(f"{outdir}/final/qc/Fragmentation/Longest_Interval/{{sample}}/", sample=SAMPLES),
+		f"{outdir}/final/qc/multiqc_report.html",
+		# process
+		f"{outdir}/config_settings.yml",
+		# other output
+		conditional_output
+		# downstream
+		#expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
+		#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
+		# for msa
+		#expand(f"{outdir}/intermediate/fasta/Inserted_sequence_{{sample}}.fa", sample=SAMPLES)

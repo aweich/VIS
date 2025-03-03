@@ -58,7 +58,7 @@ rule modkit:
 		modkit extract full -t 20 {input.isobam} {output.tsv}
 		) > {log.log} 2>&1
 		"""
-''''
+
 rule call_modkit:
 	input:
 		isobam=f"{outdir}/intermediate/cmod/Final_Isolated_Reads_{{sample}}.bam"
@@ -71,11 +71,11 @@ rule call_modkit:
 	shell:
 		"""
 		(
-		modkit call-mods {input.isobam} - | modkit extract - {output.tsv}
+		modkit extract calls -t 20 {input.isobam} {output.tsv}
 		) > {log.log} 2>&1
 		"""
 
-'''
+
 '''
 rule specific_methylartist:
 	input:
