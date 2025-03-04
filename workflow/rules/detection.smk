@@ -29,13 +29,13 @@ rule build_insertion_reference:
 	log:
 		log=f"{outdir}/intermediate/log/detection/build_insertion_reference/out.log"
 	output:
-		temp(f"{outdir}/intermediate/mapping/insertion_ref_genome.fa")
+		f"{outdir}/intermediate/mapping/insertion_ref_genome.fa"
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
 		"""
 		(
-		cat {input.ref} {input.insertion} > {output}
+		cat {input.ref} {input.insertion} | awk 'NF' > {output}
 		) > {log.log} 2>&1
 		"""
 		
@@ -60,7 +60,7 @@ rule minimap_index:
 
 rule make_fasta_without_tags: #fasta of raw data no trimming whatsoever
 	input:
-		fq=lambda wildcards: config["samples"][wildcards.sample]
+		bam=lambda wildcards: config["samples"][wildcards.sample]
 	log:
 		log=f"{outdir}/intermediate/log/detection/make_fasta_without_tags/{{sample}}.log"
 	output:
@@ -70,9 +70,50 @@ rule make_fasta_without_tags: #fasta of raw data no trimming whatsoever
 	shell: 
 		"""
 		(
+		samtools fasta {input.bam} -o {output.fasta} > {output.fasta}
+		) > {log.log} 2>&1
+		"""
+
+######
+######
+###### Only use reads with insertions for speed
+######
+######
+
+rule insertion_reads:
+	input:
+		bam=lambda wildcards: config["samples"][wildcards.sample],
+		readnames=f"{outdir}/intermediate/blastn/Readnames_{fragmentsize}_InsertionMatches_{{sample}}.txt"
+	log:
+		log=f"{outdir}/intermediate/log/detection/insertion_reads_cmod/{{sample}}.log"
+	output:
+		isobam=f"{outdir}/intermediate/mapping/Isolated_Reads_{{sample}}.bam"
+	conda:
+		"../envs/VIS_samtools_env.yml"
+	shell:
+		"""
+		(
+		samtools view -b -N {input.readnames} {input.bam} | samtools sort > {output.isobam}
+		samtools index {output.isobam}
+		) > {log.log} 2>&1
+		"""
+
+rule fasta_insertion_reads:
+	input:
+		f"{outdir}/intermediate/mapping/Isolated_Reads_{{sample}}.bam"
+	log:
+		log=f"{outdir}/intermediate/log/detection/fasta_insertion_reads_cmod/{{sample}}.log"
+	output:
+		f"{outdir}/intermediate/fasta/Isolated_Reads_{{sample}}.fa"
+	conda:
+		"../envs/VIS_samtools_env.yml"
+	shell:
+		"""
+		(
 		samtools fasta {input} -o {output} > {output}
 		) > {log.log} 2>&1
 		"""
+
 ######
 ######
 ###### "Clean" BAM: Cut-out fasta to BAM via Mapping to reference 
@@ -90,19 +131,21 @@ rule Non_insertion_mapping: #mapping against the unaltered referenc egenome
 		log=f"{outdir}/intermediate/log/detection/Non_insertion_mapping/{{sample}}.log"
 	resources:
 		mem_mb=5000
+	threads: config["threads"]
 	conda:
 		"../envs/VIS_minimap_env.yml"
 	shell: #N=0 instead of default N=1
 		"""
 		(
-		minimap2 -y -ax map-ont --score-N 0 {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output}
+		minimap2 -t {threads} -y -ax map-ont --score-N 0 {input.genome} {input.fasta} | samtools sort |  samtools view -F 2304 -o {output}
 		samtools index {output}
 		) > {log.log} 2>&1
 		"""
 
 rule insertion_mapping: #conserves tags!
 	input:
-		bam=lambda wildcards: config["samples"][wildcards.sample],
+		#bam=lambda wildcards: config["samples"][wildcards.sample], #full data
+		bam=f"{outdir}/intermediate/mapping/Isolated_Reads_{{sample}}.bam", #only reads with insertions
 		minimapref=f"{outdir}/intermediate/mapping/ref_genome_index.mmi",
 		ref=f"{outdir}/intermediate/mapping/insertion_ref_genome.fa"
 	output:
@@ -111,12 +154,13 @@ rule insertion_mapping: #conserves tags!
 		log=f"{outdir}/intermediate/log/detection/insertion_mapping/{{sample}}.log"
 	resources:
 		mem_mb=5000
+	threads: config["threads"]
 	conda:
 		"../envs/VIS_minimap_env.yml"
 	shell:
 		"""
 		(
-		samtools bam2fq -T '*' {input.bam}| minimap2 -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
+		samtools bam2fq -T '*' {input.bam}| minimap2 -t {threads} -y -ax map-ont {input.minimapref} - | samtools sort |  samtools view -F 2304 -o {output}
 		samtools index {output}
 		) > {log.log} 2>&1
 		"""
@@ -196,7 +240,8 @@ rule get_coordinates_for_fasta: #filters and combines matches
 rule split_fasta:
 	input:
 		breakpoints=f"{outdir}/intermediate/blastn/Coordinates_{fragmentsize}_InsertionMatches_{{sample}}.blastn",
-		fasta=f"{outdir}/intermediate/fasta/Full_{{sample}}.fa"
+		#fasta=f"{outdir}/intermediate/fasta/Full_{{sample}}.fa"
+		fasta=f"{outdir}/intermediate/fasta/Isolated_Reads_{{sample}}.fa"
 	params:
 		mode=config["splitmode"] #if each split fasta substring should be used individually, use "Separated" Join, New mode: Buffer
 	log:
@@ -216,6 +261,7 @@ rule split_fasta:
 ###### Insertion preparation: Fragmentation 
 ######
 ######
+
 rule prepare_insertion:
 	input:
 		config["insertion_fasta"] #insertion fasta sequence
@@ -287,6 +333,8 @@ rule find_insertion_BLASTn:
 		log=f"{outdir}/intermediate/log/detection/find_insertion_BLASTn/{{sample}}.log"
 	output:
 		temp(f"{outdir}/intermediate/blastn/{fragmentsize}_InsertionMatches_{{sample}}.blastn")
+	threads: 
+		config["threads"]
 	conda:
 		"../envs/VIS_blastn_env.yml"
 	shell:
@@ -295,6 +343,7 @@ rule find_insertion_BLASTn:
 	mkdir {params.tempdir}	
         
         blastn \
+		-num_threads {threads} \
         -query {input.fasta} \
         -db {input.insertion} \
         -out {params.tempdir}/temp_output.blastn \
@@ -315,6 +364,8 @@ rule find_insertion_BLASTn_in_Ref:
         fasta=f"{outdir}/intermediate/fasta/fragments/{fragmentsize}_Insertion_fragments.fa"
     params:
         refdb=config.get("blastn_db", "")  # Optional blastn database path
+    threads:
+        config["threads"]
     log:
         log=f"{outdir}/intermediate/log/detection/find_insertion_BLASTn_in_Ref/{{sample}}.log"
     output:
@@ -330,6 +381,7 @@ rule find_insertion_BLASTn_in_Ref:
         else
             # If blastn_db is provided, run the blastn command
             blastn \
+			-num_threads {threads} \
             -query {input.fasta} \
             -db {params.refdb} \
             -out {output} \
@@ -380,12 +432,11 @@ rule extract_by_length:
 		) > {log.log} 2>&1
 		""" 
 
+
 ######
 ######
 ###### Visualisation of insertions
 ######
-
-
 
 rule basic_insertion_plots:
 	input:
@@ -433,7 +484,23 @@ rule calculate_exact_insertion_coordinates:
 	    except Exception as e:
 	        with open(log.log, "a") as log_file:
                     log_file.write(f"Error: {str(e)}\n")
-                
+
+rule insertion_points:
+    input:
+        f"{outdir}/intermediate/localization/ExactInsertions_{{sample}}.bed"
+    output:
+        f"{outdir}/final/localization/InsertionPoints_{{sample}}.bed"
+    log:
+        f"{outdir}/intermediate/log/detection/insertion_points/{{sample}}.log"
+    conda:
+        "../envs/VIS_dummy_env.yml"
+    shell:
+        """
+        (
+        awk '{{OFS="\t"; $3 = $2 + 1; print $0}}' {input} > {output}
+        ) > {log} 2>&1
+        """
+               
 rule collect_outputs:
 	input:
 		coordinates=f"{outdir}/intermediate/localization/ExactInsertions_{{sample}}.bed",

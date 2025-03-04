@@ -12,36 +12,47 @@ SAMPLES = expand(config["samples"])
 outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
 fragmentsize=config["fragment_size"]
 
+# needs to be improved somehow. Maybe even by removing the global import and replacing every single fucntion with a local import line
+#local functions - path to helper fucntions needs to be added to the sys path, otherwise import won't find the file
+rootpath = os.path.join("workflow/scripts")
+sys.path.append(rootpath)
+cwd=os.getcwd()
+
 import VIS_helper_functions as vhf #custom functions to make snakemake pipeline leaner
 
-#inmport rules
+#inmport default rules
 include: config["detection"]
-include: config["functional_genomics"]
 include: config["quality_control"]
 
+#conditional rule all based on defined rules
+conditional_output = list()
 
-#analysis-specific rules
-#include: config["downstream"]
+if "functional_genomics" in config:
+	import VIS_functional_genomics_helper_functions as vhf_fg
+	include: config["functional_genomics"]
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/intermediate/localization/annotation/Annotation_{{annotation}}_Insertions_{{sample}}.bed",
+									annotation=[k.replace("annotate_", "") for k in config if k.startswith("annotate_")],
+									sample=SAMPLES))
 
-#development
-#include: config["epigenetics"]
-#include: config["variants"]
-#include: config["development"]
+if "plot_functional_genomics" in config:
+	import VIS_plot_functional_genomics_helper_functions as vhf_pfg
+	include: config["plot_functional_genomics"]
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg", sample=SAMPLES))
 
+if "base_modifications" in config:
+	include: config["base_modifications"]
+	conditional_output.append(expand(f"{outdir}/final/base_modifications/Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/final/base_modifications/Calls_Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
 
-#target rule        
 rule all:
-	input: 
+	input:
 		#detection
 		expand(f"{outdir}/final/localization/ExactInsertions_{{sample}}.bed", sample=SAMPLES),
 		f"{outdir}/final/localization/Heatmap_Insertion_Chr.png",
 		f"{outdir}/final/localization/Insertion_length.png",
-		
-		#functional genomics
-		expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES),
-		expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
-		expand(f"{outdir}/intermediate/localization/annotation/Annotation_gene_Insertions_{{sample}}.bed", sample=SAMPLES),
-		expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg", sample=SAMPLES),
 		#quality control
 		expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
 		expand(f"{outdir}/final/qc/Fragmentation/Insertions/insertions_{fragmentsize}_{{sample}}", sample=SAMPLES),
@@ -49,8 +60,10 @@ rule all:
 		f"{outdir}/final/qc/multiqc_report.html",
 		# process
 		f"{outdir}/config_settings.yml",
-		
-    		# downstream
+		# other output
+		conditional_output
+		# downstream
 		#expand(f"{outdir}/intermediate/blastn/Filtered_Annotated_{fragmentsize}_InsertionMatches_{{sample}}.gff", sample=SAMPLES),
 		#expand(f"{outdir}/final/functional_genomics/localization/{fragmentsize}_{{sample}}", sample=SAMPLES),
-		
+		# for msa
+		#expand(f"{outdir}/intermediate/fasta/Inserted_sequence_{{sample}}.fa", sample=SAMPLES)
