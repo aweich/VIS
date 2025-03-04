@@ -46,7 +46,7 @@ rule annotation_overlap_insertion:
     log:
         log=f"{outdir}/intermediate/log/functional_genomics/annotation_overlap_insertion/{{sample}}.log"
     output:
-        **{k.replace("annotate_", ""): f"{outdir}/intermediate/localization/annotation/Annotation_{k.replace('annotate_', '')}_Insertions_{{sample}}.bed"
+        **{k.replace("annotate_", ""): f"{outdir}/intermediate/functional_genomics/Annotation_{k.replace('annotate_', '')}_Insertions_{{sample}}.bed"
            for k in config if k.startswith("annotate_")}
     run:
         vhf_fg.run_bedtools_intersect(input.insertions_bed, output, log.log, params.annotation_files)

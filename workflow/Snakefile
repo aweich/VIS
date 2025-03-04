@@ -31,8 +31,7 @@ if "functional_genomics" in config:
 	import VIS_functional_genomics_helper_functions as vhf_fg
 	include: config["functional_genomics"]
 	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
-	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
-	conditional_output.append(expand(f"{outdir}/intermediate/localization/annotation/Annotation_{{annotation}}_Insertions_{{sample}}.bed",
+	conditional_output.append(expand(f"{outdir}/intermediate/functional_genomics/Annotation_{{annotation}}_Insertions_{{sample}}.bed",
 									annotation=[k.replace("annotate_", "") for k in config if k.startswith("annotate_")],
 									sample=SAMPLES))
 
