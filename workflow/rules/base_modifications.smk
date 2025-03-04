@@ -1,6 +1,6 @@
 ######
 ######
-###### C-modifications of reads with isnertions
+###### Base modifications of reads with isnertions
 ######
 ######
 
@@ -11,9 +11,9 @@ rule readnames_final:
 	input:
 		final_insertions=f"{outdir}/final/localization/ExactInsertions_{{sample}}.bed"
 	log:
-		log=f"{outdir}/intermediate/log/cmod/readnames_final/{{sample}}.log"
+		log=f"{outdir}/intermediate/log/base_modifications/readnames_final/{{sample}}.log"
 	output:
-		readnames=f"{outdir}/intermediate/cmod/final_insertion_readnames_{{sample}}.txt"
+		readnames=temp(f"{outdir}/intermediate/base_modifications/final_insertion_readnames_{{sample}}.txt")
 	conda:
 		"../envs/VIS_dummy_env.yml"
 	shell:
@@ -23,15 +23,14 @@ rule readnames_final:
 		) > {log.log} 2>&1
 		"""
 
-
-rule only_keep_valid_insertions:
+rule only_keep_filtered_insertions:
 	input:
 		isobam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam",
 		readnames=f"{outdir}/intermediate/cmod/final_insertion_readnames_{{sample}}.txt"
 	log:
-		log=f"{outdir}/intermediate/log/cmod/filter/{{sample}}.log"
+		log=f"{outdir}/intermediate/log/base_modifications/only_keep_filtered_insertions/{{sample}}.log"
 	output:
-		bam=f"{outdir}/intermediate/cmod/Final_Isolated_Reads_{{sample}}.bam"
+		bam=f"{outdir}/intermediate/base_modifications/Final_Isolated_Reads_{{sample}}.bam"
 	conda:
 		"../envs/VIS_samtools_env.yml"
 	shell:
@@ -42,39 +41,39 @@ rule only_keep_valid_insertions:
 		) > {log.log} 2>&1
 		"""
 
-
 rule modkit:
 	input:
-		isobam=f"{outdir}/intermediate/cmod/Final_Isolated_Reads_{{sample}}.bam"
+		isobam=f"{outdir}/intermediate/base_modifications/Final_Isolated_Reads_{{sample}}.bam"
 	log:
-		log=f"{outdir}/intermediate/log/cmod/modkit/{{sample}}.log"
+		log=f"{outdir}/intermediate/log/base_modifications/modkit/{{sample}}.log"
 	output:
-		tsv=f"{outdir}/intermediate/cmod/Isolated_Reads_{{sample}}.tsv"
+		tsv=f"{outdir}/final/base_modifications/Isolated_Reads_{{sample}}.tsv"
 	conda:
 		"../envs/VIS_modkit_env.yml"
+	threads: config["threads"]
 	shell:
 		"""
 		(
-		modkit extract full -t 20 {input.isobam} {output.tsv}
+		modkit extract full -t {threads} {input.isobam} {output.tsv}
 		) > {log.log} 2>&1
 		"""
 
 rule call_modkit:
 	input:
-		isobam=f"{outdir}/intermediate/cmod/Final_Isolated_Reads_{{sample}}.bam"
+		isobam=f"{outdir}/intermediate/base_modifications/Final_Isolated_Reads_{{sample}}.bam"
 	log:
-		log=f"{outdir}/intermediate/log/cmod/Calls_modkit/{{sample}}.log"
+		log=f"{outdir}/intermediate/log/base_modifications/call_modkit/{{sample}}.log"
 	output:
-		tsv=f"{outdir}/intermediate/cmod/Calls_Isolated_Reads_{{sample}}.tsv"
+		tsv=f"{outdir}/final/base_modifications/Calls_Isolated_Reads_{{sample}}.tsv"
 	conda:
 		"../envs/VIS_modkit_env.yml"
+	threads: config["threads"]
 	shell:
 		"""
 		(
-		modkit extract calls -t 20 {input.isobam} {output.tsv}
+		modkit extract calls -t {threads} {input.isobam} {output.tsv}
 		) > {log.log} 2>&1
 		"""
-
 
 '''
 rule specific_methylartist:
@@ -93,7 +92,7 @@ rule specific_methylartist:
 		methylartist locus -b {input.bam} -i chr17:31124037-31180287 -n C -r {input.ref} -l 31154037-31159287 -o {output.plot}
 		) > {log.log} 2>&1
 		"""
-'''
+
 
 rule inserted_seq:
 	input:
@@ -109,3 +108,4 @@ rule inserted_seq:
 		except Exception as e:
 			with open(log.log, "a") as log_file:
 					log_file.write(f"Error: {str(e)}\n")
+'''

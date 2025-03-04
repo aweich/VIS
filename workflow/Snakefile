@@ -20,23 +20,15 @@ cwd=os.getcwd()
 
 import VIS_helper_functions as vhf #custom functions to make snakemake pipeline leaner
 
-#inmport rules
+#inmport default rules
 include: config["detection"]
 include: config["quality_control"]
-
-#analysis-specific rules
-#include: config["downstream"]
-
-#development
-#include: config["epigenetics"]
-#include: config["variants"]
-#include: config["development"]
-
 
 #conditional rule all based on defined rules
 conditional_output = list()
 
 if "functional_genomics" in config:
+	import VIS_functional_genomics_helper_functions as vhf_fg
 	include: config["functional_genomics"]
 	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
 	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed", sample=SAMPLES))
@@ -45,17 +37,15 @@ if "functional_genomics" in config:
 									sample=SAMPLES))
 
 if "plot_functional_genomics" in config:
-
-	import VIS_plot_functional_annotation_helper_functions as vhf_fa
+	import VIS_plot_functional_genomics_helper_functions as vhf_pfg
 	include: config["plot_functional_genomics"]
-
 	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES))
 	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg", sample=SAMPLES))
 
-if "cmod" in config:
-	include: config["cmod"]
-	conditional_output.append(expand(f"{outdir}/intermediate/cmod/Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
-	conditional_output.append(expand(f"{outdir}/intermediate/cmod/Calls_Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
+if "base_modifications" in config:
+	include: config["base_modifications"]
+	conditional_output.append(expand(f"{outdir}/final/base_modifications/Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
+	conditional_output.append(expand(f"{outdir}/final/base_modifications/Calls_Isolated_Reads_{{sample}}.tsv", sample=SAMPLES))
 
 rule all:
 	input:

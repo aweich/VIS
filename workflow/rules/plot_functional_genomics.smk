@@ -11,7 +11,7 @@ rule plot_distance_to_elements:
 		scatter=report(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
 	run:
 	    try:
-	        vhf_fa.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
+	        vhf_pfg.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
 	    except Exception as e:
 	        with open(log.log1, "a") as log_file:
                     log_file.write(f"Error: {str(e)}\n")
@@ -26,7 +26,7 @@ rule plot_scoring:
         data=(f"{outdir}/final/functional_genomics/Insertion_Scoring_Data_{{sample}}.txt")
     run:
         try:
-            vhf_fa.scoring_insertions(input[0], output.plot, output.data, log.log)
+            vhf_pfg.scoring_insertions(input[0], output.plot, output.data, log.log)
         except Exception as e:
             with open(log.log, "a") as log_file:
                 log_file.write(f"Error: {str(e)}\n")

@@ -15,11 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import collections
 import seaborn as sns
-import pybedtools
 import json
-import subprocess
-#from Bio.Align.Applications import ClustalOmegaCommandline
-from matplotlib.patches import Patch
 
 #wrapper
 from functools import wraps
@@ -594,7 +590,6 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
                 rotation=90
             )
     
-    
     #invisible y axis
     plt.box(False)
     plt1 = plt.gca()
@@ -644,65 +639,6 @@ def find_and_plot_longest_blast_interval(blastn, buffer, threshold, output_dir, 
                 plot_longest_interval(matches, longest_start, longest_end, longest_subject_ids, out_file)
         else:
             print(f"Not enough matches for {query_id}.")
-
-#functional
-@redirect_logging(logfile_param="logfile")
-def calculate_element_distance(insertions_bed, output_bed, logfile, annotation_files):
-    """
-    Calculates distances between insertion sites and genomic annotations using bedtools closest.
-    
-    Parameters:
-    - insertions_bed (str): Path to the BED file containing the insertion sites.
-    - output_bed (str): Path to save the output BED file.
-    - annotation_files (dict): Dict with config_entry as keys and pathways as values.
-    """
-    
-    # At least one annotation input necessary
-    if not annotation_files:
-        raise ValueError("At least one annotation file must be provided.")
-    
-    # Create DataFrame for combined annotations
-    combined_df = pd.DataFrame()
-
-    for tag, file in annotation_files.items():
-        try:
-            df = pd.read_csv(file, sep="\t", header=None)  # Load as DataFrame
-            df["source"] = tag  # Add source column
-            print(f"Loaded {tag}: {df.head()}")
-            combined_df = pd.concat([combined_df, df], ignore_index=True)
-        except:
-            print(f"Error reading {file}: {e})")
-            continue
-    
-    # Convert combined DataFrame bed object
-    combined_bed = pybedtools.BedTool.from_dataframe(combined_df)
-    sorted_annotations = combined_bed.sort()
-
-    insertions = pybedtools.BedTool(insertions_bed)
-    
-    #bedtools closest operation
-    closest = insertions.closest(sorted_annotations, D="a", filenames=True)
-
-    print(type(closest))
-    print(closest)
-    closest.saveas(output_bed)
-    print(f"Distances calculated and saved to {output_bed}")
-
-@redirect_logging(logfile_param="logfile")
-def run_bedtools_intersect(insertions_bed, output_files, logfile, annotations):
-    """
-    Runs bedtools intersect for each annotation.
-    """
-    for key, annotation_file in annotations.items():
-        output_file = output_files[key]
-
-        cmd = f"bedtools intersect -a {insertions_bed} -b {annotation_file} -wb > {output_file}"
-        
-        try:
-            subprocess.run(cmd, shell=True, check=True)
-            print(f"Completed: {key}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error running bedtools for {key}: {e}")
 
 # qc
 @redirect_logging(logfile_param="logfile")
@@ -851,8 +787,6 @@ def fragmentation_read_match_distribution(data, fragment_specifier, outpath, log
     outfile = outpath + str("/") + f'{fragment_specifier}_read_match_fragmentation_distribution.png'
     plt.savefig(outfile, bbox_inches='tight', dpi=600)
     plt.close()
-
-
 
 #cmod
 @redirect_logging(logfile_param="logfile")

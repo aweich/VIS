@@ -36,6 +36,8 @@ annotate_ucsc_exons: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE
 annotate_ucsc_introns: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns"
 #promoters
 annotate_ucsc_promoter: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_Promoters_EPDnew"
+#enhancer
+annotate_ucsc_enhancer: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_VISTA_Enhancer_02_2025.bed"
 #sedb
 #sedb_cd4: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd4_closest_gene.bed"
 #sedb_cd8: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd8_closest_gene.bed"
@@ -61,6 +63,6 @@ downstream: "rules/downstream.smk"
 #epigenetics: "rules/epigenetics.smk"
 #variants rule collection WIP
 #variants: "rules/variants.smk"
-cmod: "rules/cmod.smk"
+base_modifications: "rules/base_modifications.smk"
 plot_functional_genomics: "rules/plot_functional_genomics.smk"
 threads: 10

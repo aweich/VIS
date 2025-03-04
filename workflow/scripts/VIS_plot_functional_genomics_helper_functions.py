@@ -1,53 +1,12 @@
 #!/usr/bin/env python3
 
-import sys
-import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.patches import Patch
 
 #wrapper
-from functools import wraps
-import inspect
-
-#wrapper for logging
-def redirect_logging(logfile_param="logfile"):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            # Inspect the arguments of the function
-            func_signature = inspect.signature(func)
-            bound_args = func_signature.bind(*args, **kwargs)
-            bound_args.apply_defaults()
-            
-            # Get the logfile path from the function arguments
-            logfile = bound_args.arguments.get(logfile_param)
-            if not logfile:
-                raise ValueError(f"The parameter '{logfile_param}' must be provided with a valid file path.")
-            
-            # Ensure the directory for the logfile exists
-            os.makedirs(os.path.dirname(logfile), exist_ok=True)
-            
-            # Open the logfile for writing
-            with open(logfile, 'w') as log:
-                # Redirect stdout and stderr
-                original_stdout = sys.stdout
-                original_stderr = sys.stderr
-                sys.stdout = log
-                sys.stderr = log
-                
-                try:
-                    # Execute the wrapped function
-                    result = func(*args, **kwargs)
-                finally:
-                    # Restore stdout and stderr
-                    sys.stdout = original_stdout
-                    sys.stderr = original_stderr
-                
-                return result
-        return wrapper
-    return decorator
+from VIS_helper_functions import redirect_logging
 
 @redirect_logging(logfile_param="logfile")
 def plot_element_distance(bed, distances, distance_threshold, output_path, logfile):
@@ -58,6 +17,7 @@ def plot_element_distance(bed, distances, distance_threshold, output_path, logfi
     df = pd.read_csv(
         bed,
         sep='\t',
+        header=None
     )
     
     print(df.head())
@@ -76,9 +36,7 @@ def plot_element_distance(bed, distances, distance_threshold, output_path, logfi
             "AnnotationScore",
             "AnnotationStrand",
             "AnnotationSource",
-            "Optional1",
-            "Optional2",
-            "Distance",
+            "Distance"
         ]	
    
     print(df.head())
@@ -143,9 +101,7 @@ def plot_element_distance_violin(bed, distances, distance_threshold, output_path
             "AnnotationScore",
             "AnnotationStrand",
             "AnnotationSource",
-            "Optional1",
-            "Optional2",
-            "Distance",
+            "Distance"
         ]	
 	
     # Apply threshold filtering if provided
@@ -199,9 +155,7 @@ def scoring_insertions(data, output_plot, output_file, logfile):
             "AnnotationScore",
             "AnnotationStrand",
             "AnnotationSource",
-            "Optional1",
-            "Optional2",
-            "Distance",
+            "Distance"
         ]
 
     df = pd.read_csv(

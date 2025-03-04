@@ -114,7 +114,6 @@ rule fasta_insertion_reads:
 		) > {log.log} 2>&1
 		"""
 
-
 ######
 ######
 ###### "Clean" BAM: Cut-out fasta to BAM via Mapping to reference 
@@ -262,6 +261,7 @@ rule split_fasta:
 ###### Insertion preparation: Fragmentation 
 ######
 ######
+
 rule prepare_insertion:
 	input:
 		config["insertion_fasta"] #insertion fasta sequence
@@ -484,7 +484,23 @@ rule calculate_exact_insertion_coordinates:
 	    except Exception as e:
 	        with open(log.log, "a") as log_file:
                     log_file.write(f"Error: {str(e)}\n")
-                
+
+rule insertion_points:
+    input:
+        f"{outdir}/intermediate/localization/ExactInsertions_{{sample}}.bed"
+    output:
+        f"{outdir}/final/localization/InsertionPoints_{{sample}}.bed"
+    log:
+        f"{outdir}/intermediate/log/detection/insertion_points/{{sample}}.log"
+    conda:
+        "../envs/VIS_dummy_env.yml"
+    shell:
+        """
+        (
+        awk '{{OFS="\t"; $3 = $2 + 1; print $0}}' {input} > {output}
+        ) > {log} 2>&1
+        """
+               
 rule collect_outputs:
 	input:
 		coordinates=f"{outdir}/intermediate/localization/ExactInsertions_{{sample}}.bed",
