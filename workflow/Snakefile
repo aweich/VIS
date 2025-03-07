@@ -3,9 +3,9 @@ import os
 from pathlib import Path
 
 env_name = os.getenv('CONDA_DEFAULT_ENV')
-print(f"Current environment (should be either 'VIS_minimal' or 'VIS_full'): {env_name}")
+#print(f"Current environment (should be either 'VIS_minimal' or 'VIS_full'): {env_name}")
 
-CONFIG = "config/config_CD19_BBz.yml"
+CONFIG = "config/config_CD19_28z.yml"
 configfile: CONFIG
 #SRC=config["source_dir"] #only in use for r script scirp, will be removed sooner or later
 SAMPLES = expand(config["samples"]) 

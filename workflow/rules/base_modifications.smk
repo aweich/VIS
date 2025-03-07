@@ -26,7 +26,7 @@ rule readnames_final:
 rule only_keep_filtered_insertions:
 	input:
 		isobam=f"{outdir}/intermediate/mapping/Precut_{{sample}}_sorted.bam",
-		readnames=f"{outdir}/intermediate/cmod/final_insertion_readnames_{{sample}}.txt"
+		readnames=f"{outdir}/intermediate/base_modifications/final_insertion_readnames_{{sample}}.txt"
 	log:
 		log=f"{outdir}/intermediate/log/base_modifications/only_keep_filtered_insertions/{{sample}}.log"
 	output:

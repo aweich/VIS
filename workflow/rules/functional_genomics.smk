@@ -35,7 +35,7 @@ rule calc_distance_to_elements:
     output:
         f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed"
     run:
-        vhf.calculate_element_distance(input.insertions, output[0], log.log, params.annotation_files)
+        vhf_fg.calculate_element_distance(input.insertions, output[0], log.log, params.annotation_files)
               
 #kinda 'hacky' solution for flexibility: Now it does not matter if one annotation or 20 are defined. 
 rule annotation_overlap_insertion:

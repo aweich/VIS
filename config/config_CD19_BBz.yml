@@ -1,5 +1,5 @@
 # Long-read data
-experiment: "annotation_test_cmod"
+experiment: "BBz_with_mod"
 samples:
     MK028_BBz: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK028_BBz_pooled.bam"
     MK014_BBz: "/home/weichan/permanent/Projects/VIS/Data/VIS_MPX_pooled/VIS_MPX_MK014_BBz_pooled.bam"
@@ -36,6 +36,10 @@ annotate_ucsc_exons: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE
 annotate_ucsc_introns: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns"
 #promoters
 annotate_ucsc_promoter: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_Promoters_EPDnew"
+#enhancer fantom5
+annotate_fantom5_enhancer: "/home/weichan/permanent/Projects/VIS/dev/FANTOM5/F5.hg38.enhancers.bed"
+#enhancer refTSS
+annotate_refTSS_tss: "/home/weichan/permanent/Projects/VIS/dev/refTSS/refTSS_v4.1_human_coordinate.hg38.bed"
 #enhancer
 annotate_ucsc_enhancer: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_VISTA_Enhancer_02_2025.bed"
 #sedb
