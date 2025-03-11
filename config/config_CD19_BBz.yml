@@ -39,9 +39,9 @@ annotate_ucsc_promoter: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_Prom
 #enhancer fantom5
 annotate_fantom5_enhancer: "/home/weichan/permanent/Projects/VIS/dev/FANTOM5/F5.hg38.enhancers.bed"
 #enhancer refTSS
-annotate_refTSS_tss: "/home/weichan/permanent/Projects/VIS/dev/refTSS/refTSS_v4.1_human_coordinate.hg38.bed"
+#annotate_refTSS_tss: "/home/weichan/permanent/Projects/VIS/dev/refTSS/refTSS_v4.1_human_coordinate.hg38.bed"
 #enhancer
-annotate_ucsc_enhancer: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_VISTA_Enhancer_02_2025.bed"
+#annotate_ucsc_enhancer: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_VISTA_Enhancer_02_2025.bed"
 #sedb
 #sedb_cd4: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd4_closest_gene.bed"
 #sedb_cd8: "/home/weichan/permanent/Projects/VIS/dev/SEdb/sedb_cd8_closest_gene.bed"
@@ -53,6 +53,8 @@ annotate_ucsc_mirna: "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_miRNA_p
 annotate_cosmic_genes: "/home/weichan/permanent/Projects/VIS/dev/COSMIC/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38/Cosmic_CancerGeneCensus_v101_GRCh38_processed.bed"
 #hiC
 annotate_encode_hic: "/home/weichan/permanent/Projects/VIS/dev/ENCODE/HiC_Tcells/HiC_processed.bed"
+#ultraconservedregions
+annotate_ucne_conservation: "/home/weichan/permanent/Projects/VIS/dev/UCNE/hglft_genome_38268a_8d60.bed"
 #VIS detection
 detection: "rules/detection.smk"
 #qc rule collection

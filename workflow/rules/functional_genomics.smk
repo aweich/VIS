@@ -50,4 +50,3 @@ rule annotation_overlap_insertion:
            for k in config if k.startswith("annotate_")}
     run:
         vhf_fg.run_bedtools_intersect(input.insertions_bed, output, log.log, params.annotation_files)
-
