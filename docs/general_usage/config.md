@@ -1,9 +1,7 @@
 
 # Configuration file
 
-The configuration file is necessary to specify where the pipeline can find the input files that it needs for a proper execution. Below is a table with all currently implemented options, exemplary parameters, and a corresponding description for each field.  
-
-An example for a ready-to-use `config.yml` is presented during the [tutorial](../tutorial/tutorial.md/#before-running-the-pipeline) of the pipeline. 
+The configuration file is necessary to specify where the pipeline can find the input files that it needs for a proper execution. An example for a ready-to-use `config.yml` is presented during the [tutorial](../tutorial/tutorial_before.md/#before-running-the-pipeline) of the pipeline. Below is a table with currently implemented options, exemplary parameters, and a corresponding description for each field.  
 
 | **Parameter**            | **Exemplary value**                                                                                      | **Description**                                                                                              |
 |---------------------------|------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
@@ -19,17 +17,18 @@ An example for a ready-to-use `config.yml` is presented during the [tutorial](..
 | `MAPQ`                   | `10`                                                                                          | Minimum mapping quality score for reads. Filtering is applied after the modification of the reads with insertions.                                               |
 | `MinInsertionLength`     | `500`                                                                                         | Minimum length (in bp) of insertions to be detected. This is dependent on the respective insertion and potentially its matches with the reference genome.                                                            |
 | `ref_genome_ctrl`        | `/path/to/ref.fa`                                                     | Reference genome file in FASTA format.                                                      |
-| `annotation_1`             | `/path/to/anno1.bed`                 | Sorted annotation file in [BED6 format](https://samtools.github.io/hts-specs/BEDv1.pdf).
-| `annotation_2`             | `/path/to/anno2.bed`                 | Sorted annotation file in [BED6 format](https://samtools.github.io/hts-specs/BEDv1.pdf).
-| `annotation_3`             | `/path/to/anno3.bed`                 | Sorted annotation file in [BED6 format](https://samtools.github.io/hts-specs/BEDv1.pdf).
-| `annotation_4`             | `/path/to/anno4.bed`                 | Sorted annotation file in [BED6 format](https://samtools.github.io/hts-specs/BEDv1.pdf).                                                                                                                                                                                               |
+| `annotate_{key}`             | `/path/to/annotate_{key}.bed`                 | Only required for `functional_genomics`. Sorted annotation file in [BED6 format](https://samtools.github.io/hts-specs/BEDv1.pdf). Four columns (chr, start, stop, id) must be provided. If less than six columns are provided, the empty columns are filled with `.`. If more than six columns are provided, these are discarded. Several annotation files can be provided via separate lines in the config.                            |
 | `detection`              | `rules/detection.smk`                                                                         | Snakemake rule file for the detection and localization of insertions.                                                                      |
 | `quality_control`        | `rules/qc.smk`                                                                                | Snakemake rule file for the quality control of reads and insertions.                                                                |
-| `functional_genomics`    | `rules/functional_genomics.smk`                                                               | Snakemake rule file for the functional annotation of insertions on the genome level.                                                            |
+| `functional_genomics`    | `rules/functional_genomics.smk`                                                               | Optional Snakemake rule file for the functional annotation of insertions on the genome level.                                                            |
+| `base_modifications`    | `rules/base_modifications.smk`                                                               | Optional Snakemake rule file for the generation of base modification tables from the modbam (MM/ML) tag. Requires MM/ML tags.                                                             |
 
 
 !!! info
 
-    The parameters `blastn_db` and `annotation_2`/`annotation_3`/`annotation_4` are optional. 
+    The parameter `blastn_db` is optional but recommended for the comparison of `insertion_fasta` to a healthy reference database. 
+
+!!! note 
+    Custom rules can be added to the config in the same way as the standard rules listed above. Their output, however, needs to be defined additionlly in the Snakefile. 
 
 

@@ -35,7 +35,7 @@ Create the minimal environment for running the pipeline:
 
 !!! Info 
 
-    You can use ´conda´ instead of ´mamba´ if desired, but ´mamba is faster. 
+    You can use `conda` instead of `mamba` if desired, but `mamba` is faster. 
 
 Then, activate the environment: 
 

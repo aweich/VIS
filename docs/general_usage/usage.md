@@ -31,3 +31,7 @@ To run the full pipeline using 20 cores and automatically generate a report abou
 ```
 
 This, however, will fail since the sample names defined in the default config are dummies. Let's look at the [tutorial](../tutorial/tutorial_intro.md) for a step-by-step explanation of the the workflow and its outputs. 
+
+!!! warning
+   
+    There are currently problems with `snakemake'`s report option, which prevents the report from being generated. You can check for updates on this [here](https://github.com/snakemake/snakemake/issues/3291). 
