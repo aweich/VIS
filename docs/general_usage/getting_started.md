@@ -17,7 +17,7 @@ Clone and navigate into the repository:
 
 You have two options for setting up the pipeline:
 
-##### 1. Classic (snakemake best practices)
+##### 1. Classic (recommended)
 
 The pipeline contains the option for an [integrated package management](https://snakemake.readthedocs.io/en/latest/snakefiles/deployment.html#integrated-package-management) functionality. 
 In other words, the workflow will be installing all required packages for each rule as needed.
@@ -44,7 +44,7 @@ Then, activate the environment:
 ```
 ##### 2. Alternative
 
-Snakemake also allows us to use a single environment throughout the whole pipeline. We can also make use of that to create a convenient alternative for the setup of the pipeline. Depending on your system, this might make the downsteam execution of the workflow overall more convenient. 
+`Snakemake` also allows us to use a single environment throughout the whole pipeline. We can also make use of that to create a convenient alternative for the setup of the pipeline. Depending on your system, this might make the downsteam execution of the workflow overall more convenient. 
 
 Create the full environment for running the pipeline:
 

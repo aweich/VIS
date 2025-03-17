@@ -4,8 +4,6 @@
 ######
 ######
  
-#FRAG=config["fragment_size"]
-
 #full stats of input data		
 rule nanoplot:
 	input:
@@ -130,9 +128,9 @@ rule extract_mapping_quality:
     log:
     	log=f"{outdir}/intermediate/log/qc/extract_mapping_quality/{{sample}}.log"
     output:
-        quality_scores=f"{outdir}/intermediate/qc/{{sample}}_precut_mapping_quality.txt",
-        quality_scores2=f"{outdir}/intermediate/qc/{{sample}}_postcut_mapping_quality.txt",
-        quality_scores3=f"{outdir}/intermediate/qc/{{sample}}_postcut_unfiltered_mapping_quality.txt"
+        quality_scores=temp(f"{outdir}/intermediate/qc/{{sample}}_precut_mapping_quality.txt"),
+        quality_scores2=temp(f"{outdir}/intermediate/qc/{{sample}}_postcut_mapping_quality.txt"),
+        quality_scores3=temp(f"{outdir}/intermediate/qc/{{sample}}_postcut_unfiltered_mapping_quality.txt")
     conda:
     	"../envs/VIS_samtools_env.yml"
     shell:
@@ -172,13 +170,13 @@ rule finalize_mapping_quality:
             with open(log.log, "a") as log_file:
                 log_file.write(f"Error: {str(e)}\n")
 
-rule generate_mapq_heatmap:
+rule generate_mapq_plot:
     input:
         table=f"{outdir}/final/qc/mapq/Insertions_{{sample}}_mapq.txt"
     log:
     	log=f"{outdir}/intermediate/log/qc/generate_mapq_heatmap/{{sample}}.log"
     output:
-        heatmap=report(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png")
+        heatmap=report(f"{outdir}/final/qc/mapq/{{sample}}_mapq_plot.png")
     run:
         try:
             vhf.plot_mapq_changes(input.table, output.heatmap, log.log)

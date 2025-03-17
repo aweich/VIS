@@ -8,7 +8,7 @@
 
 rule copy_config_version:
 	input:
-		config=CONFIG
+		config=configpath
 	log:
 		log=f"{outdir}/intermediate/log/detection/copy_config_version/out.log"
 	output:
@@ -18,7 +18,7 @@ rule copy_config_version:
 	shell:
 		"""
 		(
-		cp {input} {output} 
+		cp {input.config} {output} 
 		) > {log.log} 2>&1
 		"""
 

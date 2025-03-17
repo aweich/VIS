@@ -19,39 +19,37 @@ There are several possible adjustments that likely need to be made to the thresh
 
 #### Custom annotations
 
-Adding custom annotations for the detected insertion coordinates is straightforward. Simply include a sorted `BED6` file in the `config.yml` under one of the annotation keywords (`annotation_1`/`annotation_2`/`annotation_3`/`annotation_4`). For annotation data sourced from repositories like [UCSC](https://hgdownload.soe.ucsc.edu/downloads.html) or [GENCODE](https://www.gencodegenes.org/), , ensure the files are sorted before running the pipeline. For instance, the gene annotation file used in the [tutorial](../tutorial/tutorial_after.md/#genes-in-proximity) was generated following the steps outlined [here](../other/other_simulation.md/#annotation-data-processing).
+Adding custom annotations for the detected insertion coordinates is straightforward. Simply include a sorted `BED6` file in the `config.yml` using the correct format (`annotate_{key1}`, `annotate_{key2}`, `annotate_{key...}`). 
 
-!!! info
-    In the `config.yml`, the `annotation_1` field is mandatory. The other annotation file slots are optional and can be used as needed. While it is possible to extend the number of annotation files beyond the predefined slots, it is recommended to implement such customizations by creating custom `rules.smk` files for better flexibility and maintainability..   
+For annotation data sourced from repositories like [UCSC](https://hgdownload.soe.ucsc.edu/downloads.html) or [GENCODE](https://www.gencodegenes.org/), , ensure the files are sorted before running the pipeline. For instance, the gene annotation file used in the [tutorial](../tutorial/tutorial_after.md/#genes-in-proximity) was generated following the steps outlined [here](../other/other_simulation.md/#annotation-data-processing).
 
 <br>
 
 #### Custom rules and functions
 
-One of Snakemake's greatest advantages over standalone software tools is its flexibility, allowing users to easily integrate custom options into any stage of the pipeline. Whether you want to add a new analysis step, build an entirely new branch of functionality, or simply generate additional plots, the pipeline can accommodate your needs.
+One of `Snakemake`'s greatest advantages over standalone software tools is its flexibility, allowing users to easily integrate custom options into any stage of the pipeline. Whether you want to add a new analysis step, build an entirely new branch of functionality, or simply generate additional plots, the modular architecture of the pipeline allows you to do it.
 
-To achieve this, however, you’ll need to gain a deeper understanding of Snakemake's core [core functionality](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html). This includes learning how to write custom `Snakefile` rules, define input/output relationships, and use configuration files effectively. By doing so, you can benefit from Snakemake's modular design to extend your workflow without compromising its reproducibility and scalability.
+To achieve this, you’ll need to gain a deeper understanding of Snakemake's core [core functionality](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html). This includes learning how to write custom `Snakefile` rules, define input/output relationships, and use configuration files effectively. By doing so, you can benefit from `Snakemake`'s design to extend your workflow without compromising reproducibility or scalability.
 
 As a matter of fact, there is one rule already implemented that generates an additional plot based on the genes in proximity to the detected insertions. The output for this rule is currently just commented out with a `#` in the `rule all:` of the `Snakefile`. For a first step towards your own customization, you can remove the `#`, execute the pipeline, and see whether you can find the rule that generates the output file.  
 
 <details>
   <summary>Output file, rule, and plotting script: </summary>
 <br>
-
 The output file will not be generated unless it is included in the <code>rule all</code>. To ensure the file is recognized, remove the <code>#</code> from the relevant line in <code>../workflow/Snakefile</code>.
 
 ```python
-#expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES),
+#conditional_output.append(expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES)),
 ```
 
-The rule that generates the output is located in <code>../workflow/rules/functional_genomics.smk</code>. 
+The rule that generates the output is located in <code>../workflow/rules/plot_functional_genomics.smk</code>. 
 
 ```python
 rule plot_distance_to_elements:
 	input:
 		distancetable=f"{outdir}/final/functional_genomics/Functional_distances_to_Insertions_{{sample}}.bed"
 	params:
-		distances=list(range(-10000, 10001, 2000)),
+		distances=list(range(-10000, 10001, 2000)), #max distance from VIS in 2000 bp steps
 		threshold=10000
 	log:
         	log1=f"{outdir}/intermediate/log/functional_genomics/plot_distance_to_elements/scatter_{{sample}}.log",
@@ -59,13 +57,19 @@ rule plot_distance_to_elements:
 		scatter=report(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png"),
 	run:
 	    try:
-	        vhf.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
+	        vhf_pfg.plot_element_distance(input.distancetable, params.distances, params.threshold, output.scatter, log.log1)
 	    except Exception as e:
 	        with open(log.log1, "a") as log_file:
                     log_file.write(f"Error: {str(e)}\n")
 ```
 
-You can find the corresponding plotting function in the <code>python</code> helper script <code>../workflow/scripts/VIS_helper_functions.py</code>:
+This new set of rules also needs to be defined in the `config`. 
+
+```yml
+plot_functional_genomics: "rules/plot_functional_genomics.smk"
+```
+
+You can find the corresponding plotting function in the <code>python</code> helper script <code>../workflow/scripts/VIS_plot_functional_genomics_helper_functions.py</code>:
 
 ```python
 def plot_element_distance(bed, distances, distance_threshold, output_path, logfile):
@@ -76,8 +80,29 @@ def plot_element_distance(bed, distances, distance_threshold, output_path, logfi
     df = pd.read_csv(
         bed,
         sep='\t',
+        header=None
     )
-
+    
+    print(df.head())
+    df.columns = [
+            "InsertionChromosome",
+            "InsertionStart",
+            "InsertionEnd",
+            "InsertionRead",
+            "InsertionOrigStart",
+            "InsertionOrigEnd",
+            "InsertionStrand",
+            "AnnotationChromosome",
+            "AnnotationStart",
+            "AnnotationEnd",
+            "AnnotationID",
+            "AnnotationScore",
+            "AnnotationStrand",
+            "AnnotationSource",
+            "Distance"
+        ]	
+   
+    print(df.head())
     # Apply threshold filtering if provided
     if distance_threshold is not None:
         df = df[df['Distance'].abs() <= int(distance_threshold)]

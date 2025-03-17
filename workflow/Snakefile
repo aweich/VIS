@@ -5,15 +5,16 @@ from pathlib import Path
 env_name = os.getenv('CONDA_DEFAULT_ENV')
 #print(f"Current environment (should be either 'VIS_minimal' or 'VIS_full'): {env_name}")
 
-CONFIG = "config/config_CD19_28z.yml"
-configfile: CONFIG
-#SRC=config["source_dir"] #only in use for r script scirp, will be removed sooner or later
+#You can also set your config path here and discard the --configfile command line argument
+configpath = "config/config.yml" 
+configfile: configpath
+
 SAMPLES = expand(config["samples"]) 
 outdir = os.path.join(config["processing_dir"],str(config["experiment"]))
 fragmentsize=config["fragment_size"]
 
 # needs to be improved somehow. Maybe even by removing the global import and replacing every single fucntion with a local import line
-#local functions - path to helper fucntions needs to be added to the sys path, otherwise import won't find the file
+#local functions - path to helper functions needs to be added to the sys path, otherwise import won't find the file
 rootpath = os.path.join("workflow/scripts")
 sys.path.append(rootpath)
 cwd=os.getcwd()
@@ -38,8 +39,8 @@ if "functional_genomics" in config:
 if "plot_functional_genomics" in config:
 	import VIS_plot_functional_genomics_helper_functions as vhf_pfg
 	include: config["plot_functional_genomics"]
-	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES))
-	conditional_output.append(expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg", sample=SAMPLES))
+	#conditional_output.append(expand(f"{outdir}/final/functional_genomics/Plot_Distance_to_Genes_{fragmentsize}_{{sample}}.png", sample=SAMPLES))
+	#conditional_output.append(expand(f"{outdir}/final/functional_genomics/Insertion_Scoring_{{sample}}.svg", sample=SAMPLES))
 
 if "base_modifications" in config:
 	include: config["base_modifications"]
@@ -53,7 +54,7 @@ rule all:
 		f"{outdir}/final/localization/Heatmap_Insertion_Chr.png",
 		f"{outdir}/final/localization/Insertion_length.png",
 		#quality control
-		expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_heatmap_image.png", sample=SAMPLES),
+		expand(f"{outdir}/final/qc/mapq/{{sample}}_mapq_plot.png", sample=SAMPLES),
 		expand(f"{outdir}/final/qc/Fragmentation/Insertions/insertions_{fragmentsize}_{{sample}}", sample=SAMPLES),
 		expand(f"{outdir}/final/qc/Fragmentation/Longest_Interval/{{sample}}/", sample=SAMPLES),
 		f"{outdir}/final/qc/multiqc_report.html",
