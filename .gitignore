@@ -1,10 +1,10 @@
 .snakemake/
 Results/
 Src/
-config/config_FMC63_28z.yml
 config/config_orig.yml
 config/tutorial_config.yml
-config/config_*_.yml
+config/config_*_*.yml
+config/config_C*.yml
 dag.svg
 project_info.txt
 report.html
