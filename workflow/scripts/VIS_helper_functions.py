@@ -12,6 +12,8 @@ import re
 from Bio import SeqIO
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') #ensures that now GUI are opened from maptlotlib during execution of the pipeline
 import matplotlib.pyplot as plt
 import collections
 import seaborn as sns
@@ -601,7 +603,6 @@ def plot_longest_interval(matches, longest_start, longest_end, longest_subject_i
     plt.legend(loc='upper right')
     plt.tight_layout()
     plt.savefig(outfile, dpi=600)
-    plt.show()
 
 @redirect_logging(logfile_param="logfile")
 def find_and_plot_longest_blast_interval(blastn, buffer, threshold, output_dir, logfile):

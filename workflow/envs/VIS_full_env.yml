@@ -17,5 +17,6 @@ dependencies:
   - minimap2=2.26 #minimap
   - bedtools #bedtools
   - blast #blast
-  - multiqc #fastqc #multiqc
+  - fastqc #fastqc
+  - multiqc #multiqc
   - nanoplot #nanoplot
