@@ -3,7 +3,14 @@
     <img src="images/logo.png" alt="Logo" width=200>
 </p>
 
-# Vector Insertion Site – Detection Pipeline
+<p align="center">
+    <a href="https://github.com/aweich/VIS" target="_blank">
+        <img src="https://img.shields.io/badge/GitHub-aweich/VIS-black?logo=github&style=flat" alt="GitHub Repo">
+    </a>
+</p>
+
+# Vector Insertion Site – Detection Pipeline 
+
 ----
 * [Introduction](#introduction)
 * [Key Features and Applications](#key-features-and-applications)
