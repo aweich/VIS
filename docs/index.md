@@ -1,6 +1,6 @@
 
 <p align="center">
-    <img src="/images/logo.png" alt="Logo" width=200>
+    <img src="/docs/images/logo.png" alt="Logo" width=200>
 </p>
 
 # Vector Insertion Site – Detection Pipeline
@@ -23,8 +23,8 @@ For a detailed explanation, see our [paper](). In brief, a (partially) known vec
 
 #### Illustrated Core Functionality
 <p align="center">
-    <a href="/images/Combined_Workflow_for_Documentation.png" target="_blank">
-        <img src="/images/Combined_Workflow_for_Documentation.png" alt="Workflow overview">
+    <a href="/docs/images/Combined_Workflow_for_Documentation.png" target="_blank">
+        <img src="/docs/images/Combined_Workflow_for_Documentation.png" alt="Workflow overview">
     </a>
 </p>
 
@@ -44,7 +44,7 @@ For a detailed explanation, see our [paper](). In brief, a (partially) known vec
 
 ## General Usage
 
-Everything from installation to customization of this pipeline can be found in the [online documentation](). If you are new to `Snakemake`, check out the [introduction to snakemake](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html) first. 
+Everything from installation to customization of this pipeline can be found in the [online documentation](https://vis-detection-of-vector-insertion-sites.readthedocs.io/en/latest/). If you are new to `Snakemake`, check out the [introduction to snakemake](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html) first. 
 
 It is recommended to familiarize yourself with the workflow and its outputs before running it with your own data. A detailed practical example of the workflow and its output files with simulated data can be found in the [tutorial](tutorial/tutorial_intro.md).
 
@@ -72,11 +72,11 @@ Run the Pipeline:
 snakemake --use-conda -n
 ```
 
-For more detailed instructions, refer to the [online documentation]() and the corresponding [publication]().
+For more detailed instructions, refer to the [online documentation](https://vis-detection-of-vector-insertion-sites.readthedocs.io/en/latest/) and the corresponding [publication]().
 
 ## Citation and Contribution
 
-If you are using this pipeline or the search strategy implemented in this pipeline, please cite us using "..." and leave us a star. 
+If you are using this pipeline or the search strategy implemented in this pipeline, please cite us and leave a star. 
 
 We encourage contributions to enhance and refine this codebase, whether through providing feedback, improving functionality, or sharing domain-specific expertise. If you have suggestions, encounter issues, or require assistance, please feel free to reach out for support or collaboration.
 
