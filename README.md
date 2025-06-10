@@ -8,9 +8,9 @@
 <p align="center">
   Workflow for the detection and annotation of vector insertion sites (VIS) from long-read sequencing data
   <br>
-  <a href="">Documentation</a>
+  <a href="https://vis-detection-of-vector-insertion-sites.readthedocs.io/en/latest/">Documentation</a>
   ·
-  <a href="">Publication</a>
+  <a href="">Publication (not available yet)</a>
 </p> 
 
 ## Table of contents
@@ -27,7 +27,7 @@ Welcome to the **Vector Insertion Site (VIS) Detection Pipeline** documentation.
 
 The diagram below outlines the detection workflow, with key analysis steps on the left and a directed acyclic graph (DAG) of workflow components on the right. *Created in BioRender. [Weich, A. (2025)](https://BioRender.com/z40d414)*  
 
-For a detailed explanation, see our [paper](). In brief, a (partially) known vector sequence is fragmented into kmers and searched for matches in long-read sequencing data. Matching reads are modified and mapped to a reference genome. The **<span style="color:black">detection</span>** of the exact insertion site is implemented using a CIGAR-based reverse calculation and can be **<span style="color:darkblue">functionally annotated</span>** with genomic resources (e.g., genes, transcription factors). Throughout the workflow, multiple **<span style="color:darkred">quality control</span>** steps (e.g., base quality, mapping quality) ensure integrity of input data and results.  
+For a detailed explanation, see our [paper (not available yet)](). In brief, a (partially) known vector sequence is fragmented into kmers and searched for matches in long-read sequencing data. Matching reads are modified and mapped to a reference genome. The **<span style="color:black">detection</span>** of the exact insertion site is implemented using a CIGAR-based reverse calculation and can be **<span style="color:darkblue">functionally annotated</span>** with genomic resources (e.g., genes, transcription factors). Throughout the workflow, multiple **<span style="color:darkred">quality control</span>** steps (e.g., base quality, mapping quality) ensure integrity of input data and results.  
 
 
 #### Illustrated Core Functionality
@@ -53,7 +53,7 @@ For a detailed explanation, see our [paper](). In brief, a (partially) known vec
 
 ## General Usage
 
-Everything from installation to customization of this pipeline can be found in the [online documentation](). If you are new to `Snakemake`, check out the [introduction to snakemake](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html) first. 
+Everything from installation to customization of this pipeline can be found in the [online documentation](https://vis-detection-of-vector-insertion-sites.readthedocs.io/en/latest/). If you are new to `Snakemake`, check out the [introduction to snakemake](https://snakemake.readthedocs.io/en/stable/tutorial/basics.html) first. 
 
 It is recommended to familiarize yourself with the workflow and its outputs before running it with your own data. A detailed practical example of the workflow and its output files with simulated data can be found in the [tutorial](/docs/tutorial/tutorial_intro.md).
 
@@ -81,11 +81,11 @@ Run the Pipeline:
 snakemake --use-conda -n
 ```
 
-For more detailed instructions, refer to the [online documentation]() and the corresponding [publication]().
+For more detailed instructions, refer to the [online documentation](https://vis-detection-of-vector-insertion-sites.readthedocs.io/en/latest/) and the corresponding [publication (not available yet)]().
 
 ## Citation and Contribution
 
-If you are using this pipeline or the search strategy implemented in this pipeline, please cite us using "..." and leave us a star. 
+If you are using this pipeline or the search strategy implemented in this pipeline, please cite us and leave a star. 
 
 We encourage contributions to enhance and refine this codebase, whether through providing feedback, improving functionality, or sharing domain-specific expertise. If you have suggestions, encounter issues, or require assistance, please feel free to reach out for support or collaboration.
 
