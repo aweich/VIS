@@ -1,6 +1,6 @@
 
 <p align="center">
-    <img src="/docs/images/logo.png" alt="Logo" width=200>
+    <img src="images/logo.png" alt="Logo" width=200>
 </p>
 
 # Vector Insertion Site – Detection Pipeline
@@ -23,8 +23,8 @@ For a detailed explanation, see our [paper](). In brief, a (partially) known vec
 
 #### Illustrated Core Functionality
 <p align="center">
-    <a href="/docs/images/Combined_Workflow_for_Documentation.png" target="_blank">
-        <img src="/docs/images/Combined_Workflow_for_Documentation.png" alt="Workflow overview">
+    <a href="images/Combined_Workflow_for_Documentation.png" target="_blank">
+        <img src="images/Combined_Workflow_for_Documentation.png" alt="Workflow overview">
     </a>
 </p>
 
