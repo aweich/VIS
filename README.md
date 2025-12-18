@@ -89,5 +89,7 @@ If you are using this pipeline or the search strategy implemented in this pipeli
 
 We encourage contributions to enhance and refine this codebase, whether through providing feedback, improving functionality, or sharing domain-specific expertise. If you have suggestions, encounter issues, or require assistance, please feel free to reach out for support or collaboration.
 
+We are always open for scientific collaborations, too!
+
 ## License
 This project is available under the [Apache License 2.0](LICENSE).
