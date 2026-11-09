@@ -4,9 +4,9 @@
 </p>
 
 
-<h3 align="center">Vector Insertion Site – Detection Pipeline</h3>
+<h3 align="center">Vector Integration Site – Detection Pipeline</h3>
 <p align="center">
-  Workflow for the detection and annotation of vector insertion sites (VIS) from long-read sequencing data
+  Workflow for the detection and annotation of vector integration sites (VIS) from long-read sequencing data
   <br>
   <a href="https://vis-detection-of-vector-insertion-sites.readthedocs.io/en/latest/">Documentation</a>
   ·
@@ -23,7 +23,7 @@
     
 ## Introduction
 
-Welcome to the **Vector Insertion Site (VIS) Detection Pipeline** documentation. This `Snakemake`-based workflow detects and annotates insertion sites in long-read DNA sequencing data. It supports custom functions and follows the `Snakemake` styling guide.  
+Welcome to the **Vector Integration Site (VIS) Detection Pipeline** documentation. This `Snakemake`-based workflow detects and annotates insertion sites in long-read DNA sequencing data. It supports custom functions and follows the `Snakemake` styling guide.  
 
 The diagram below outlines the detection workflow, with key analysis steps on the left and a directed acyclic graph (DAG) of workflow components on the right. *Created in BioRender. [Weich, A. (2025)](https://BioRender.com/z40d414)*  
 
@@ -41,11 +41,11 @@ For a detailed explanation, see our [paper (not available yet)](). In brief, a (
 
 ## Key Features and Applications
 
-- **Systematic Detection of Inserted Vector Sequences:** The pipeline fragments the target sequence into bins, enabling precise identification of consecutive and isolated vector fragments, including their orientation in long DNA reads.
+- **Systematic Detection of Integrated Vector Sequences:** The pipeline fragments the target sequence into bins, enabling precise identification of consecutive and isolated vector fragments, including their orientation in long DNA reads.
 
-- **Accurate Localization of Insertion Sites:** By mapping the detected sequences to a reference genome, the pipeline provides exact genomic coordinates of the insertion sites, ensuring high accuracy.
+- **Accurate Localization of Integration Sites:** By mapping the detected sequences to a reference genome, the pipeline provides exact genomic coordinates of the insertion sites, ensuring high accuracy.
 
-- **Comprehensive Annotation Capabilities:** Leveraging customziable genome annotations, the pipeline determines the proximity of insertion sites to transcription factors, genes, or other biologically relevant elements, allowing for interpretations about genomic alterations caused by the VIS.
+- **Comprehensive Annotation Capabilities:** Leveraging customizable genome annotations, the pipeline determines the proximity of insertion sites to transcription factors, genes, or other biologically relevant elements, allowing for interpretations about genomic alterations caused by the VIS.
 
 - **Customizable and Extendable Framework:** Designed with flexibility in mind, the pipeline allows users to add custom analyses, annotations, or visualizations, catering to specific research needs and enhancing functionality.
 
@@ -85,11 +85,9 @@ For more detailed instructions, refer to the [online documentation](https://vis-
 
 ## Citation and Contribution
 
-If you are using this pipeline or the search strategy implemented in this pipeline, please cite us and leave a star. 
+If you are using this pipeline or the search strategy implemented in this pipeline, please leave a star. 
 
 We encourage contributions to enhance and refine this codebase, whether through providing feedback, improving functionality, or sharing domain-specific expertise. If you have suggestions, encounter issues, or require assistance, please feel free to reach out for support or collaboration.
-
-We are always open for scientific collaborations, too!
 
 ## License
 This project is available under the [Apache License 2.0](LICENSE).
